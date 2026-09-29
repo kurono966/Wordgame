@@ -1,0 +1,16 @@
+63f7b34db8d8cdea90c76aacccf841ec
+::res://::1790686623
+_current_diff.txt::TextFile::-1::1790300501::0::1::::<><><>0<>0<><>::
+_measure_test.gd::GDScript::2398746040389701145::1790290035::0::1::::<>SceneTree<><>0<>0<><>::
+dictionary.txt::TextFile::-1::1790053371::0::1::::<><><>0<>0<><>::
+DraggableCard.gd::GDScript::5385929628676114189::1790250158::0::1::::<>PanelContainer<><>0<>0<><>::
+export_presets.cfg::TextFile::-1::1790077816::0::1::::<><><>0<>0<><>::
+GameManager.gd::GDScript::2749055658940758899::1790302985::0::1::::<>Node<><>0<>0<><>::
+Main.gd::GDScript::5391064440613365603::1790302861::0::1::::<>Control<><>0<>0<><>::
+Main.tscn::PackedScene::-1::1790259501::0::1::::<><><>0<>0<><>::res://Main.gd
+optimized_deck.txt::TextFile::-1::1790156321::0::1::::<><><>0<>0<><>::
+README.md::TextFile::-1::1790260938::0::1::::<><><>0<>0<><>::
+README_JA.md::TextFile::-1::1790260941::0::1::::<><><>0<>0<><>::
+WorkbenchDropZone.gd::GDScript::106932354335416487::1790231803::0::1::::<>PanelContainer<><>0<>0<><>::
+::res://fonts/::1790077051
+WDXLLubrifontJPN-Regular.ttf::FontFile::5845418803149870996::1787657978::1790077051::1::::<><><>0<>0<>683df8c6c86fe24d13136cb05220e072<>res://.godot/imported/WDXLLubrifontJPN-Regular.ttf-f39a742a29152435bd758578607b87fa.fontdata::

@@ -1,0 +1,1362 @@
+extends Control
+
+# Main.gd – UI controller: 3 Shared Slots (3 cards each, all fully visible, Center is ACTIVE)
+
+@onready var slot_container        : HBoxContainer  = $Scroll/Center/VBox/SlotContainer
+@onready var background            : TextureRect    = $Background
+@onready var hand_container        : HBoxContainer  = $Scroll/Center/VBox/HandContainer
+@onready var deck_grave_label      : Label          = $Scroll/Center/VBox/DeckGraveLabel
+@onready var workbench_panel       : PanelContainer = $Scroll/Center/VBox/WorkbenchPanel
+@onready var workbench_container   : HBoxContainer  = $Scroll/Center/VBox/WorkbenchPanel/WorkbenchContainer
+@onready var clear_button          : Button         = $Scroll/Center/VBox/ControlRow/ClearButton
+@onready var submit_button         : Button         = $Scroll/Center/VBox/ControlRow/SubmitButton
+# ══════════════════════════════════════════════════════════════════════════════
+# ── Gameplay timer (paused while the formulas dialog is open) ─────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+var _turn_timer: SceneTreeTimer = null
+var _turn_timer_left: float = 0.0
+const TURN_SECONDS: float = 30.0
+
+# Play a short sound when the timer runs low.
+var _low_time_played: bool = false
+
+
+@onready var formula_button        : Button         = $Scroll/Center/VBox/ControlRow/FormulaButton
+@onready var formula_dialog        : Control        = $FormulaDialog
+@onready var formula_panel         : PanelContainer = $FormulaDialog/DialogPanel
+@onready var formula_label         : Label          = $FormulaDialog/DialogPanel/DialogVBox/FormulaLabel
+@onready var formula_close_button  : Button         = $FormulaDialog/DialogPanel/DialogVBox/DialogHeader/CloseButton
+@onready var piles_button          : Button         = $Scroll/Center/VBox/ControlRow/PilesButton
+@onready var piles_dialog          : Control        = $PilesDialog
+@onready var piles_panel           : PanelContainer = $PilesDialog/DialogPanel
+@onready var piles_label           : Label          = $PilesDialog/DialogPanel/DialogVBox/PilesLabel
+@onready var piles_close_button    : Button         = $PilesDialog/DialogPanel/DialogVBox/DialogHeader/CloseButton
+@onready var message_label         : Label          = $Scroll/Center/VBox/MessageLabel
+@onready var player_hp_label       : Label          = $Scroll/Center/VBox/StatusBox/PlayerHPBox/PlayerHPLabel
+@onready var player_hp_bar         : ProgressBar    = $Scroll/Center/VBox/StatusBox/PlayerHPBox/PlayerHPBar
+@onready var enemy_hp_label        : Label          = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyHPLabel
+@onready var enemy_hp_bar          : ProgressBar    = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyHPBar
+@onready var stats_label           : Label          = $Scroll/Center/VBox/StatsLabel
+@onready var turn_label            : Label          = $Scroll/Center/VBox/HeaderBox/TurnLabel
+@onready var score_up_sound        : AudioStreamPlayer = $ScoreUpSound
+@onready var score_down_sound      : AudioStreamPlayer = $ScoreDownSound
+
+# UI data caches
+# slot_reels[s] = {"window": Control, "strip": VBoxContainer, "card_views": [prev, active, next, extra]}
+var slot_reels: Array = []
+# hand_card_views[hand_idx] = {"panel": PanelContainer, "letter": Label, "sub": Label, "style": StyleBoxFlat}
+var hand_card_views: Array = []
+
+# Workbench state
+var workbench_cards: Array = []
+
+# Last resolved word, kept so the FORMULAS panel can show its calculation
+var last_word: String = ""
+var last_result: Dictionary = {}
+var last_penalty: Dictionary = {}
+
+# Card dimensions (all 3 cards are completely visible on screen)
+const SLOT_CARD_W := 120.0
+const SLOT_CARD_H := 58.0
+const SLOT_SEP    := 8.0
+const WINDOWED_SIZE := Vector2i(1280, 800)
+# Exactly 3 cards + 2 gaps visible
+const REEL_WINDOW_H := (SLOT_CARD_H * 3.0) + (SLOT_SEP * 2.0)
+
+# Color Palette
+const BG_CURRENT_SLOT := Color(0.25, 0.21, 0.08, 1.0)
+const BORDER_CURRENT  := Color(0.98, 0.80, 0.22, 1.0) # Gold
+const TXT_CURRENT     := Color(1.00, 0.94, 0.55, 1.0)
+
+const BG_NEXT_SLOT    := Color(0.12, 0.22, 0.16, 1.0)
+const BORDER_NEXT     := Color(0.35, 0.85, 0.55, 1.0) # Green
+const TXT_NEXT        := Color(0.60, 1.00, 0.75, 1.0)
+
+const BG_IDLE_SLOT    := Color(0.14, 0.16, 0.22, 0.8)
+const BORDER_IDLE     := Color(0.24, 0.27, 0.35, 1.0)
+const TXT_IDLE        := Color(0.55, 0.58, 0.68, 1.0)
+
+const BG_HAND         := Color(0.14, 0.20, 0.28, 1.0)
+const BORDER_HAND     := Color(0.35, 0.65, 0.95, 1.0) # Sky blue
+const TXT_HAND        := Color(0.85, 0.93, 1.00, 1.0)
+
+const BG_WORKBENCH_CARD := Color(0.18, 0.22, 0.30, 1.0)
+const BORDER_WORKBENCH  := Color(1.0, 0.85, 0.3, 1.0)
+const TXT_WORKBENCH     := Color(1.0, 1.0, 1.0, 1.0)
+
+const BG_EMPTY        := Color(0.12, 0.13, 0.17, 0.5)
+const BORDER_EMPTY    := Color(0.20, 0.22, 0.28, 0.5)
+
+
+
+# Card Colors
+const COLOR_RED_BORDER   := Color("ff6978")
+const COLOR_RED_BG       := Color("3b1628")
+const COLOR_BLUE_BORDER  := Color("62a8ff")
+const COLOR_BLUE_BG      := Color("132952")
+const COLOR_GREEN_BORDER := Color("58d99b")
+const COLOR_GREEN_BG     := Color("123b32")
+const COLOR_YELLOW_BORDER:= Color("ffd35c")
+const COLOR_YELLOW_BG    := Color("443517")
+const COLOR_GOLD_BORDER  := Color("ffe08a")
+const COLOR_GOLD_BG      := Color("4b3212")
+
+# Phase Indicators
+const COLOR_DAY   := Color(1.0, 0.9, 0.6, 1.0)  # Warm yellow for day
+const COLOR_NIGHT := Color(0.6, 0.7, 1.0, 1.0)  # Cool blue for night
+
+func get_card_color_constants(color_name: String) -> Dictionary:
+	match color_name:
+		"red":
+			return {"border": COLOR_RED_BORDER, "bg": COLOR_RED_BG}
+		"blue":
+			return {"border": COLOR_BLUE_BORDER, "bg": COLOR_BLUE_BG}
+		"green":
+			return {"border": COLOR_GREEN_BORDER, "bg": COLOR_GREEN_BG}
+		"yellow":
+			return {"border": COLOR_YELLOW_BORDER, "bg": COLOR_YELLOW_BG}
+		"gold":
+			return {"border": COLOR_GOLD_BORDER, "bg": COLOR_GOLD_BG}
+		_:
+			return {"border": COLOR_RED_BORDER, "bg": COLOR_RED_BG}
+
+# ──────────────────────────────────────────────────────────────────────────────
+func _ready() -> void:
+	submit_button.pressed.connect(_on_submit_pressed)
+	clear_button.pressed.connect(_on_clear_pressed)
+	formula_button.pressed.connect(_on_formula_pressed)
+	formula_close_button.pressed.connect(_close_formula_dialog)
+	piles_button.pressed.connect(_on_piles_pressed)
+	piles_close_button.pressed.connect(_close_piles_dialog)
+
+	_setup_workbench_drop_target()
+	_build_slot_reels()
+	_build_hand_cards()
+	_setup_sound_effects()
+	_style_global_ui()
+	_style_hp_bars()
+	_style_formula_panel()
+	_style_piles_panel()
+	_refresh_formula_panel()
+	_refresh_ui()
+
+# ──────────────────────────────────────────────────────────────────────────────
+func _style_global_ui() -> void:
+	# Procedural background: no image asset is required.
+	var gradient := Gradient.new()
+	gradient.colors = PackedColorArray([
+		Color("07101f"), Color("102844"), Color("1b1535")
+	])
+	gradient.offsets = PackedFloat32Array([0.0, 0.56, 1.0])
+	var background_texture := GradientTexture2D.new()
+	background_texture.gradient = gradient
+	background_texture.width = 1920
+	background_texture.height = 1080
+	background_texture.fill = GradientTexture2D.FILL_LINEAR
+	background_texture.fill_from = Vector2(0.05, 0.0)
+	background_texture.fill_to = Vector2(0.95, 1.0)
+	background.texture = background_texture
+
+	var title: Label = $Scroll/Center/VBox/HeaderBox/TitleLabel
+	title.add_theme_color_override("font_color", Color("f8d77a"))
+	title.add_theme_color_override("font_outline_color", Color("11182b"))
+	title.add_theme_constant_override("outline_size", 3)
+	title.add_theme_font_size_override("font_size", 24)
+	turn_label.add_theme_color_override("font_outline_color", Color("0a1020"))
+	turn_label.add_theme_constant_override("outline_size", 2)
+
+	for section_label in [
+		$Scroll/Center/VBox/SlotsSectionLabel,
+		$Scroll/Center/VBox/HandSectionLabel,
+		$Scroll/Center/VBox/WorkbenchSectionLabel
+	]:
+		section_label.add_theme_color_override("font_outline_color", Color("0a1020"))
+		section_label.add_theme_constant_override("outline_size", 2)
+
+	_style_button(submit_button, Color("ae6920"), Color("ffd36a"), Color("fff2c4"))
+	_style_button(clear_button, Color("273650"), Color("7695c3"), Color("e6efff"))
+	_style_button(formula_button, Color("243c71"), Color("7eacff"), Color("e4efff"))
+	_style_button(piles_button, Color("3b2c67"), Color("a88cff"), Color("f0eaff"))
+	_style_button(formula_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
+	_style_button(piles_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
+
+	message_label.add_theme_color_override("font_outline_color", Color("07101f"))
+	message_label.add_theme_constant_override("outline_size", 3)
+
+func _style_button(button: Button, base_color: Color, border_color: Color, text_color: Color) -> void:
+	var normal := _make_button_style(base_color, border_color)
+	var hover := _make_button_style(base_color.lightened(0.16), border_color.lightened(0.18))
+	hover.shadow_color = border_color.darkened(0.35)
+	hover.shadow_size = 10
+	var pressed := _make_button_style(base_color.darkened(0.16), border_color.darkened(0.08))
+	pressed.content_margin_top += 2.0
+	var disabled := _make_button_style(Color("172031"), Color("33415b"))
+	disabled.shadow_size = 0
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("disabled", disabled)
+	button.add_theme_color_override("font_color", text_color)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", text_color.darkened(0.08))
+	button.add_theme_color_override("font_disabled_color", Color("69758c"))
+	button.add_theme_color_override("font_outline_color", Color("080d17"))
+	button.add_theme_constant_override("outline_size", 1)
+
+func _make_button_style(base_color: Color, border_color: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = base_color
+	style.border_color = border_color
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(9)
+	style.content_margin_left = 14.0
+	style.content_margin_right = 14.0
+	style.content_margin_top = 5.0
+	style.content_margin_bottom = 5.0
+	style.shadow_color = Color(0.0, 0.0, 0.05, 0.48)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0, 3)
+	return style
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ── Formula reference panel ──────────────────────────────────────────────────
+# Shows every calculation used by the game (values read from GameManager) plus
+# the breakdown of the word that was submitted last.
+func _style_formula_panel() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.13, 0.19, 1.0)
+	sb.border_color = Color(0.48, 0.64, 0.90, 0.9)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(14)
+	sb.shadow_color = Color(0.0, 0.0, 0.04, 0.72)
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2(0, 7)
+	sb.content_margin_left = 14.0
+	sb.content_margin_right = 14.0
+	sb.content_margin_top = 10.0
+	sb.content_margin_bottom = 10.0
+	formula_panel.add_theme_stylebox_override("panel", sb)
+
+
+	formula_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+func _on_formula_pressed() -> void:
+	if formula_dialog.visible:
+		_close_formula_dialog()
+		return
+	_refresh_formula_panel()
+	formula_dialog.visible = true
+	formula_close_button.grab_focus()
+
+func _close_formula_dialog() -> void:
+	formula_dialog.visible = false
+	formula_button.grab_focus()
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event.is_pressed() and not event.is_echo() and event.keycode == KEY_F11:
+		_toggle_fullscreen()
+		get_viewport().set_input_as_handled()
+		return
+	if not event.is_pressed() or event.keycode != KEY_ESCAPE:
+		return
+	if formula_dialog.visible:
+		_close_formula_dialog()
+		get_viewport().set_input_as_handled()
+	elif piles_dialog.visible:
+		_close_piles_dialog()
+		get_viewport().set_input_as_handled()
+
+func _toggle_fullscreen() -> void:
+	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		call_deferred("_restore_windowed_size")
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+func _restore_windowed_size() -> void:
+	DisplayServer.window_set_size(WINDOWED_SIZE)
+
+# ── Deck and draw-pile reference dialog ─────────────────────────────────────
+# The draw pile is grouped and alphabetically sorted so its actual draw order
+# remains hidden even though its remaining card contents are visible.
+func _style_piles_panel() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.13, 0.19, 1.0)
+	sb.border_color = Color(0.42, 0.72, 0.98, 0.9)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(14)
+	sb.shadow_color = Color(0.0, 0.0, 0.04, 0.72)
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2(0, 7)
+	sb.content_margin_left = 18.0
+	sb.content_margin_right = 18.0
+	sb.content_margin_top = 14.0
+	sb.content_margin_bottom = 14.0
+	piles_panel.add_theme_stylebox_override("panel", sb)
+	piles_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+func _on_piles_pressed() -> void:
+	if piles_dialog.visible:
+		_close_piles_dialog()
+		return
+	_refresh_piles_dialog()
+	piles_dialog.visible = true
+	piles_close_button.grab_focus()
+
+func _close_piles_dialog() -> void:
+	piles_dialog.visible = false
+	piles_button.grab_focus()
+
+func _refresh_piles_dialog() -> void:
+	var draw_pile: Array = GameManager.get_draw_pile_cards()
+	var full_deck: Array = []
+	full_deck.append_array(draw_pile)
+	for card in GameManager.get_hand():
+		if card != null:
+			full_deck.append(card)
+	full_deck.append_array(GameManager.get_graveyard())
+
+	piles_label.text = "[DECK — %d cards total]\n%s\n\n[DRAW PILE — %d cards]\n%s\n\nDraw order is hidden. Cards are grouped alphabetically, not in draw order." % [
+		full_deck.size(),
+		_format_card_counts(full_deck),
+		draw_pile.size(),
+		_format_card_counts(draw_pile)
+	]
+
+func _format_card_counts(cards: Array) -> String:
+	if cards.is_empty():
+		return "  (empty)"
+	var counts: Dictionary = {}
+	for card in cards:
+		if card == null:
+			continue
+		var entry := "%s  %s  %d DMG" % [
+			str(card.get("letter", "?")),
+			str(card.get("color", "red")).to_upper(),
+			int(card.get("damage", 0))
+		]
+		counts[entry] = int(counts.get(entry, 0)) + 1
+	var entries: Array = counts.keys()
+	entries.sort()
+	var lines: Array = []
+	for entry in entries:
+		lines.append("  %s  x%d" % [entry, counts[entry]])
+	return "\n".join(lines)
+
+func _refresh_formula_panel() -> void:
+	formula_label.text = _build_formula_text() + "\n" + _build_last_calc_text()
+
+func _build_formula_text() -> String:
+	var player_max: int = GameManager.PLAYER_MAX_HP
+	var enemy_base: int = GameManager.ENEMY_BASE_HP
+	var enemy_growth: int = GameManager.ENEMY_HP_GROWTH
+
+	var lines: Array = [
+		"[BASE]  Base = total damage of every card used in the word.",
+		"        All color traits use this base (negative bases grant no traits).",
+		"",
+		"[RED — enemy damage]  final = base x RED multiplier",
+		"  0 red: x1   |   1 red: x1.5   |   2 / 3 / 4 red: x2 / x4 / x8",
+		"",
+		"[BLUE — shield]  shield = base x 2^(blue - 1); no cap",
+		"  1 / 2 / 3 / 4 blue: x1 / x2 / x4 / x8. Shield absorbs damage before HP.",
+		"",
+		"[GREEN — heal]  heal = base x 2^(green - 1), up to %d HP" % player_max,
+		"  1 / 2 / 3 / 4 green: x1 / x2 / x4 / x8.",
+		"",
+		"[YELLOW — operation points]  OP = base x 2^(yellow - 1)",
+		"  1 / 2 / 3 / 4 yellow: x1 / x2 / x4 / x8. Current OP: %d" % GameManager.get_operation_points(),
+		"  Spend 1 OP to move a Workbench card one place left or right.",
+		"",
+		"[NIGHT SELF-DAMAGE]  next-slot total x 10^(largest same-color group - 1)",
+		"  2 / 3 / 4 matching colors: x10 / x100 / x1000. BLUE shield applies first.",
+		"",
+		"[OTHER]  ?: 0 damage and matches any letter. Word order never changes.",
+		"  Enemy HP: stage 1 = %d, then +%d per stage. Excess damage is lost." % [enemy_base, enemy_growth],
+		"  %d turns clears the game; player HP 0 is defeat." % GameManager.MAX_TURNS
+	]
+	return "\n".join(lines)
+
+func _build_last_calc_text() -> String:
+	var lines: Array = ["", "=== LAST WORD ==="]
+	if last_result.is_empty():
+		lines.append("  (submit a word and its calculation appears here)")
+		return "\n".join(lines)
+
+	var base: int = last_result.get("word_damage", 0)
+	var mult: float = last_result.get("multiplier", 1.0)
+	var red_bonus: int = last_result.get("red_bonus", 0)
+	var final_dmg: int = last_result.get("final_damage", 0)
+
+	if base > 0:
+		lines.append("  %s : base %d x RED x%s = %d damage" % [
+			last_word.to_upper(), base, String.num(mult, 2), final_dmg])
+		if red_bonus > 0:
+			lines.append("      (base %d + red bonus %d)" % [base, red_bonus])
+		lines.append("      enemy HP %d -> %d" % [
+			last_result.get("enemy_hp_before", 0), last_result.get("enemy_hp_after", 0)])
+	elif base < 0:
+		lines.append("  %s : base %d (negative word)" % [last_word.to_upper(), base])
+		lines.append("      you take %d damage (shield blocked %d)" % [
+			last_result.get("self_damage_taken", 0), last_result.get("self_damage_absorbed", 0)])
+	else:
+		lines.append("  %s : base 0 (wildcards only)" % last_word.to_upper())
+
+	var shield_gained: int = last_result.get("shield_gained", 0)
+	var heal_amount: int = last_result.get("heal_amount", 0)
+	var op_gained: int = last_result.get("operation_points_gained", 0)
+	var op_total: int = last_result.get("operation_points_after", 0)
+	if shield_gained > 0 or heal_amount > 0:
+		lines.append("      BLUE shield +%d (base x%d)   |   GREEN heal +%d (base x%d)" % [
+			shield_gained, last_result.get("shield_mult", 0),
+			heal_amount, last_result.get("heal_mult", 0)])
+	if op_gained > 0:
+		lines.append("      YELLOW operation points +%d (base x%d)   |   total owned: %d" % [
+			op_gained, last_result.get("yellow_mult", 0), op_total])
+
+	if not last_penalty.is_empty() and last_penalty.get("multiplier", 1) > 1:
+		lines.append("  NIGHT: %d x color x%d = %d  (shield blocked %d, you lost %d)" % [
+			last_penalty.get("base_damage", 0), last_penalty.get("multiplier", 1),
+			last_penalty.get("requested_damage", 0), last_penalty.get("absorbed", 0),
+			last_penalty.get("applied_damage", 0)])
+	elif not last_penalty.is_empty() and last_penalty.get("requested_damage", 0) > 0:
+		lines.append("  NIGHT: %d damage  (shield blocked %d, you lost %d)" % [
+			last_penalty.get("requested_damage", 0), last_penalty.get("absorbed", 0),
+			last_penalty.get("applied_damage", 0)])
+
+	return "\n".join(lines)
+
+# ── Sound Effects Setup ─────────────────────────────────────────────────────
+func _setup_sound_effects() -> void:
+	# Create simple beep sounds using AudioStreamWAV
+	var up_wav := AudioStreamWAV.new()
+	up_wav.format = AudioStreamWAV.FORMAT_16_BITS
+	up_wav.mix_rate = 44100
+	up_wav.stereo = true
+	var up_data = PackedByteArray()
+	for i in range(4410):  # 0.1 seconds
+		var t = float(i) / 44100.0
+		var freq = 440.0 + t * 440.0  # Ascending
+		var sample = int(sin(t * freq * 2.0 * PI) * 16383.0)
+		# Little-endian 16-bit stereo
+		up_data.append(sample & 0xFF)
+		up_data.append((sample >> 8) & 0xFF)
+		up_data.append(sample & 0xFF)
+		up_data.append((sample >> 8) & 0xFF)
+	up_wav.data = up_data
+	score_up_sound.stream = up_wav
+
+	var down_wav := AudioStreamWAV.new()
+	down_wav.format = AudioStreamWAV.FORMAT_16_BITS
+	down_wav.mix_rate = 44100
+	down_wav.stereo = true
+	var down_data = PackedByteArray()
+	for i in range(4410):  # 0.1 seconds
+		var t = float(i) / 44100.0
+		var freq = 880.0 - t * 440.0  # Descending
+		var sample = int(sin(t * freq * 2.0 * PI) * 16383.0)
+		# Little-endian 16-bit stereo
+		down_data.append(sample & 0xFF)
+		down_data.append((sample >> 8) & 0xFF)
+		down_data.append(sample & 0xFF)
+		down_data.append((sample >> 8) & 0xFF)
+	down_wav.data = down_data
+	score_down_sound.stream = down_wav
+
+func _play_score_up_sound() -> void:
+	score_up_sound.play()
+
+func _play_score_down_sound() -> void:
+	score_down_sound.play()
+
+# ── HP visual effects ─────────────────────────────────────────────────────
+func _style_hp_bars() -> void:
+	_style_hp_bar(player_hp_bar, Color(0.25, 0.85, 0.45, 1.0))
+	_style_hp_bar(enemy_hp_bar, Color(0.95, 0.35, 0.3, 1.0))
+
+func _style_hp_bar(bar: ProgressBar, fill_color: Color) -> void:
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = fill_color
+	fill.set_corner_radius_all(7)
+	fill.content_margin_top = 2.0
+	fill.content_margin_bottom = 2.0
+	bar.add_theme_stylebox_override("fill", fill)
+
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color("0a1120")
+	bg.border_color = fill_color.darkened(0.55)
+	bg.set_border_width_all(1)
+	bg.set_corner_radius_all(7)
+	bg.shadow_color = Color(0.0, 0.0, 0.03, 0.5)
+	bg.shadow_size = 4
+	bg.shadow_offset = Vector2(0, 2)
+	bar.add_theme_stylebox_override("background", bg)
+
+func _animate_enemy_hit() -> void:
+	var tween := create_tween()
+	var original_scale: Vector2 = enemy_hp_label.scale
+	tween.parallel()
+	tween.tween_property(enemy_hp_label, "scale", Vector2(1.12, 1.12), 0.12)
+	tween.tween_property(enemy_hp_label, "modulate", Color(1.0, 0.45, 0.35, 1.0), 0.1)
+	tween.chain().tween_property(enemy_hp_label, "scale", original_scale, 0.18)
+	tween.tween_property(enemy_hp_label, "modulate", Color.WHITE, 0.2)
+
+func _animate_player_hit() -> void:
+	var tween := create_tween()
+	var original_position: Vector2 = player_hp_label.position
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.parallel()
+	tween.tween_property(player_hp_label, "modulate", Color(1.0, 0.4, 0.4, 1.0), 0.1)
+	for i in range(3):
+		tween.tween_property(player_hp_label, "position:x", original_position.x + 5.0, 0.05)
+		tween.tween_property(player_hp_label, "position:x", original_position.x - 5.0, 0.05)
+	tween.chain().tween_property(player_hp_label, "position", original_position, 0.1)
+	tween.tween_property(player_hp_label, "modulate", Color.WHITE, 0.2)
+
+# Step-by-step HP bar animation (counts the displayed HP value up/down)
+func _animate_enemy_hp(stage_shown: int, name_shown: String, from_hp: int, to_hp: int, max_hp: int, duration: float = 0.5) -> void:
+	enemy_hp_bar.max_value = max_hp
+	var label_prefix: String = "STAGE %d  %s" % [stage_shown, name_shown.to_upper()]
+	enemy_hp_label.text = "%s  HP: %d / %d" % [label_prefix, from_hp, int(max_hp)]
+	_animate_hp_value(enemy_hp_bar, from_hp, to_hp, duration, func(hp: int) -> void:
+		enemy_hp_label.text = "%s  HP: %d / %d" % [label_prefix, hp, int(max_hp)]
+	)
+
+func _animate_player_hp(from_hp: int, to_hp: int, max_hp: int, duration: float = 0.5) -> void:
+	player_hp_bar.max_value = max_hp
+	player_hp_label.text = "PLAYER HP: %d / %d" % [from_hp, int(max_hp)]
+	_animate_hp_value(player_hp_bar, from_hp, to_hp, duration, func(hp: int) -> void:
+		player_hp_label.text = "PLAYER HP: %d / %d" % [hp, int(max_hp)]
+	)
+
+func _animate_hp_value(bar: ProgressBar, from_hp: int, to_hp: int, duration: float, on_step: Callable) -> void:
+	var tween := create_tween()
+	var steps: int = 20
+	var step_duration: float = duration / steps
+	bar.value = from_hp
+	for i in range(steps + 1):
+		var progress: float = float(i) / steps
+		var hp: int = int(lerp(float(from_hp), float(to_hp), progress))
+		tween.tween_callback(func() -> void:
+			bar.value = hp
+			on_step.call(hp)
+		).set_delay(step_duration)
+
+func _start_blinking_animation(panel: PanelContainer) -> void:
+	# Kill any existing tween on this panel
+	if panel.has_meta("blink_tween"):
+		var old_tween = panel.get_meta("blink_tween")
+		if old_tween and old_tween.is_valid():
+			old_tween.kill()
+
+	var tween := create_tween()
+	tween.set_loops()
+	tween.set_parallel(false)
+	panel.set_meta("blink_tween", tween)
+
+	# Blink red to warn about penalty
+	tween.tween_property(panel, "modulate", Color(1.0, 0.4, 0.4, 1.0), 0.3)
+	tween.tween_property(panel, "modulate", Color.WHITE, 0.3)
+
+func _stop_all_blinking_animations() -> void:
+	for s in range(GameManager.NUM_SLOTS):
+		var reel: Dictionary = slot_reels[s]
+		var card_views: Array = reel["card_views"]
+		for cv in card_views:
+			var panel: PanelContainer = cv["panel"]
+			if panel.has_meta("blink_tween"):
+				var old_tween = panel.get_meta("blink_tween")
+				if old_tween and old_tween.is_valid():
+					old_tween.kill()
+				panel.remove_meta("blink_tween")
+			panel.modulate = Color.WHITE
+
+# ── Workbench Drop Target ───────────────────────────────────────────────────
+func _setup_workbench_drop_target() -> void:
+	var wb_style := StyleBoxFlat.new()
+	wb_style.bg_color = Color("101a2b")
+	wb_style.border_color = Color("d8ad4b")
+	wb_style.border_width_bottom = 2
+	wb_style.border_width_top = 2
+	wb_style.border_width_left = 2
+	wb_style.border_width_right = 2
+	wb_style.set_corner_radius_all(12)
+	wb_style.shadow_color = Color(0.0, 0.0, 0.04, 0.55)
+	wb_style.shadow_size = 10
+	wb_style.shadow_offset = Vector2(0, 4)
+	workbench_panel.add_theme_stylebox_override("panel", wb_style)
+
+	workbench_panel.set_script(load("res://WorkbenchDropZone.gd"))
+	workbench_panel.card_dropped.connect(_on_workbench_card_dropped)
+
+func _on_workbench_card_dropped(card_data: Dictionary) -> void:
+	add_card_to_workbench(card_data)
+
+# ── Card View Factory ────────────────────────────────────────────────────────
+func _create_card_view(w: float, h: float, letter_size: int, sub_size: int) -> Dictionary:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(w, h)
+
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(10)
+	sb.border_width_bottom = 2
+	sb.border_width_left = 2
+	sb.border_width_right = 2
+	sb.border_width_top = 2
+	sb.shadow_color = Color(0.0, 0.0, 0.03, 0.55)
+	sb.shadow_size = 6
+	sb.shadow_offset = Vector2(0, 3)
+	sb.content_margin_left = 5.0
+	sb.content_margin_right = 5.0
+	sb.content_margin_top = 3.0
+	sb.content_margin_bottom = 3.0
+	panel.add_theme_stylebox_override("panel", sb)
+
+	var vbox := VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 0)
+	panel.add_child(vbox)
+
+	var lbl_letter := Label.new()
+	lbl_letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl_letter.add_theme_font_size_override("font_size", letter_size)
+	lbl_letter.add_theme_color_override("font_outline_color", Color("080d17"))
+	lbl_letter.add_theme_constant_override("outline_size", 2)
+	vbox.add_child(lbl_letter)
+
+	var lbl_sub := Label.new()
+	lbl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl_sub.add_theme_font_size_override("font_size", sub_size)
+	lbl_sub.add_theme_color_override("font_outline_color", Color("080d17"))
+	lbl_sub.add_theme_constant_override("outline_size", 1)
+	vbox.add_child(lbl_sub)
+
+	return {
+		"panel": panel,
+		"style": sb,
+		"letter": lbl_letter,
+		"sub": lbl_sub
+	}
+
+# ── Build 3 Slot Reels with Clipping Window ─────────────────────────────────
+func _build_slot_reels() -> void:
+	slot_reels.clear()
+	for s in range(GameManager.NUM_SLOTS):
+		# Window container: clips children to show exactly 3 card rows
+		var window := Control.new()
+		window.custom_minimum_size = Vector2(SLOT_CARD_W, REEL_WINDOW_H)
+		window.clip_contents = true
+		slot_container.add_child(window)
+
+		# Moving strip of cards inside window
+		var strip := VBoxContainer.new()
+		strip.custom_minimum_size = Vector2(SLOT_CARD_W, 0)
+		strip.add_theme_constant_override("separation", int(SLOT_SEP))
+		strip.position = Vector2(0, 0)
+		window.add_child(strip)
+
+		# Strip contains 4 cards:
+		# Index 0: Row 0 (Top: 3rd card in cycle)
+		# Index 1: Row 1 (Center: ACTIVE card)
+		# Index 2: Row 2 (Bottom: NEXT card)
+		# Index 3: Row 3 (Transition buffer card for smooth scroll)
+		var card_views: Array = []
+		for _i in range(4):
+			var cv: Dictionary = _create_card_view(SLOT_CARD_W, SLOT_CARD_H, 24, 10)
+			strip.add_child(cv["panel"])
+			card_views.append(cv)
+
+		slot_reels.append({
+			"window": window,
+			"strip": strip,
+			"card_views": card_views
+		})
+
+		# Gap guide between slots
+		if s < GameManager.NUM_SLOTS - 1:
+			var gap_col := VBoxContainer.new()
+			gap_col.alignment = BoxContainer.ALIGNMENT_CENTER
+			gap_col.custom_minimum_size = Vector2(48, REEL_WINDOW_H)
+			slot_container.add_child(gap_col)
+
+			var gap_lbl := Label.new()
+			gap_lbl.text = "· · ·\n[ INSERT ]\n· · ·"
+			gap_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			gap_lbl.add_theme_color_override("font_color", Color(0.4, 0.45, 0.55, 0.8))
+			gap_lbl.add_theme_font_size_override("font_size", 11)
+			gap_col.add_child(gap_lbl)
+
+# ── Build hand cards ─────────────────────────────────────────────────────────
+func _build_hand_cards() -> void:
+	hand_card_views.clear()
+	for _i in range(GameManager.HAND_SIZE):
+		var card_view: Dictionary = _create_card_view(96, 76, 32, 12)
+		hand_container.add_child(card_view["panel"])
+		hand_card_views.append(card_view)
+
+func _is_card_in_workbench(card_data: Dictionary) -> bool:
+	for c in workbench_cards:
+		if c["type"] == card_data["type"]:
+			if c["type"] == "slot" and c["index"] == card_data["index"]:
+				return true
+			elif c["type"] == "hand" and c["hand_index"] == card_data["hand_index"]:
+				return true
+	return false
+
+# ── Refresh Hand and Deck/Graveyard ──────────────────────────────────────────
+func _refresh_hand_and_deck() -> void:
+	var current_hand: Array = GameManager.get_hand()
+	for i in range(hand_card_views.size()):
+		var cv: Dictionary = hand_card_views[i]
+		var sb: StyleBoxFlat = cv["style"]
+		var panel: PanelContainer = cv["panel"]
+
+		if i < current_hand.size() and current_hand[i] != null:
+			var card: Dictionary = current_hand[i]
+			var is_wildcard: bool = card["letter"] == "?"
+			var card_data: Dictionary = {
+				"type": "hand",
+				"hand_index": i,
+				"char": card["letter"],  # For display purposes
+				"card_letter": card["letter"],  # The actual letter on the card
+				"damage": card["damage"],
+				"is_wildcard": is_wildcard,
+				"color": card.get("color", "red")
+			}
+
+			cv["letter"].text = card["letter"]
+
+			# Apply card color styling
+			var color_name: String = card.get("color", "red")
+			var color_consts: Dictionary = get_card_color_constants(color_name)
+			sb.border_color = color_consts["border"]
+			sb.bg_color = color_consts["bg"]
+
+			# Wildcard: gold letter for identification, but border keeps the card's color
+			# so players can match wildcards with same-color cards for multipliers
+			if is_wildcard:
+				cv["letter"].add_theme_color_override("font_color", Color(1.0, 0.8, 0.2, 1.0))  # Gold
+
+			if _is_card_in_workbench(card_data):
+				cv["sub"].text = "IN USE"
+				cv["letter"].add_theme_color_override("font_color", Color(0.5, 0.45, 0.25, 0.6))
+				cv["sub"].add_theme_color_override("font_color", Color(0.5, 0.45, 0.25, 0.6))
+				sb.bg_color = color_consts["bg"].lerp(Color(0, 0, 0, 0.4), 0.4)
+				sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.4), 0.4)
+				_detach_drag_source(panel)
+			else:
+				if GameManager.has_special_ability(card):
+					cv["sub"].text = "%d dmg ★SPECIAL" % card["damage"]
+					cv["sub"].add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+				else:
+					cv["sub"].text = "%d dmg" % card["damage"]
+					cv["sub"].add_theme_color_override("font_color", Color.WHITE)
+				cv["letter"].add_theme_color_override("font_color", Color.WHITE)
+				_attach_drag_source(panel, card_data)
+		else:
+			cv["letter"].text = "-"
+			cv["letter"].add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 0.8))
+			cv["sub"].text = ""
+			sb.bg_color = BG_EMPTY
+			sb.border_color = BORDER_EMPTY
+			_detach_drag_source(panel)
+
+	var grave: Array = GameManager.get_graveyard()
+	deck_grave_label.text = "DRAW PILE: %d cards  |  GRAVEYARD: %d cards  |  Use CARD PILES to inspect" % [
+		GameManager.get_deck_count(),
+		grave.size()
+	]
+
+# ── Setup content for a slot card row ───────────────────────────────────────
+func _setup_slot_card(cv: Dictionary, card: Dictionary, role: String, slot_idx: int) -> void:
+	var l_text: String = card["letter"]
+	var pts: int = card["damage"]
+	var is_wildcard: bool = l_text == "?"
+	var sb: StyleBoxFlat = cv["style"]
+	var panel: PanelContainer = cv["panel"]
+
+	cv["letter"].text = l_text
+
+	var card_data: Dictionary = {
+		"type": "slot",
+		"index": slot_idx,
+		"char": l_text,  # For display purposes
+		"card_letter": l_text,  # The actual letter on the card
+		"damage": pts,
+		"is_wildcard": is_wildcard,
+		"color": card.get("color", "red")
+	}
+
+	# Apply card color styling
+	var color_name: String = card.get("color", "red")
+	var color_consts: Dictionary = get_card_color_constants(color_name)
+	sb.border_color = color_consts["border"]
+	sb.bg_color = color_consts["bg"]
+
+	# Wildcard styling (overrides color)
+	if is_wildcard:
+		cv["letter"].add_theme_color_override("font_color", Color(1.0, 0.8, 0.2, 1.0))  # Gold
+		sb.border_color = Color(1.0, 0.8, 0.2, 1.0)
+
+	if role == "active":
+		if _is_card_in_workbench(card_data):
+			cv["sub"].text = "IN USE"
+			cv["letter"].add_theme_color_override("font_color", Color(0.5, 0.45, 0.25, 0.6))
+			cv["sub"].add_theme_color_override("font_color", Color(0.5, 0.45, 0.25, 0.6))
+			sb.bg_color = color_consts["bg"].lerp(Color(0, 0, 0, 0.4), 0.4)
+			sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.4), 0.4)
+			_detach_drag_source(panel)
+		else:
+			cv["sub"].text = "★ ACTIVE (%ddmg)" % pts
+			cv["letter"].add_theme_color_override("font_color", Color.WHITE)
+			cv["sub"].add_theme_color_override("font_color", Color.WHITE)
+			_attach_drag_source(panel, card_data)
+	elif role == "next":
+		cv["sub"].text = "→ NEXT (%ddmg)" % pts
+		cv["letter"].add_theme_color_override("font_color", Color(0.8, 0.8, 0.8, 1.0))
+		cv["sub"].add_theme_color_override("font_color", Color(0.8, 0.8, 0.8, 1.0))
+		sb.bg_color = color_consts["bg"].lerp(Color(0, 0, 0, 0.3), 0.3)
+		sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.3), 0.3)
+		_detach_drag_source(panel)
+	else:
+		cv["sub"].text = "%d dmg" % pts
+		cv["letter"].add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1.0))
+		cv["sub"].add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1.0))
+		sb.bg_color = color_consts["bg"].lerp(Color(0, 0, 0, 0.5), 0.5)
+		sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.5), 0.5)
+		_detach_drag_source(panel)
+
+# ── Populate Slot Reels (All 3 Cards are Visible: Top, Center Active, Bottom) ─
+func _refresh_slots() -> void:
+	# Stop all blinking animations first
+	_stop_all_blinking_animations()
+
+	var is_day = GameManager.get_phase() == "DAY"
+
+	var indices: Array = GameManager.current_slot_indices
+	for s in range(GameManager.NUM_SLOTS):
+		var reel: Dictionary = slot_reels[s]
+		var strip: VBoxContainer = reel["strip"]
+		strip.position = Vector2(0, 0) # Normal position: rows 0, 1, 2 all visible
+
+		var s_cards: Array = GameManager.get_slot_cards(s)
+		var total_c: int = GameManager.CARDS_PER_SLOT # 3 cards
+		var cur_i: int = indices[s] % total_c
+		var prev_i: int = (cur_i - 1 + total_c) % total_c
+		var next_i: int = (cur_i + 1) % total_c
+
+		var card_views: Array = reel["card_views"]
+		# Row 0: Top (IDLE)
+		_setup_slot_card(card_views[0], s_cards[prev_i], "idle", s)
+		# Row 1: Center (ACTIVE)
+		_setup_slot_card(card_views[1], s_cards[cur_i], "active", s)
+		# Row 2: Bottom (NEXT)
+		_setup_slot_card(card_views[2], s_cards[next_i], "next", s)
+		# Row 3: Upcoming into view when animated
+		_setup_slot_card(card_views[3], s_cards[prev_i], "idle", s)
+
+		# Start blinking on NEXT card only during DAY phase
+		if is_day:
+			_start_blinking_animation(card_views[2]["panel"])
+
+# ── Slot Rotation Animation (Smooth reel roll upwards) ───────────────────────
+func animate_slot_rotations(used_slots: Array, on_complete: Callable) -> void:
+	var step_dist: float = SLOT_CARD_H + SLOT_SEP # Scroll exactly 1 card distance
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+
+	# Animate only used slots
+	for s in used_slots:
+		var reel: Dictionary = slot_reels[s]
+		var strip: VBoxContainer = reel["strip"]
+		# Scroll upward: Row 2 (Next) rolls smoothly into Row 1 (Center)
+		tween.tween_property(strip, "position:y", -step_dist, 0.35)
+
+	tween.chain().tween_callback(func():
+		_refresh_slots()
+		on_complete.call()
+	)
+
+# ── Drag Source Attachment Helper ───────────────────────────────────────────
+func _attach_drag_source(panel: PanelContainer, card_data: Dictionary) -> void:
+	panel.set_script(load("res://DraggableCard.gd"))
+	panel.card_data = card_data
+	if not panel.clicked.is_connected(_on_card_clicked):
+		panel.clicked.connect(_on_card_clicked)
+	if not panel.special_used.is_connected(_on_card_special_used):
+		panel.special_used.connect(_on_card_special_used)
+
+func _detach_drag_source(panel: PanelContainer) -> void:
+	if panel.has_signal("clicked") and panel.clicked.is_connected(_on_card_clicked):
+		panel.clicked.disconnect(_on_card_clicked)
+	if panel.has_signal("special_used") and panel.special_used.is_connected(_on_card_special_used):
+		panel.special_used.disconnect(_on_card_special_used)
+	panel.set_script(null)
+
+func _on_card_clicked(card_data: Dictionary) -> void:
+	add_card_to_workbench(card_data)
+
+# ── Special Ability (8pt+ cards): long-press or right-click ─────────────────
+func _on_card_special_used(card_data: Dictionary) -> void:
+	# Special abilities only work for cards in hand
+	if card_data.get("type", "") != "hand":
+		message_label.text = "Special ability only works on cards in hand."
+		message_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3, 1.0))
+		return
+
+	var hand_index: int = card_data.get("hand_index", -1)
+	var hand_arr: Array = GameManager.get_hand()
+	if hand_index < 0 or hand_index >= hand_arr.size() or hand_arr[hand_index] == null:
+		return
+
+	var card: Dictionary = hand_arr[hand_index]
+	if not GameManager.has_special_ability(card):
+		message_label.text = "%s (%ddmg) has no special ability. (8+ dmg only)" % [card["letter"], card["damage"]]
+		message_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3, 1.0))
+		return
+
+	var result: Dictionary = GameManager.use_special_ability(hand_index)
+	if not result.get("valid", false):
+		return
+
+	# Remove any workbench cards that were discarded by the effect
+	# (match workbench "hand" cards against the graveyard entries just added)
+	var grave_tail: Array = GameManager.get_graveyard().slice(GameManager.get_graveyard().size() - result.get("drawn", 0))
+	workbench_cards = workbench_cards.filter(func(c: Dictionary) -> bool:
+		if c.get("type") != "hand":
+			return true
+		var hi: int = c.get("hand_index", -1)
+		var cur_hand: Array = GameManager.get_hand()
+		if hi >= 0 and hi < cur_hand.size() and cur_hand[hi] != null:
+			return true  # still in hand
+		# Hand slot is empty: check if this card was one just discarded
+		for d in grave_tail:
+			if d.get("letter") == c.get("card_letter") and d.get("damage") == c.get("damage") and d.get("color") == c.get("color"):
+				return false
+		return true
+	)
+
+	_refresh_ui()
+	_show_step_message("★ SPECIAL: %s discarded %d %s-color cards and drew %d new cards!" % [
+		card["letter"], result["drawn"], result["color"].to_upper(), result["drawn"]
+	], Color(1.0, 0.85, 0.3, 1.0))
+
+# ── Workbench Management ────────────────────────────────────────────────────
+func add_card_to_workbench(card_data: Dictionary) -> void:
+	if _is_card_in_workbench(card_data):
+		return
+
+	workbench_cards.append(card_data)
+	_refresh_workbench_ui()
+	_refresh_slots()
+	_refresh_hand_and_deck()
+
+func move_workbench_card(index: int, direction: int) -> bool:
+	# Spend 1 operation point to swap a Workbench card with its neighbor.
+	# The action does not consume a turn and only occurs while the player is
+	# arranging a word (never during the submission animation).
+	if direction != -1 and direction != 1:
+		return false
+	var target: int = index + direction
+	if index < 0 or index >= workbench_cards.size():
+		return false
+	if target < 0 or target >= workbench_cards.size():
+		return false
+	if not GameManager.spend_operation_points(1):
+		_show_step_message("Not enough OP. Use a YELLOW card to earn operation points.", Color(1.0, 0.8, 0.3, 1.0))
+		return false
+
+	var card: Dictionary = workbench_cards[index]
+	workbench_cards.remove_at(index)
+	workbench_cards.insert(target, card)
+	_refresh_workbench_ui()
+	_refresh_formula_panel()
+	_show_step_message("Moved card %d %s (1 OP spent; OP left: %d)" % [
+		index + 1,
+		"left" if direction < 0 else "right",
+		GameManager.get_operation_points()
+	], Color(1.0, 0.9, 0.35, 1.0))
+	return true
+
+func remove_card_from_workbench_at(idx: int) -> void:
+	if idx >= 0 and idx < workbench_cards.size():
+		workbench_cards.remove_at(idx)
+		_refresh_workbench_ui()
+		_refresh_slots()
+		_refresh_hand_and_deck()
+
+func _refresh_workbench_ui() -> void:
+	for ch in workbench_container.get_children():
+		workbench_container.remove_child(ch)
+		ch.queue_free()
+
+	if workbench_cards.is_empty():
+		var hint := Label.new()
+		hint.text = "Drag cards here or click available cards to construct a word..."
+		hint.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
+		hint.add_theme_font_size_override("font_size", 14)
+		workbench_container.add_child(hint)
+		return
+
+	for i in range(workbench_cards.size()):
+		var c_data: Dictionary = workbench_cards[i]
+		var cv: Dictionary = _create_card_view(80, 64, 26, 10)
+		var panel: PanelContainer = cv["panel"]
+		var sb: StyleBoxFlat = cv["style"]
+
+		# Display the actual character (for wildcards, this is the matched letter)
+		var display_char: String = c_data.get("char", c_data.get("card_letter", "?"))
+		cv["letter"].text = display_char
+
+		# Wildcard: gold letter for identification, but border keeps the standard workbench style
+		# so players can match wildcards with same-color cards for multipliers
+		cv["letter"].add_theme_color_override("font_color", TXT_WORKBENCH)
+		if c_data.get("is_wildcard", false):
+			cv["letter"].add_theme_color_override("font_color", Color(1.0, 0.8, 0.2, 1.0))
+
+		var src_label: String = "Slot %d" % (c_data["index"] + 1) if c_data["type"] == "slot" else "Hand"
+		cv["sub"].text = "%s (%ddmg)" % [src_label, c_data["damage"]]
+		cv["sub"].add_theme_color_override("font_color", Color(1, 0.85, 0.4, 0.9))
+
+		sb.bg_color = BG_WORKBENCH_CARD
+		sb.border_color = BORDER_WORKBENCH
+
+		var captured_idx: int = i
+		panel.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				remove_card_from_workbench_at(captured_idx)
+		)
+
+		workbench_container.add_child(panel)
+
+func _refresh_ui() -> void:
+	_refresh_slots()
+	_refresh_hand_and_deck()
+	_refresh_workbench_ui()
+
+	var phase: String = GameManager.get_phase()
+	var phase_color: Color = COLOR_NIGHT if phase == "NIGHT" else COLOR_DAY
+
+	turn_label.text = "Turn: %d / %d  |  %s" % [GameManager.get_turn(), GameManager.MAX_TURNS, phase]
+	turn_label.add_theme_color_override("font_color", phase_color)
+
+	_refresh_hp_display()
+
+	stats_label.text = "STAGE %d  |  TOTAL DAMAGE: %d  |  DEFEATED: %d  |  OP POINTS: %d" % [
+		GameManager.get_stage(), GameManager.get_total_damage(),
+		GameManager.get_enemies_defeated(), GameManager.get_operation_points()
+	]
+
+	message_label.text = ""
+
+# ── Player / Enemy HP display ────────────────────────────────────────────────
+func _refresh_hp_display() -> void:
+	# Player HP (negative damage & night self-damage reduce it)
+	var p_hp: int = GameManager.get_player_hp()
+	var p_max: int = GameManager.get_max_player_hp()
+	player_hp_bar.max_value = p_max
+	player_hp_bar.value = p_hp
+	var p_text: String = "PLAYER HP: %d / %d" % [p_hp, p_max]
+	if GameManager.get_shield() > 0:
+		p_text += "  [SHIELD %d]" % GameManager.get_shield()
+	if GameManager.get_phase() == "NIGHT":
+		p_text += "   (!! you take %d)" % GameManager.get_next_slot_total_penalty()
+	player_hp_label.text = p_text
+	var p_ratio: float = float(p_hp) / float(maxi(p_max, 1))
+	if p_ratio <= 0.25:
+		player_hp_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3, 1.0))
+	else:
+		player_hp_label.add_theme_color_override("font_color", Color(0.85, 1.0, 0.9, 1.0))
+
+	# Enemy HP (positive damage reduces it)
+	var e_hp: int = GameManager.get_enemy_hp()
+	var e_max: int = GameManager.get_max_enemy_hp()
+	enemy_hp_bar.max_value = e_max
+	enemy_hp_bar.value = e_hp
+	enemy_hp_label.text = "STAGE %d  %s  HP: %d / %d" % [GameManager.get_stage(), GameManager.get_enemy_name().to_upper(), e_hp, e_max]
+	enemy_hp_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.85, 1.0))
+
+	# Center the pivot so hit-shake animations scale from the middle
+	player_hp_label.pivot_offset = player_hp_label.size / 2.0
+	enemy_hp_label.pivot_offset = enemy_hp_label.size / 2.0
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ── Word Submission ──────────────────────────────────────────────────────────
+func _on_clear_pressed() -> void:
+	workbench_cards.clear()
+	_refresh_ui()
+
+# Identify a card by where it comes from: a shared slot reel or the player's hand.
+func _source_key(card: Dictionary) -> String:
+	if card.get("type", "") == "slot":
+		return "slot:%d" % int(card.get("index", -1))
+	return "hand:%d" % int(card.get("hand_index", -1))
+
+# Pick the valid assignment that consumes the cards the player actually placed
+# in the workbench (highest number of matching sources). Ties keep the earliest
+# assignment, so the behaviour is unchanged when nothing matches.
+func _pick_best_assignment(placed: Array, assignments: Array) -> Array:
+	if assignments.is_empty():
+		return []
+	var best: Array = assignments[0]
+	var best_score: int = -1
+	for a in assignments:
+		var score: int = 0
+		for i in range(mini(placed.size(), a.size())):
+			if _source_key(placed[i]) == _source_key(a[i]):
+				score += 1
+		if score > best_score:
+			best_score = score
+			best = a
+	return best
+
+func _on_submit_pressed() -> void:
+	if workbench_cards.is_empty():
+		message_label.text = "Workbench is empty! Place cards to form a word."
+		message_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.4, 1.0))
+		return
+
+	# Build pattern from current workbench cards
+	var pattern_chars: Array = []
+	for c in workbench_cards:
+		var card_letter = c.get("card_letter", c.get("letter", "?"))
+		pattern_chars.append(card_letter)
+	var pattern: String = "".join(pattern_chars)
+
+	# Find valid assignments for this pattern (handles wildcards)
+	var valid_assignments: Array = GameManager.find_valid_assignments(pattern)
+	if valid_assignments.is_empty():
+		message_label.text = "X '%s' IS NOT VALID" % pattern.to_upper()
+		message_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4, 1.0))
+		return
+
+	# The Workbench order is player-chosen. OP moves may change the order, so
+	# pick the valid assignment that preserves the cards' position and source
+	# instead of rejecting a valid dictionary word with a rearranged Workbench.
+	var final_workbench_cards: Array = _pick_best_assignment(workbench_cards, valid_assignments)
+	var actual_chars: Array = []
+	for a in final_workbench_cards:
+		actual_chars.append(a["char"])
+	var word: String = "".join(actual_chars)
+
+	# Update workbench to show the actual matched word
+	workbench_cards = final_workbench_cards
+	_refresh_workbench_ui()
+
+	# Check if assignment is valid
+	if not GameManager.is_assignment_valid(word, final_workbench_cards):
+		message_label.text = "X INVALID ORDER (Slots must be used in left-to-right order)"
+		message_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4, 1.0))
+		return
+
+	submit_button.disabled = true
+	clear_button.disabled = true
+
+	var result: Dictionary = GameManager.execute_assignment(word, final_workbench_cards)
+	workbench_cards.clear()
+
+	var finish_turn := func() -> void:
+		# Apply the night self-damage before checking the turn limit.
+		var penalty_result: Dictionary = GameManager.apply_turn_start_penalty()
+		# Keep the resolved numbers so the FORMULAS panel can show the breakdown
+		last_word = word
+		last_result = result
+		last_penalty = penalty_result
+		_refresh_formula_panel()
+		submit_button.disabled = false
+		clear_button.disabled = false
+		_finalize(result, penalty_result)
+
+	if result.get("enemies_defeated_delta", 0) > 0:
+		# Stage cleared: the hand AND all three shared reels were re-dealt.
+		# Roll every reel so the shared cards (including the one that was just
+		# used) visibly rotate out before the new enemy's cards appear.
+		_refresh_hand_and_deck()
+		animate_slot_rotations([0, 1, 2], finish_turn)
+	else:
+		# Show the refreshed hand immediately, before the rotation animation
+		_refresh_hand_and_deck()
+		animate_slot_rotations(result["used_slots"], finish_turn)
+
+# ── Finalize confirmed word (step-by-step damage animation) ──────────────────
+func _show_step_message(text: String, color: Color) -> void:
+	message_label.text = text
+	message_label.add_theme_color_override("font_color", color)
+
+func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
+	var word_damage: int = result["word_damage"]
+	var final_damage: int = result["final_damage"]
+	var multiplier: int = result.get("multiplier", 1)
+	# RED trait: total enemy damage = base x RED multiplier. 1 red is the
+	# exceptional x1.5; 2+ red use 2^(red-1). Applied exactly once.
+	var group_damage: int = result.get("group_damage", int(round(word_damage * multiplier)))
+	var red_bonus: int = result.get("red_bonus", group_damage - word_damage)
+
+	# Enemy shown during this word (before any replacement spawned)
+	var stage_before: int = GameManager.get_stage() - result.get("enemies_defeated_delta", 0)
+	var name_before: String = result.get("enemy_name_before", GameManager.get_enemy_name())
+	var disp_enemy_hp: int = result["enemy_hp_before"]
+	var enemy_max_start: int = result["enemy_max_hp_before"]
+	var disp_player_hp: int = result["player_hp_before"]
+	var player_max: int = GameManager.get_max_player_hp()
+
+	var total_dealt: int = 0
+	var total_taken: int = 0
+
+	# ── Step 1: Base word damage ──
+	if word_damage > 0:
+		total_dealt += word_damage
+		var target: int = maxi(disp_enemy_hp - word_damage, 0)
+		_play_score_up_sound()
+		_animate_enemy_hit()
+		_show_step_message("OK %s !   Enemy takes %d damage" % [
+			result["message"].replace("VALID: ", ""),
+			word_damage
+		], Color(0.4, 1.0, 0.6, 1.0))
+		_animate_enemy_hp(stage_before, name_before, disp_enemy_hp, target, enemy_max_start, 0.5)
+		disp_enemy_hp = target
+		await get_tree().create_timer(0.9).timeout
+	elif word_damage < 0:
+		var absorbed: int = result.get("self_damage_absorbed", 0)
+		var self_damage: int = result.get("self_damage_taken", -word_damage)
+		total_taken += self_damage
+		var target: int = maxi(disp_player_hp - self_damage, 0)
+		_play_score_down_sound()
+		_animate_player_hit()
+		var absorb_text: String = (" (shield blocked %d)" % absorbed) if absorbed > 0 else ""
+		_show_step_message("X %s !   You take %d damage%s" % [
+			result["message"].replace("VALID: ", ""),
+			self_damage,
+			absorb_text
+		], Color(1.0, 0.4, 0.4, 1.0))
+		_animate_player_hp(disp_player_hp, target, player_max, 0.5)
+		disp_player_hp = target
+		await get_tree().create_timer(0.9).timeout
+	else:
+		_show_step_message("OK %s !" % result["message"].replace("VALID: ", ""), Color(0.4, 1.0, 0.6, 1.0))
+
+	# ── Step 2: RED synergy (the only red damage bonus) ──
+	# Total enemy damage for the word = base x 2^(red cards - 1); the extra
+	# damage over the base word value is shown here as a single bonus.
+	if red_bonus > 0:
+		total_dealt += red_bonus
+		var from_enemy_hp: int = disp_enemy_hp
+		var target: int = maxi(disp_enemy_hp - red_bonus, 0)
+		_play_score_up_sound()
+		_animate_enemy_hit()
+		_show_step_message("RED bonus x%s: +%d damage to enemy" % [String.num(multiplier, 2), red_bonus], Color(1.0, 0.5, 0.4, 1.0))
+		_animate_enemy_hp(stage_before, name_before, from_enemy_hp, target, enemy_max_start, 0.5)
+		disp_enemy_hp = target
+		await get_tree().create_timer(0.9).timeout
+
+	# ── Step 3: BLUE shield, GREEN heal & YELLOW operation points ──
+	# All three traits scale off the base total with the same stacking multiplier
+	var shield_gained: int = result.get("shield_gained", 0)
+	var shield_mult: int = result.get("shield_mult", 0)
+	var heal_amount: int = result.get("heal_amount", 0)
+	var heal_mult: int = result.get("heal_mult", 0)
+	var op_gained: int = result.get("operation_points_gained", 0)
+	var op_mult: int = result.get("yellow_mult", 0)
+	if shield_gained > 0 or heal_amount > 0 or op_gained > 0:
+		var trait_parts: Array = []
+		if shield_gained > 0:
+			trait_parts.append("BLUE +%d SHIELD (base %d x%d)" % [shield_gained, word_damage, shield_mult])
+		if heal_amount > 0:
+			trait_parts.append("GREEN +%d HP (base %d x%d)" % [heal_amount, word_damage, heal_mult])
+		if op_gained > 0:
+			trait_parts.append("YELLOW +%d OP POINTS (base %d x%d)" % [op_gained, word_damage, op_mult])
+		var traits_color: Color = Color(0.4, 0.7, 1.0, 1.0)
+		if op_gained > 0 and shield_gained == 0 and heal_amount == 0:
+			traits_color = Color(1.0, 0.9, 0.35, 1.0) # Yellow
+		elif heal_amount > 0 and shield_gained == 0:
+			traits_color = Color(0.55, 0.95, 0.7, 1.0)
+		_show_step_message(" / ".join(trait_parts), traits_color)
+		if heal_amount > 0:
+			_play_score_up_sound()
+			_animate_player_hp(disp_player_hp, disp_player_hp + heal_amount, player_max, 0.5)
+			disp_player_hp += heal_amount
+		await get_tree().create_timer(0.9).timeout
+
+	# ── Step 4: Stage clear (next stage starts, hand reset) ──
+	if result.get("enemies_defeated_delta", 0) > 0:
+		_play_score_up_sound()
+		_show_step_message("STAGE CLEAR! → STAGE %d — %s appears! Hand redrawn, reels rolled." % [GameManager.get_stage(), GameManager.get_enemy_name().to_upper()], Color(1.0, 0.85, 0.3, 1.0))
+		await get_tree().create_timer(1.2).timeout
+
+	# ── Step 5: Night self-damage (negative damage hurts the player) ──
+	var applied_damage: int = penalty_result.get("applied_damage", 0)
+	var night_blocked: int = penalty_result.get("absorbed", 0)
+	if applied_damage > 0:
+		total_taken += applied_damage
+		_play_score_down_sound()
+		_animate_player_hit()
+		var block_text: String = (" (shield blocked %d)" % night_blocked) if night_blocked > 0 else ""
+		_show_step_message("NIGHT: You take %d damage%s!" % [applied_damage, block_text], Color(1.0, 0.4, 0.4, 1.0))
+		_animate_player_hp(penalty_result["previous_player_hp"], penalty_result["player_hp"], player_max, 0.5)
+		await get_tree().create_timer(0.9).timeout
+	elif night_blocked > 0:
+		_play_score_up_sound()
+		_show_step_message("NIGHT: SHIELD blocked %d damage!" % night_blocked, Color(0.4, 0.7, 1.0, 1.0))
+		await get_tree().create_timer(0.9).timeout
+
+	_refresh_ui()
+
+	# ── Final summary ──
+	if total_dealt > 0 or total_taken > 0:
+		var summary: String = "Total → Dealt: %d  |  Taken: %d" % [total_dealt, total_taken]
+		# Show the formula that produced this turn's enemy damage (FORMULAS panel has the details)
+		if word_damage > 0 and multiplier > 1.0:
+			summary += "   [%d x %s = %d]" % [word_damage, String.num(multiplier, 2), final_damage]
+		_show_step_message(summary,
+			Color(0.4, 1.0, 0.6, 1.0) if total_dealt >= total_taken else Color(1.0, 0.4, 0.4, 1.0))
+
+	# Defeat takes priority over the turn limit
+	if GameManager.is_game_over() and GameManager.get_game_outcome() == "DEFEAT":
+		_show_game_over()
+		return
+
+	if GameManager.get_turn() >= GameManager.MAX_TURNS:
+		GameManager.game_over = true
+		GameManager.game_outcome = "COMPLETE"
+		_show_game_over()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ── Game Over Screen ─────────────────────────────────────────────────────────
+func _show_game_over() -> void:
+	slot_container.visible   = false
+	hand_container.visible   = false
+	deck_grave_label.visible = false
+	workbench_panel.visible  = false
+	clear_button.visible     = false
+	submit_button.visible    = false
+	$Scroll/Center/VBox/SlotsSectionLabel.visible     = false
+	$Scroll/Center/VBox/HandSectionLabel.visible      = false
+	$Scroll/Center/VBox/WorkbenchSectionLabel.visible = false
+	stats_label.visible                               = false
+
+	var outcome: String = GameManager.get_game_outcome()
+	var title: String = "GAME OVER"
+	var title_color: Color = BORDER_CURRENT
+	if outcome == "DEFEAT":
+		title = "DEFEAT"
+		title_color = Color(1.0, 0.35, 0.3, 1.0)
+	elif outcome == "COMPLETE":
+		title = "COMPLETE!"
+		title_color = Color(0.4, 1.0, 0.6, 1.0)
+
+	message_label.text = "%s\n\nStage Reached: %d\nTotal Damage: %d\nEnemies Defeated: %d\nPlayer HP: %d / %d" % [
+		title,
+		GameManager.get_stage(),
+		GameManager.get_total_damage(),
+		GameManager.get_enemies_defeated(),
+		GameManager.get_player_hp(),
+		GameManager.get_max_player_hp()
+	]
+	message_label.add_theme_font_size_override("font_size", 32)
+	message_label.add_theme_color_override("font_color", title_color)
+	message_label.custom_minimum_size = Vector2(400, 240)
