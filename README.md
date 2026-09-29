@@ -73,6 +73,7 @@ Cards of each color grant a trait when used in a valid word (shared slot cards c
 - **BLUE — Shield**: shield gained scales off the base total: `base x 2^(blue - 1)` (no cap). Shield absorbs incoming damage (night self-damage, negative word damage) before HP is lost.
 - **GREEN — Heal**: HP healed scales off the base total: `base x 2^(green - 1)` (up to your max HP).
 - **YELLOW — Operation points (OP)**: OP gained scales off the base total: `base x 2^(yellow - 1)` (1 yellow = x1, 2 = x2, 3 = x4, 4 = x8). OP is a currency, not a score: it is never spent by damage and never resets, and **1 OP moves one Workbench card one place left or right** (costs no turn).
+- **★ SPECIAL (cards with 8+ damage)**: activated by long-pressing or right-clicking the card in hand. It costs **the card's own damage value in OP** (an 8-damage card costs 8 OP, a 10-damage card costs 10 OP), then discards that card and every same-color card in hand and redraws (no turn used). With too few OP the activation is refused.
 
 All traits use the **positive base total** (a negative word grants no trait value), and every trait is applied once.
 
@@ -115,6 +116,12 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 - `OP` = base x 2 ^ (yellow cards - 1) → 1 yellow = x1, 2 = x2, 3 = x4, 4 = x8
 - 1 OP = one Workbench card move (one place left or right). OP accumulates and survives damage
 
+**CARD COST — the damage number IS the cost (paid in OP)**
+- Every card's `cost` = its printed damage value
+- `★ SPECIAL` (cards with 8+ damage) costs that damage value in OP: an 8-damage card costs 8 OP, a 10-damage card costs 10 OP
+- Activating a special discards that card and every same-color card in hand, then redraws — no turn is used
+- With too few OP the activation is refused: no card is spent and no OP is lost
+
 **NIGHT self-damage**
 - `penalty` = (sum of the NEXT card damage of all 3 slots) x 10 ^ (same-color cards - 1) → 2 same color = x10, 3 = x100, 4 = x1000
 - The BLUE shield absorbs it first, then HP
@@ -136,6 +143,7 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 - **Click card**: Add to workbench
 - **Drag card**: Drag and drop to workbench
 - **Click workbench card**: Remove from workbench
+- **Long-press or right-click a ★ card in hand**: pay its damage value in OP to activate its special ability
 - **CLEAR**: Remove all cards from workbench
 - **SUBMIT WORD**: Submit your word for scoring
 - **FORMULAS**: Show/hide the calculation formulas and the breakdown of your last word

@@ -231,6 +231,18 @@ bus = "Master"
 [node name="ScoreDownSound" type="AudioStreamPlayer" parent="."]
 bus = "Master"
 
+[node name="CardPlaceSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
+[node name="CardDrawSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
+[node name="CardDiscardSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
+[node name="CardSwapSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
 [node name="FormulaDialog" type="Control" parent="."]
 visible = false
 layout_mode = 1

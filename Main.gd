@@ -47,12 +47,18 @@ var _low_time_played: bool = false
 @onready var op_hint_label         : Label          = $Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPHintLabel
 @onready var score_up_sound        : AudioStreamPlayer = $ScoreUpSound
 @onready var score_down_sound      : AudioStreamPlayer = $ScoreDownSound
+@onready var card_place_sound      : AudioStreamPlayer = $CardPlaceSound
+@onready var card_draw_sound       : AudioStreamPlayer = $CardDrawSound
+@onready var card_discard_sound    : AudioStreamPlayer = $CardDiscardSound
+@onready var card_swap_sound       : AudioStreamPlayer = $CardSwapSound
 
 # UI data caches
 # slot_reels[s] = {"window": Control, "strip": VBoxContainer, "card_views": [prev, active, next, extra]}
 var slot_reels: Array = []
 # hand_card_views[hand_idx] = {"panel": PanelContainer, "letter": Label, "sub": Label, "style": StyleBoxFlat}
 var hand_card_views: Array = []
+var _hand_visual_keys: Array = []
+var _animate_next_hand_refresh: bool = false
 
 # Workbench state
 var workbench_cards: Array = []
@@ -390,6 +396,13 @@ func _build_formula_text() -> String:
 		"  1 / 2 / 3 / 4 yellow: x1 / x2 / x4 / x8. OP keeps accumulating; damage never spends it.",
 		"  Owned right now: %d OP  =  %d Workbench card move(s)  (gold gauge beside the HP bars)." % [op, op],
 		"  Spend 1 OP to move a Workbench card one place left or right. This costs no turn.",
+"[CARD COST — the damage number IS the cost]  paid in OP",
+		"  Every card's cost = its printed damage value.",
+		"  ★ SPECIAL (cards with %d+ damage) costs that damage value in OP:" % GameManager.SPECIAL_MIN_DAMAGE,
+		"    an 8-damage card costs 8 OP, a 10-damage card costs 10 OP. No turn is used.",
+		"    It discards that card and every same-color card in hand, then redraws.",
+		"    With too few OP the activation is refused: no card is spent and no OP is lost.",
+		"",
 		"",
 		"[NIGHT SELF-DAMAGE]  next-slot total x 10^(largest same-color group - 1)",
 		"  2 / 3 / 4 matching colors: x10 / x100 / x1000. BLUE shield applies first.",
@@ -486,11 +499,112 @@ func _setup_sound_effects() -> void:
 	down_wav.data = down_data
 	score_down_sound.stream = down_wav
 
+	card_place_sound.stream = _make_card_sfx([620.0, 830.0], 0.055, 0.34)
+	card_draw_sound.stream = _make_card_sfx([520.0, 700.0, 880.0], 0.045, 0.27)
+	card_discard_sound.stream = _make_card_sfx([440.0, 280.0], 0.075, 0.30)
+	card_swap_sound.stream = _make_card_sfx([680.0, 540.0], 0.040, 0.24)
+
+func _make_card_sfx(notes: Array, note_seconds: float, volume: float) -> AudioStreamWAV:
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = 44100
+	wav.stereo = true
+	var data := PackedByteArray()
+	var frames_per_note: int = int(wav.mix_rate * note_seconds)
+	for note in notes:
+		for i in range(frames_per_note):
+			var t: float = float(i) / wav.mix_rate
+			var fade: float = 1.0 - float(i) / frames_per_note
+			var sample: int = int(sin(t * float(note) * TAU) * 32767.0 * volume * fade)
+			data.append(sample & 0xFF)
+			data.append((sample >> 8) & 0xFF)
+			data.append(sample & 0xFF)
+			data.append((sample >> 8) & 0xFF)
+	wav.data = data
+	return wav
+
 func _play_score_up_sound() -> void:
 	score_up_sound.play()
 
 func _play_score_down_sound() -> void:
 	score_down_sound.play()
+
+func _play_card_place_sound() -> void:
+	card_place_sound.play()
+
+func _play_card_draw_sound() -> void:
+	card_draw_sound.play()
+
+func _play_card_discard_sound() -> void:
+	card_discard_sound.play()
+
+func _play_card_swap_sound() -> void:
+	card_swap_sound.play()
+
+# ── Card movement feedback ──────────────────────────────────────────────────
+func _card_visual_key(card: Variant) -> String:
+	if card == null:
+		return ""
+	return "%s:%s:%s" % [card.get("letter", "?"), card.get("color", "red"), card.get("damage", 0)]
+
+func _animate_draw_panels(panels: Array) -> void:
+	if panels.is_empty():
+		return
+	_play_card_draw_sound()
+	for i in range(panels.size()):
+		var panel: Control = panels[i]
+		panel.pivot_offset = panel.size / 2.0
+		panel.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		panel.scale = Vector2(0.78, 0.78)
+		var tween := create_tween()
+		tween.set_trans(Tween.TRANS_BACK)
+		tween.set_ease(Tween.EASE_OUT)
+		tween.tween_property(panel, "modulate", Color.WHITE, 0.16).set_delay(float(i) * 0.045)
+		tween.parallel().tween_property(panel, "scale", Vector2.ONE, 0.22).set_delay(float(i) * 0.045)
+
+func _animate_workbench_place() -> void:
+	if workbench_container.get_child_count() == 0:
+		return
+	_play_card_place_sound()
+	var panel := workbench_container.get_children().back() as Control
+	if panel == null:
+		return
+	panel.pivot_offset = panel.size / 2.0
+	panel.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	panel.scale = Vector2(0.72, 0.72)
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_BACK)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(panel, "modulate", Color.WHITE, 0.16)
+	tween.parallel().tween_property(panel, "scale", Vector2.ONE, 0.22)
+	var flash := create_tween()
+	workbench_panel.modulate = Color(1.0, 0.88, 0.55, 1.0)
+	flash.tween_property(workbench_panel, "modulate", Color.WHITE, 0.24)
+
+func _animate_workbench_swap() -> void:
+	_play_card_swap_sound()
+	for panel in workbench_container.get_children():
+		if panel is Control:
+			var card_panel := panel as Control
+			card_panel.pivot_offset = card_panel.size / 2.0
+			var tween := create_tween()
+			tween.set_trans(Tween.TRANS_SINE)
+			tween.tween_property(card_panel, "scale", Vector2(1.08, 1.08), 0.09)
+			tween.tween_property(card_panel, "scale", Vector2.ONE, 0.12)
+
+func _animate_cards_discard(panels: Array) -> void:
+	if panels.is_empty():
+		return
+	_play_card_discard_sound()
+	var tween := create_tween()
+	tween.set_parallel(true)
+	for panel in panels:
+		if panel is Control:
+			var card_panel := panel as Control
+			card_panel.pivot_offset = card_panel.size / 2.0
+			tween.tween_property(card_panel, "modulate", Color(1.0, 0.4, 0.45, 0.0), 0.18)
+			tween.tween_property(card_panel, "scale", Vector2(0.72, 0.72), 0.18)
+	await tween.finished
 
 # ── HP visual effects ─────────────────────────────────────────────────────
 func _style_hp_bars() -> void:
@@ -553,7 +667,7 @@ func _style_op_panel() -> void:
 	op_bar.add_theme_stylebox_override("background", bar_bg)
 
 	op_title_label.add_theme_color_override("font_color", OP_COLOR_SUB)
-	var info: String = "OPERATION POINTS (OP)\nEarned by submitting a word that uses YELLOW cards:\n    OP gained = base damage x 2^(yellow cards - 1)\nOP is never spent by taking damage and never resets.\n\n1 OP moves one Workbench card one place left / right\n(uses no turn). The bar fills up to %d moves." % OP_BAR_CAP
+	var info: String = "OPERATION POINTS (OP)\nEarned by submitting a word that uses YELLOW cards:\n    OP gained = base damage x 2^(yellow cards - 1)\nOP is never spent by taking damage and never resets.\n\nA card's damage number is also its COST, paid in OP:\n    1 OP = move one Workbench card one place left / right (uses no turn)\n    \u2605 SPECIAL of a %d+ damage card = that card's damage value in OP\n        (an 8-damage card costs 8 OP, a 10-damage card costs 10 OP)\nThe bar fills up to %d moves." % [GameManager.SPECIAL_MIN_DAMAGE, OP_BAR_CAP]
 	op_panel.tooltip_text = info
 	op_bar.tooltip_text = info
 	for node: Label in [op_title_label, op_value_label, op_moves_label, op_hint_label]:
@@ -777,6 +891,8 @@ func _is_card_in_workbench(card_data: Dictionary) -> bool:
 # ── Refresh Hand and Deck/Graveyard ──────────────────────────────────────────
 func _refresh_hand_and_deck() -> void:
 	var current_hand: Array = GameManager.get_hand()
+	var next_visual_keys: Array = []
+	var drawn_panels: Array = []
 	for i in range(hand_card_views.size()):
 		var cv: Dictionary = hand_card_views[i]
 		var sb: StyleBoxFlat = cv["style"]
@@ -784,6 +900,9 @@ func _refresh_hand_and_deck() -> void:
 
 		if i < current_hand.size() and current_hand[i] != null:
 			var card: Dictionary = current_hand[i]
+			next_visual_keys.append(_card_visual_key(card))
+			if _animate_next_hand_refresh and i < _hand_visual_keys.size() and _hand_visual_keys[i] != next_visual_keys[i]:
+				drawn_panels.append(panel)
 			var is_wildcard: bool = card["letter"] == "?"
 			var card_data: Dictionary = {
 				"type": "hand",
@@ -817,14 +936,22 @@ func _refresh_hand_and_deck() -> void:
 				_detach_drag_source(panel)
 			else:
 				if GameManager.has_special_ability(card):
-					cv["sub"].text = "%d dmg ★SPECIAL" % card["damage"]
-					cv["sub"].add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+					# A card's damage number doubles as its special's OP cost
+					var special_cost: int = GameManager.get_special_cost(card)
+					var affordable: bool = GameManager.get_operation_points() >= special_cost
+					cv["sub"].text = "%d dmg ★ %d OP" % [card["damage"], special_cost]
+					if affordable:
+						cv["sub"].add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+					else:
+						# Too costly right now: dim it so the cost is still readable
+						cv["sub"].add_theme_color_override("font_color", Color(0.62, 0.55, 0.45, 0.9))
 				else:
 					cv["sub"].text = "%d dmg" % card["damage"]
 					cv["sub"].add_theme_color_override("font_color", Color.WHITE)
 				cv["letter"].add_theme_color_override("font_color", Color.WHITE)
 				_attach_drag_source(panel, card_data)
 		else:
+			next_visual_keys.append("")
 			cv["letter"].text = "-"
 			cv["letter"].add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 0.8))
 			cv["sub"].text = ""
@@ -837,6 +964,10 @@ func _refresh_hand_and_deck() -> void:
 		GameManager.get_deck_count(),
 		grave.size()
 	]
+	_hand_visual_keys = next_visual_keys
+	if _animate_next_hand_refresh:
+		_animate_next_hand_refresh = false
+		_animate_draw_panels(drawn_panels)
 
 # ── Setup content for a slot card row ───────────────────────────────────────
 func _setup_slot_card(cv: Dictionary, card: Dictionary, role: String, slot_idx: int) -> void:
@@ -932,6 +1063,8 @@ func _refresh_slots() -> void:
 
 # ── Slot Rotation Animation (Smooth reel roll upwards) ───────────────────────
 func animate_slot_rotations(used_slots: Array, on_complete: Callable) -> void:
+	if not used_slots.is_empty():
+		_play_card_swap_sound()
 	var step_dist: float = SLOT_CARD_H + SLOT_SEP # Scroll exactly 1 card distance
 	var tween := create_tween()
 	tween.set_parallel(true)
@@ -984,13 +1117,36 @@ func _on_card_special_used(card_data: Dictionary) -> void:
 
 	var card: Dictionary = hand_arr[hand_index]
 	if not GameManager.has_special_ability(card):
-		message_label.text = "%s (%ddmg) has no special ability. (8+ dmg only)" % [card["letter"], card["damage"]]
+		message_label.text = "%s (%ddmg) has no special ability. (%d+ dmg only)" % [
+			card["letter"], card["damage"], GameManager.SPECIAL_MIN_DAMAGE
+		]
 		message_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3, 1.0))
 		return
 
+	# A card's damage value is its cost: the special is paid for in OP. Refuse
+	# before touching any card when the player cannot afford it.
+	var cost: int = GameManager.get_special_cost(card)
+	if GameManager.get_operation_points() < cost:
+		var deficit: int = GameManager.get_special_cost_deficit(card)
+		_refresh_op_display("denied")
+		_refresh_formula_panel()
+		_show_step_message("Not enough OP: ★ SPECIAL of %s costs %d OP (its damage value) — you need %d more. Submit a word with YELLOW cards to earn OP." % [
+			card["letter"], cost, deficit
+		], Color(1.0, 0.8, 0.3, 1.0))
+		return
+
+	var discarded_panels: Array = []
+	var target_color: String = card.get("color", "red")
+	for i in range(hand_card_views.size()):
+		if i < hand_arr.size() and hand_arr[i] != null and hand_arr[i].get("color", "red") == target_color:
+			discarded_panels.append(hand_card_views[i]["panel"])
 	var result: Dictionary = GameManager.use_special_ability(hand_index)
 	if not result.get("valid", false):
+		# The OP check above normally catches this; keep a safe fallback message
+		_refresh_op_display("denied")
+		_show_step_message("★ SPECIAL failed: %s." % str(result.get("reason", "unknown")), Color(1.0, 0.8, 0.3, 1.0))
 		return
+	await _animate_cards_discard(discarded_panels)
 
 	# Remove any workbench cards that were discarded by the effect
 	# (match workbench "hand" cards against the graveyard entries just added)
@@ -1009,9 +1165,15 @@ func _on_card_special_used(card_data: Dictionary) -> void:
 		return true
 	)
 
+	_animate_next_hand_refresh = true
+	# Flash the OP spend BEFORE _refresh_ui(), which refreshes the gauge itself and
+	# would otherwise consume the delta and only ever animate a "-1 OP".
+	_refresh_op_display("spend")
 	_refresh_ui()
-	_show_step_message("★ SPECIAL: %s discarded %d %s-color cards and drew %d new cards!" % [
-		card["letter"], result["drawn"], result["color"].to_upper(), result["drawn"]
+	_refresh_formula_panel()
+	_show_step_message("★ SPECIAL: spent %d OP (cost = damage value), %s discarded %d %s-color cards and drew %d new cards!  [%d OP left]" % [
+		result["cost"], card["letter"], result["drawn"], result["color"].to_upper(),
+		result["drawn"], GameManager.get_operation_points()
 	], Color(1.0, 0.85, 0.3, 1.0))
 
 # ── Workbench Management ────────────────────────────────────────────────────
@@ -1023,6 +1185,7 @@ func add_card_to_workbench(card_data: Dictionary) -> void:
 	_refresh_workbench_ui()
 	_refresh_slots()
 	_refresh_hand_and_deck()
+	_animate_workbench_place()
 
 func move_workbench_card(index: int, direction: int) -> bool:
 	# Spend 1 operation point to swap a Workbench card with its neighbor.
@@ -1044,6 +1207,7 @@ func move_workbench_card(index: int, direction: int) -> bool:
 	workbench_cards.remove_at(index)
 	workbench_cards.insert(target, card)
 	_refresh_workbench_ui()
+	_animate_workbench_swap()
 	_refresh_op_display("spend")
 	_refresh_formula_panel()
 	_show_step_message("Moved card %d %s  —  spent 1 OP  (%d OP = %d move%s left)" % [
@@ -1057,6 +1221,9 @@ func move_workbench_card(index: int, direction: int) -> bool:
 
 func remove_card_from_workbench_at(idx: int) -> void:
 	if idx >= 0 and idx < workbench_cards.size():
+		var cards: Array = workbench_container.get_children()
+		if idx < cards.size():
+			await _animate_cards_discard([cards[idx]])
 		workbench_cards.remove_at(idx)
 		_refresh_workbench_ui()
 		_refresh_slots()
@@ -1181,12 +1348,12 @@ func _refresh_op_display(flash: String = "") -> void:
 	if op > 0:
 		op_value_label.add_theme_color_override("font_color", OP_COLOR_ACTIVE)
 		op_moves_label.add_theme_color_override("font_color", OP_COLOR_SUB)
-		op_hint_label.text = "1 OP = move a card one place"
+		op_hint_label.text = "1 OP = move a card one place  |  ★ special = card cost"
 		op_hint_label.add_theme_color_override("font_color", OP_COLOR_SUB)
 	else:
 		op_value_label.add_theme_color_override("font_color", OP_COLOR_EMPTY)
 		op_moves_label.add_theme_color_override("font_color", OP_COLOR_EMPTY)
-		op_hint_label.text = "Earn OP with a YELLOW card"
+		op_hint_label.text = "Earn OP with a YELLOW card (★ specials cost OP too)"
 		op_hint_label.add_theme_color_override("font_color", OP_COLOR_EMPTY)
 
 	_animate_op_change(previous, op, flash)
@@ -1257,8 +1424,13 @@ func _pop_op_float(text: String, color: Color) -> void:
 # ──────────────────────────────────────────────────────────────────────────────
 # ── Word Submission ──────────────────────────────────────────────────────────
 func _on_clear_pressed() -> void:
+	clear_button.disabled = true
+	var placed_panels: Array = workbench_container.get_children()
+	if not placed_panels.is_empty():
+		await _animate_cards_discard(placed_panels)
 	workbench_cards.clear()
 	_refresh_ui()
+	clear_button.disabled = false
 
 # Identify a card by where it comes from: a shared slot reel or the player's hand.
 func _source_key(card: Dictionary) -> String:
@@ -1326,6 +1498,15 @@ func _on_submit_pressed() -> void:
 	submit_button.disabled = true
 	clear_button.disabled = true
 
+	var consumed_hand_panels: Array = []
+	for source in final_workbench_cards:
+		if source.get("type", "") == "hand":
+			var hand_index: int = source.get("hand_index", -1)
+			if hand_index >= 0 and hand_index < hand_card_views.size():
+				consumed_hand_panels.append(hand_card_views[hand_index]["panel"])
+	if not consumed_hand_panels.is_empty():
+		await _animate_cards_discard(consumed_hand_panels)
+	_animate_next_hand_refresh = true
 	var result: Dictionary = GameManager.execute_assignment(word, final_workbench_cards)
 	workbench_cards.clear()
 

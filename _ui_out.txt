@@ -1,0 +1,17 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+Dictionary loaded with 466546 words (240891 enemy-name candidates)
+  ok   - Main.tscn instantiates without script errors
+  ok   - UI cost equals the card's damage value
+  ok   - hand card shows the OP cost ('10 dmg ★ 10 OP')
+  ok   - 8-damage card shows an 8 OP cost
+  ok   - UI activation spent the cost (10 OP -> 0)
+  ok   - UI activation discarded cards
+  ok   - UI reports the spent OP ('★ SPECIAL: spent 10 OP (cost = damage value), Q discarded 3 RED-color cards and drew 3 new cards!  [0 OP left]')
+  ok   - unaffordable card still shows its 10 OP cost
+  ok   - UI refusal spends no OP
+  ok   - UI refusal discards no cards
+  ok   - UI shows a 'Not enough OP' message ('Not enough OP: ★ SPECIAL of Q costs 10 OP (its damage value) — you need 10 more. Submit a word with YELLOW cards to earn OP.')
+  ok   - UI refusal keeps the special card in hand
+FAILURES=0
+TEST_EXIT=0

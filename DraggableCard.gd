@@ -63,7 +63,12 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	vbox.add_child(lbl)
 
 	var sub := Label.new()
-	sub.text = "%d dmg" % card_data.get("damage", 1)
+	# A card's damage number doubles as its OP cost when it has a special
+	if GameManager.has_special_ability(card_data):
+		sub.text = "%d dmg ★ %d OP" % [card_data.get("damage", 1), GameManager.get_special_cost(card_data)]
+		sub.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+	else:
+		sub.text = "%d dmg" % card_data.get("damage", 1)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 11)
 	sub.add_theme_color_override("font_color", Color(0.8, 0.9, 1, 0.9))

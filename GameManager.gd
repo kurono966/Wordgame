@@ -22,7 +22,8 @@ const FALLBACK_ENEMY_NAMES: Array = ["DRAGON", "SLIME", "GOLEM", "WRAITH", "TROL
 #            2 red = x2, 3 = x4, 4 = x8 (2^(red - 1) for 2+)
 #   BLUE  -> shield gained             = base x 2^(blue  - 1)   (no cap)
 #   GREEN -> HP healed                 = base x 2^(green - 1)   (capped at max HP)
-#   YELLOW -> operation points gained  = base x 2^(yellow - 1)  (accumulates)
+#   YELLOW -> operation points gained  = base x 2^(yellow - 1)  (accumulates,
+#            and is the currency spent on Workbench moves and SPECIAL activations)
 # Reference: 1 card = x1, 2 cards = x2, 3 = x4, 4 = x8 (0 cards = no trait,
 # except RED which is x1.5 for exactly 1 card)
 
@@ -30,6 +31,12 @@ const FALLBACK_ENEMY_NAMES: Array = ["DRAGON", "SLIME", "GOLEM", "WRAITH", "TROL
 const PLAYER_MAX_HP: int = 50     # Player's maximum HP
 const ENEMY_BASE_HP: int = 30     # HP of the first enemy
 const ENEMY_HP_GROWTH: int = 15   # Max HP increase for each next enemy
+
+# ── Card cost & special ability settings ──
+# A card's DAMAGE NUMBER IS ALSO ITS COST: the printed damage value is the OP
+# price paid to activate that card's special ability (8-damage card = 8 OP,
+# 10-damage card = 10 OP).
+const SPECIAL_MIN_DAMAGE: int = 8 # Cards of this damage or more carry a special
 
 # CARD POOL: master definitions of every card type (A-Z, damage scaled by
 # difficulty). Colors: red, blue, green, yellow.
@@ -127,7 +134,7 @@ var game_over: bool = false
 var game_outcome: String = ""  # "DEFEAT" when HP hits 0, "COMPLETE" at the turn limit
 var dictionary: Dictionary = {}
 var word_list: Array = []   # Candidate enemy names (A-Z only, NAME_MIN_LEN..NAME_MAX_LEN)
-var operation_points: int = 0      # YELLOW trait: currency for Workbench card moves
+var operation_points: int = 0      # YELLOW trait: currency for Workbench card moves and special activations
 
 
 # ─── Initialisation ──────────────────────────────────────────────────────────
@@ -250,21 +257,63 @@ func _refill_hand() -> void:
 		if hand[i] == null:
 			hand[i] = _draw_card()
 
-# ─── Special ability: cards with 8+ damage ──────────────────────────────────
-# Activate by long-press or right-click on the special card in hand.
+# ─── Card cost ─────────────────────────────────────────────────────────────────
+# Every card carries a COST equal to its printed damage value. The cost is paid
+# in operation points (OP), the currency earned by the YELLOW trait.
+func get_card_cost(card: Variant) -> int:
+	if typeof(card) != TYPE_DICTIONARY:
+		return 0
+	return maxi(int(card.get("damage", 0)), 0)
+
+# OP needed to activate a card's special ability (the card's own damage value).
+func get_special_cost(card: Variant) -> int:
+	if not has_special_ability(card):
+		return 0
+	return get_card_cost(card)
+
+# OP still missing before this card's special can be activated.
+func get_special_cost_deficit(card: Variant) -> int:
+	return maxi(get_special_cost(card) - operation_points, 0)
+
+func can_use_special_ability(card: Variant) -> bool:
+	return has_special_ability(card) and operation_points >= get_special_cost(card)
+
+# ─── Special ability: cards with SPECIAL_MIN_DAMAGE or more ───────────────────
+# Activate by long-press or right-click on the special card in hand. It COSTS the
+# card's damage value in OP (see get_card_cost); the OP are only spent when the
+# activation actually succeeds.
 # Discards the special card AND all same-color cards in hand (including those
 # just placed on the workbench), then draws replacement cards.
 # Does not consume a turn.
-func has_special_ability(card: Dictionary) -> bool:
-	return card != null and card.get("damage", 0) >= 8
+func has_special_ability(card: Variant) -> bool:
+	return typeof(card) == TYPE_DICTIONARY and int(card.get("damage", 0)) >= SPECIAL_MIN_DAMAGE
 
 func use_special_ability(hand_index: int) -> Dictionary:
-	var result := {"valid": false, "discarded": [], "drawn": 0}
+	var op_before: int = operation_points
+	var result := {
+		"valid": false, "discarded": [], "drawn": 0,
+		"cost": 0, "operation_points_spent": 0,
+		"operation_points_before": op_before,
+		"operation_points_after": operation_points,
+		"reason": ""
+	}
 	if hand_index < 0 or hand_index >= hand.size():
+		result["reason"] = "No card in hand"
 		return result
 	var special_card: Dictionary = hand[hand_index]
 	if not has_special_ability(special_card):
+		result["reason"] = "No special ability"
 		return result
+
+	# The card's damage value is its cost, paid in OP
+	var cost: int = get_special_cost(special_card)
+	result["cost"] = cost
+	if operation_points < cost:
+		result["reason"] = "Not enough OP"
+		return result
+	operation_points -= cost
+	result["operation_points_spent"] = cost
+	result["operation_points_after"] = operation_points
 
 	var target_color: String = special_card.get("color", "red")
 	var discarded: Array = []
@@ -818,6 +867,14 @@ func get_total_damage() -> int:
 
 func get_operation_points() -> int:
 	return operation_points
+
+# Whether a card's special can be activated right now (enough OP for its cost).
+func can_activate_special(card: Variant) -> bool:
+	return can_use_special_ability(card)
+
+# OP price of a card's special ability (the card's damage value, 0 if none).
+func get_special_cost_for(card: Variant) -> int:
+	return get_special_cost(card)
 
 # Spend operation points. Returns the remaining balance so the UI can reject
 # an action cleanly without mutating the balance.
