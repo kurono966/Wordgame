@@ -22,6 +22,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameManager="*res://GameManager.gd"
+JishoClient="*res://JishoClient.gd"
 
 [display]
 

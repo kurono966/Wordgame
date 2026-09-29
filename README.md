@@ -46,6 +46,26 @@ A line above the buttons shows, **while you are still building the word**, exact
 - Colour codes the risk: green = you take no damage, yellow = you lose HP, red = **this submit would defeat you (LETHAL)**
 - It also flags a Workbench that is not a valid word, so you can see SUBMIT will be rejected
 
+### Word Meanings (Jisho API)
+While a valid word sits on the Workbench, a line above the damage forecast looks it up on **Jisho** (jisho.org) and shows the **English → Japanese** translation:
+
+```
+GOAT   →   山羊 (やぎ)  Noun
+                goat
+```
+
+- The headword is shown in gold and the English glosses in pale blue (two separate labels — Godot 4's `Label` cannot render BBCode, so no markup is used)
+- Jisho's search is a **full-text search over English glosses**, so a raw lookup returns unrelated words too (searching "goat" also matches 未 "the Ram; the Goat", and the top hit is not always a translation at all). Entries are therefore scored so the word shown **actually translates the word you built**:
+  - a gloss that equals the word, or equals it minus an article ("the Goat"), outranks everything else
+  - scraped "Wikipedia definition" entries are ignored — they are article summaries, not translations
+  - pure-kanji headwords are preferred over counter/compound forms (五 over 五つ) and kana readings (ゴート)
+  - singular and plural both work: Jisho lists inflections together (`["eggs", "egg", "spawn", "roe"]` for 卵), so they are compared as the same lemma, and the exact form you searched is shown first
+  - a word with no genuine translation is reported as untranslated instead of showing an unrelated entry
+- Lookups are **cached**, so a word is only ever fetched once
+- It updates as you change the word, and a late answer for an abandoned word is discarded instead of overwriting the current one
+- Misses and network failures are reported inline and are also cached, so the game never stalls or retries in a loop
+- **Web export limitation**: jisho.org sends no `Access-Control-Allow-Origin` header, so browsers block the request. Meanings work in the **editor and desktop builds**; in a Web export the line explains that it is unavailable. Use a CORS proxy if you need it in the browser.
+
 ### Slot Rotation
 - Only slots that are used in your word will rotate: the ★ ACTIVE card you used is spent and the reel rolls so that its NEXT card becomes ACTIVE
 - The card you place in the workbench is always the card that gets consumed — a shared card you used is never silently substituted by a hand card, so the reel you used is guaranteed to rotate

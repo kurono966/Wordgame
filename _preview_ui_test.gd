@@ -99,6 +99,81 @@ func _ready() -> void:
 	fails += _check(rect.end.y <= 800.0,
 		"preview label fits inside the 800px window (bottom=%.1f)" % rect.end.y)
 
+	# Meaning label: exists, is laid out, and stays on screen
+	fails += _check(main.meaning_label != null and main.meaning_label.get_parent() == vbox,
+		"meaning label is wired into the main VBox")
+	fails += _check(main.meaning_label.is_visible_in_tree(), "meaning label is visible in the tree")
+	fails += _check(main.meaning_label.size.y > 0.0,
+		"meaning label has a non-zero height (%.1f)" % main.meaning_label.size.y)
+	var mrect: Rect2 = main.meaning_label.get_global_rect()
+	print("meaning rect: ", mrect)
+	fails += _check(mrect.position.y >= 0.0 and mrect.end.y <= 800.0,
+		"meaning label is fully on screen (y=%.1f..%.1f)" % [mrect.position.y, mrect.end.y])
+
+	# Idle state: no word, so both meaning lines must be empty
+	fails += _check(str(main.meaning_label.text).strip_edges() == "",
+		"headword line is empty with an empty Workbench")
+	fails += _check(str(main.definition_label.text).strip_edges() == "",
+		"definition line is empty with an empty Workbench")
+	fails += _check(main.definition_label.get_parent() == vbox,
+		"definition label is wired into the main VBox")
+	var drect: Rect2 = main.definition_label.get_global_rect()
+	fails += _check(drect.position.y >= 0.0 and drect.end.y <= 800.0,
+		"definition label is fully on screen (y=%.1f..%.1f)" % [drect.position.y, drect.end.y])
+	print("definition rect: ", drect)
+
+	# A cached Jisho entry must render kanji + reading + definitions
+	JishoClient.clear_cache()
+	JishoClient._cache["cachedword"] = JishoClient._make_result(
+		"cachedword", "ok", "", "\u732B", "neko", "Noun", ["cat", "feline"])
+	main._refresh_word_meaning("CACHEDWORD")
+	fails += _check(str(main.meaning_label.text).contains("\u732B"),
+		"meaning shows the kanji ('%s')" % main.meaning_label.text)
+	fails += _check(str(main.meaning_label.text).contains("neko"),
+		"meaning shows the reading")
+	fails += _check(str(main.definition_label.text).to_lower().contains("feline"),
+		"definition label carries the definitions ('%s')" % main.definition_label.text)
+
+	# The text must never contain raw markup. Godot 4's Label cannot parse
+	# BBCode, so a leftover "[color=...]" is drawn as literal characters — this
+	# is exactly the bug that showed up on screen.
+	var head_text: String = str(main.meaning_label.text)
+	var def_text: String = str(main.definition_label.text)
+	fails += _check(not head_text.contains("[color") and not head_text.contains("[/"),
+		"headword text has no raw BBCode ('%s')" % head_text)
+	fails += _check(not def_text.contains("[color") and not def_text.contains("[/"),
+		"definition text has no raw BBCode ('%s')" % def_text)
+	fails += _check(head_text.contains("\u732B"), "headword text has the kanji")
+	fails += _check(head_text.contains("neko"), "headword text has the reading")
+	# The two are separate labels so each can carry its own colour
+	fails += _check(main.definition_label != main.meaning_label,
+		"definitions use a separate label from the headword")
+	fails += _check(main.meaning_label.get_theme_color("font_color") == main.MEANING_COLOR_JP,
+		"headword is tinted with the kanji colour")
+	fails += _check(main.definition_label.get_theme_color("font_color") == main.MEANING_COLOR_DEF,
+		"definitions are tinted with the definition colour")
+	print("head: ", head_text, "  def: ", def_text)
+
+	# A miss must say so instead of showing stale text
+	JishoClient._cache["missword"] = JishoClient._make_result("missword", "not_found")
+	main._refresh_word_meaning("MISSWORD")
+	fails += _check(str(main.meaning_label.text).to_lower().contains("no jisho entry"),
+		"a miss reports 'no Jisho entry' ('%s')" % main.meaning_label.text)
+
+	# A short word must clear the line rather than fire a request
+	main._refresh_word_meaning("A")
+	fails += _check(str(main.meaning_label.text).strip_edges() == "",
+		"a 1-letter word clears the meaning line")
+
+	# Clearing the workbench must clear the meaning too
+	main.workbench_cards.clear()
+	main._refresh_ui()
+	await get_tree().process_frame
+	fails += _check(str(main.meaning_label.text).strip_edges() == "",
+		"clearing the Workbench clears the headword line")
+	fails += _check(str(main.definition_label.text).strip_edges() == "",
+		"clearing the Workbench clears the definition line")
+
 	# Clearing the workbench must return to the idle prompt
 	main.workbench_cards.clear()
 	main._refresh_ui()

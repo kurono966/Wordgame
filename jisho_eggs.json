@@ -1,0 +1,984 @@
+{
+ "meta": {
+  "status": 200
+ },
+ "data": [
+  {
+   "slug": "卵",
+   "is_common": true,
+   "tags": [
+    "wanikani32"
+   ],
+   "jlpt": [
+    "jlpt-n5"
+   ],
+   "japanese": [
+    {
+     "word": "卵",
+     "reading": "たまご"
+    },
+    {
+     "word": "玉子",
+     "reading": "たまご"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "eggs",
+      "egg",
+      "spawn",
+      "roe"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [
+      "卵"
+     ],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    },
+    {
+     "english_definitions": [
+      "(hen's) egg"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": [
+      "oft. 玉子 in cooking"
+     ]
+    },
+    {
+     "english_definitions": [
+      "a ... in the making",
+      "future (lawyer, doctor, etc.)",
+      "budding ..."
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [
+      "卵"
+     ],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": [
+      "as ...の卵"
+     ]
+    },
+    {
+     "english_definitions": [
+      "beginning",
+      "origin",
+      "infancy"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [
+      "卵"
+     ],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    },
+    {
+     "english_definitions": [
+      "Egg (biology)"
+     ],
+     "parts_of_speech": [
+      "Wikipedia definition"
+     ],
+     "links": [
+      {
+       "text": "Read “Egg (biology)” on English Wikipedia",
+       "url": "http://en.wikipedia.org/wiki/Egg_(biology)?oldid=494449447"
+      },
+      {
+       "text": "Read “卵” on Japanese Wikipedia",
+       "url": "http://ja.wikipedia.org/wiki/卵?oldid=42668493"
+      }
+     ],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": [],
+     "sentences": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": "http://dbpedia.org/resource/Egg_(biology)"
+   }
+  },
+  {
+   "slug": "受精卵",
+   "is_common": true,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "受精卵",
+     "reading": "じゅせいらん"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "fertilized egg",
+      "fertilised egg"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    },
+    {
+     "english_definitions": [
+      "Zygote"
+     ],
+     "parts_of_speech": [
+      "Wikipedia definition"
+     ],
+     "links": [
+      {
+       "text": "Read “Zygote” on English Wikipedia",
+       "url": "http://en.wikipedia.org/wiki/Zygote?oldid=494750064"
+      },
+      {
+       "text": "Read “受精卵” on Japanese Wikipedia",
+       "url": "http://ja.wikipedia.org/wiki/受精卵?oldid=42518765"
+      }
+     ],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": [],
+     "sentences": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": "http://dbpedia.org/resource/Zygote"
+   }
+  },
+  {
+   "slug": "目玉焼き",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "目玉焼き",
+     "reading": "めだまやき"
+    },
+    {
+     "word": "目玉焼",
+     "reading": "めだまやき"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "fried egg",
+      "sunny-side up fried egg"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    },
+    {
+     "english_definitions": [
+      "Fried egg"
+     ],
+     "parts_of_speech": [
+      "Wikipedia definition"
+     ],
+     "links": [
+      {
+       "text": "Read “Fried egg” on English Wikipedia",
+       "url": "http://en.wikipedia.org/wiki/Fried_egg?oldid=494069570"
+      },
+      {
+       "text": "Read “目玉焼き” on Japanese Wikipedia",
+       "url": "http://ja.wikipedia.org/wiki/目玉焼き?oldid=42591048"
+      }
+     ],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": [],
+     "sentences": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": "http://dbpedia.org/resource/Fried_egg"
+   }
+  },
+  {
+   "slug": "乾燥卵",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "乾燥卵",
+     "reading": "かんそうらん"
+    },
+    {
+     "word": "乾燥卵",
+     "reading": "かんそうたまご"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "powdered eggs",
+      "dehydrated eggs",
+      "dried eggs"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "地の卵",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "地の卵",
+     "reading": "じのたまご"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "local eggs",
+      "farm-fresh eggs"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "液卵",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "液卵",
+     "reading": "えきらん"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "liquid egg",
+      "liquified eggs",
+      "liquefied eggs"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [
+      "液状卵"
+     ],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    },
+    {
+     "english_definitions": [
+      "cracked raw eggs (usu. with yolks still intact)"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "ベーコンエッグ",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "reading": "ベーコンエッグ"
+    },
+    {
+     "reading": "ベーコン・エッグ"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "bacon (and) eggs"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "フライドエッグ",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "reading": "フライドエッグ"
+    },
+    {
+     "reading": "フライド・エッグ"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "fried egg"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "ハムエッグ",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "reading": "ハムエッグ"
+    },
+    {
+     "reading": "ハム・エッグ"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "ham and eggs"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "卵生",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "卵生",
+     "reading": "らんせい"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "oviparity",
+      "produced from eggs"
+     ],
+     "parts_of_speech": [
+      "Noun",
+      "Suru verb",
+      "Noun which may take the genitive case particle 'no'"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    },
+    {
+     "english_definitions": [
+      "Oviparity"
+     ],
+     "parts_of_speech": [
+      "Wikipedia definition"
+     ],
+     "links": [
+      {
+       "text": "Read “Oviparity” on English Wikipedia",
+       "url": "http://en.wikipedia.org/wiki/Oviparity?oldid=494321332"
+      },
+      {
+       "text": "Read “卵生” on Japanese Wikipedia",
+       "url": "http://ja.wikipedia.org/wiki/卵生?oldid=41560767"
+      }
+     ],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": [],
+     "sentences": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": "http://dbpedia.org/resource/Oviparity"
+   }
+  },
+  {
+   "slug": "釈迦に説法",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "釈迦に説法",
+     "reading": "しゃかにせっぽう"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "teaching your grandmother to suck eggs",
+      "teaching something to someone who knows more than you",
+      "preaching to the choir",
+      "lecturing to the Buddha"
+     ],
+     "parts_of_speech": [
+      "Expressions (phrases, clauses, etc.)"
+     ],
+     "links": [],
+     "tags": [
+      "Idiomatic expression"
+     ],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "卵用",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "卵用",
+     "reading": "らんよう"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "(reared) for eggs"
+     ],
+     "parts_of_speech": [
+      "Noun which may take the genitive case particle 'no'",
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "卵入り",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "卵入り",
+     "reading": "たまごいり"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "eggy",
+      "with eggs",
+      "with an egg inside"
+     ],
+     "parts_of_speech": [
+      "Noun which may take the genitive case particle 'no'"
+     ],
+     "links": [],
+     "tags": [
+      "Food, cooking"
+     ],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "貴黄卵",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "貴黄卵",
+     "reading": "きおうらん"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "kioran eggs (high-quality eggs from Fukuoka prefecture)"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [
+      "Food, cooking"
+     ],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "採卵",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "採卵",
+     "reading": "さいらん"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "egg collection (from hens, fish, etc.)"
+     ],
+     "parts_of_speech": [
+      "Noun",
+      "Suru verb"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    },
+    {
+     "english_definitions": [
+      "oocyte collection"
+     ],
+     "parts_of_speech": [
+      "Noun",
+      "Suru verb"
+     ],
+     "links": [],
+     "tags": [
+      "Medicine"
+     ],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "凍結卵",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "凍結卵",
+     "reading": "とうけつらん"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "frozen eggs"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    },
+    {
+     "english_definitions": [
+      "cryopreserved oocyte",
+      "frozen ovum"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "うずら卵",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "うずら卵",
+     "reading": "うずらたまご"
+    },
+    {
+     "word": "ウズラ卵",
+     "reading": "うずらたまご"
+    },
+    {
+     "word": "うずら玉子",
+     "reading": "うずらたまご"
+    },
+    {
+     "word": "鶉卵",
+     "reading": "うずらたまご"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "quail eggs",
+      "quails' eggs"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "腹子",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "腹子",
+     "reading": "はらこ"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "fish eggs",
+      "roe"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "放卵",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "放卵",
+     "reading": "ほうらん"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "releasing eggs (esp. of fish, amphibians, etc.)",
+      "spawning"
+     ],
+     "parts_of_speech": [
+      "Noun",
+      "Suru verb",
+      "Intransitive verb"
+     ],
+     "links": [],
+     "tags": [
+      "Zoology"
+     ],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  },
+  {
+   "slug": "炒り卵",
+   "is_common": false,
+   "tags": [],
+   "jlpt": [],
+   "japanese": [
+    {
+     "word": "炒り卵",
+     "reading": "いりたまご"
+    },
+    {
+     "word": "煎り卵",
+     "reading": "いりたまご"
+    },
+    {
+     "word": "いり卵",
+     "reading": "いりたまご"
+    },
+    {
+     "word": "炒り玉子",
+     "reading": "いりたまご"
+    },
+    {
+     "word": "いり玉子",
+     "reading": "いりたまご"
+    },
+    {
+     "word": "煎り玉子",
+     "reading": "いりたまご"
+    }
+   ],
+   "senses": [
+    {
+     "english_definitions": [
+      "scrambled eggs"
+     ],
+     "parts_of_speech": [
+      "Noun"
+     ],
+     "links": [],
+     "tags": [],
+     "restrictions": [],
+     "see_also": [],
+     "antonyms": [],
+     "source": [],
+     "info": []
+    }
+   ],
+   "attribution": {
+    "jmdict": true,
+    "jmnedict": false,
+    "dbpedia": false
+   }
+  }
+ ]
+}

@@ -33,6 +33,8 @@ var _low_time_played: bool = false
 @onready var piles_close_button    : Button         = $PilesDialog/DialogPanel/DialogVBox/DialogHeader/CloseButton
 @onready var message_label         : Label          = $Scroll/Center/VBox/MessageLabel
 @onready var preview_label         : Label          = $Scroll/Center/VBox/PreviewLabel
+@onready var meaning_label         : Label          = $Scroll/Center/VBox/MeaningLabel
+@onready var definition_label      : Label          = $Scroll/Center/VBox/DefinitionLabel
 @onready var player_hp_label       : Label          = $Scroll/Center/VBox/StatusBox/PlayerHPBox/PlayerHPLabel
 @onready var player_hp_bar         : ProgressBar    = $Scroll/Center/VBox/StatusBox/PlayerHPBox/PlayerHPBar
 @onready var enemy_hp_label        : Label          = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyHPLabel
@@ -74,6 +76,10 @@ var last_penalty: Dictionary = {}
 var _op_displayed: int = 0
 var _op_tween: Tween = null
 
+# Word currently being looked up on Jisho, so a late answer for an abandoned
+# word can be discarded instead of overwriting the current one.
+var _looked_up_word: String = ""
+
 # Card dimensions (all 3 cards are completely visible on screen)
 const SLOT_CARD_W := 120.0
 const SLOT_CARD_H := 58.0
@@ -113,6 +119,12 @@ const PREVIEW_COLOR_SAFE    := Color(0.55, 0.95, 0.70, 1.0)
 const PREVIEW_COLOR_HURT    := Color(1.00, 0.82, 0.35, 1.0)
 const PREVIEW_COLOR_LETHAL  := Color(1.00, 0.38, 0.34, 1.0)
 const PREVIEW_COLOR_INVALID := Color(1.00, 0.55, 0.45, 1.0)
+
+# Word-meaning (Jisho) label colours
+const MEANING_COLOR_JP    := Color(1.00, 0.93, 0.70, 1.0)  # kanji / reading
+const MEANING_COLOR_DEF   := Color(0.80, 0.88, 0.98, 1.0)  # English definitions
+const MEANING_COLOR_LOAD  := Color(0.62, 0.68, 0.78, 1.0)  # "looking up..."
+const MEANING_COLOR_NONE  := Color(0.60, 0.64, 0.72, 1.0)  # not found / offline
 
 # Operation points (OP) — gold gauge shown beside the HP bars
 const OP_BAR_CAP      := 5   # how many moves the gauge can display before it caps
@@ -165,6 +177,7 @@ func _ready() -> void:
 	piles_close_button.pressed.connect(_close_piles_dialog)
 
 	_setup_workbench_drop_target()
+	JishoClient.lookup_finished.connect(_on_jisho_lookup_finished)
 	_build_slot_reels()
 	_build_hand_cards()
 	_setup_sound_effects()
@@ -224,6 +237,19 @@ func _style_global_ui() -> void:
 	preview_label.add_theme_color_override("font_outline_color", Color("07101f"))
 	preview_label.add_theme_constant_override("outline_size", 3)
 	preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_IDLE)
+
+	# Word meaning (Jisho): outlined like the other status lines so it stays
+	# readable over the procedural background
+	# Word meaning (Jisho). NOTE: Godot 4's Label has NO BBCode support (only
+	# RichTextLabel does), so the headword and the definitions are two separate
+	# Labels in different colours rather than one [color=...] string.
+	meaning_label.add_theme_color_override("font_outline_color", Color("07101f"))
+	meaning_label.add_theme_constant_override("outline_size", 3)
+	meaning_label.add_theme_color_override("font_color", MEANING_COLOR_NONE)
+
+	definition_label.add_theme_color_override("font_outline_color", Color("07101f"))
+	definition_label.add_theme_constant_override("outline_size", 3)
+	definition_label.add_theme_color_override("font_color", MEANING_COLOR_DEF)
 
 func _style_button(button: Button, base_color: Color, border_color: Color, text_color: Color) -> void:
 	var normal := _make_button_style(base_color, border_color)
@@ -1202,6 +1228,8 @@ func _refresh_submit_preview() -> void:
 	if workbench_cards.is_empty():
 		preview_label.text = "Place cards on the Workbench to preview the damage you will take on SUBMIT."
 		preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_IDLE)
+		_set_meaning_text("", MEANING_COLOR_NONE)
+		_set_definition_text("", MEANING_COLOR_NONE)
 		return
 
 	# Resolve the same assignment SUBMIT would use, so the preview matches it
@@ -1214,6 +1242,8 @@ func _refresh_submit_preview() -> void:
 	if valid_assignments.is_empty():
 		preview_label.text = "X  '%s' IS NOT A WORD  —  SUBMIT will be rejected." % pattern.to_upper()
 		preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_INVALID)
+		_set_meaning_text("", MEANING_COLOR_NONE)
+		_set_definition_text("", MEANING_COLOR_NONE)
 		return
 
 	var chosen: Array = _pick_best_assignment(workbench_cards, valid_assignments)
@@ -1223,6 +1253,8 @@ func _refresh_submit_preview() -> void:
 	if not GameManager.is_assignment_valid(word, chosen):
 		preview_label.text = "X  INVALID SLOT ORDER  —  use slots left to right."
 		preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_INVALID)
+		_set_meaning_text("", MEANING_COLOR_NONE)
+		_set_definition_text("", MEANING_COLOR_NONE)
 		return
 
 	var used_slots: Array = []
@@ -1233,6 +1265,91 @@ func _refresh_submit_preview() -> void:
 	var plan: Dictionary = GameManager.predict_submit_outcome(chosen, used_slots)
 	preview_label.text = _build_preview_text(plan, word)
 	preview_label.add_theme_color_override("font_color", _preview_color(plan))
+	# Show what the word means while the player still has time to reconsider
+	_refresh_word_meaning(word)
+
+
+# ── Word meaning via the Jisho API ───────────────────────────────────────────
+# Looks the current word up and renders "kanji (reading) — pos: definition…".
+# The request is asynchronous, so this first paints a "looking up" placeholder
+# and _on_jisho_lookup_finished() fills in the real text when it arrives.
+func _refresh_word_meaning(word: String) -> void:
+	_looked_up_word = word
+	if word.strip_edges().length() < 2:
+		_set_meaning_text("", MEANING_COLOR_NONE)
+		_set_definition_text("", MEANING_COLOR_NONE)
+		return
+
+	# Cached answer (or an explicit "unavailable in Web export") resolves at once
+	var cached: Dictionary = JishoClient.peek(word)
+	if not cached.is_empty():
+		_apply_meaning(cached)
+		return
+
+	if not JishoClient.is_available():
+		_set_meaning_text("Word meanings: unavailable in the Web export (Jisho sends no CORS headers).", MEANING_COLOR_NONE)
+		_set_definition_text("", MEANING_COLOR_NONE)
+		return
+
+	_set_meaning_text("Looking up '%s'..." % word.to_upper(), MEANING_COLOR_LOAD)
+	_set_definition_text("", MEANING_COLOR_NONE)
+	var result: Dictionary = JishoClient.lookup(word)
+	# A cache hit (or a synchronous failure) can already carry the answer
+	if str(result.get("status", "pending")) != "pending":
+		_apply_meaning(result)
+
+
+func _on_jisho_lookup_finished(word: String, _result: Dictionary) -> void:
+	# Ignore an answer for a word the player has since changed
+	if word.to_lower() != _looked_up_word.to_lower():
+		return
+	_apply_meaning(JishoClient.peek(word))
+
+
+func _apply_meaning(result: Dictionary) -> void:
+	match str(result.get("status", "")):
+		"ok":
+			# Two plain labels: the headword in gold, the definitions in pale blue.
+			# Godot 4's Label cannot render BBCode, so colours come from the theme.
+			_set_meaning_text(_build_meaning_text(result), MEANING_COLOR_JP)
+			_set_definition_text("; ".join(result.get("definitions", [])), MEANING_COLOR_DEF)
+		"not_found":
+			_set_meaning_text("'%s' has no Jisho entry." % str(result.get("word", "")), MEANING_COLOR_NONE)
+			_set_definition_text("", MEANING_COLOR_NONE)
+		"error":
+			_set_meaning_text("Meaning lookup failed (%s)." % str(result.get("reason", "error")), MEANING_COLOR_NONE)
+			_set_definition_text("", MEANING_COLOR_NONE)
+		_:
+			_set_meaning_text("", MEANING_COLOR_NONE)
+			_set_definition_text("", MEANING_COLOR_NONE)
+
+
+func _build_meaning_text(result: Dictionary) -> String:
+	var kanji: String = str(result.get("kanji", ""))
+	var reading: String = str(result.get("reading", ""))
+	var pos: String = str(result.get("pos", ""))
+
+	var head: String = ""
+	if kanji != "":
+		head = kanji
+		if reading != "":
+			head += " (%s)" % reading
+	if pos != "":
+		head += ("  " if head != "" else "") + pos
+	return head
+
+
+func _set_meaning_text(text: String, color: Color) -> void:
+	meaning_label.text = text
+	meaning_label.add_theme_color_override("font_color", color)
+
+
+## Definitions live on their own label so they can be a different colour from
+## the headword without needing BBCode.
+func _set_definition_text(text: String, color: Color) -> void:
+	definition_label.text = text
+	definition_label.add_theme_color_override("font_color", color)
+	definition_label.visible = text.strip_edges() != ""
 
 
 func _preview_color(plan: Dictionary) -> Color:
@@ -1824,6 +1941,8 @@ func _show_game_over() -> void:
 	stats_label.visible                               = false
 	op_panel.visible                                   = false
 	preview_label.visible                              = false
+	meaning_label.visible                              = false
+	definition_label.visible                           = false
 
 	var outcome: String = GameManager.get_game_outcome()
 	var title: String = "GAME OVER"
