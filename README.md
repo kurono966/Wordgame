@@ -72,7 +72,7 @@ Cards of each color grant a trait when used in a valid word (shared slot cards c
 - **RED — Attack multiplier**: damage to the enemy scales off the base total: `base x 2^(red - 1)` (1 red = x1, 2 = x2, 3 = x4, 4 = x8).
 - **BLUE — Shield**: shield gained scales off the base total: `base x 2^(blue - 1)` (no cap). Shield absorbs incoming damage (night self-damage, negative word damage) before HP is lost.
 - **GREEN — Heal**: HP healed scales off the base total: `base x 2^(green - 1)` (up to your max HP).
-- **YELLOW — Reserved**: no effect yet.
+- **YELLOW — Operation points (OP)**: OP gained scales off the base total: `base x 2^(yellow - 1)` (1 yellow = x1, 2 = x2, 3 = x4, 4 = x8). OP is a currency, not a score: it is never spent by damage and never resets, and **1 OP moves one Workbench card one place left or right** (costs no turn).
 
 All traits use the **positive base total** (a negative word grants no trait value), and every trait is applied once.
 
@@ -111,13 +111,17 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 **GREEN heal (player)**
 - `heal` = base x 2 ^ (green cards - 1) → 1 green = x1, 2 green = x2, 3 green = x4, 4 green = x8 (capped at your max HP, 50)
 
+**YELLOW operation points (player)**
+- `OP` = base x 2 ^ (yellow cards - 1) → 1 yellow = x1, 2 = x2, 3 = x4, 4 = x8
+- 1 OP = one Workbench card move (one place left or right). OP accumulates and survives damage
+
 **NIGHT self-damage**
 - `penalty` = (sum of the NEXT card damage of all 3 slots) x 10 ^ (same-color cards - 1) → 2 same color = x10, 3 = x100, 4 = x1000
 - The BLUE shield absorbs it first, then HP
 
 **Other**
 - Negative words grant no trait value (traits use the positive base total)
-- YELLOW: reserved (no trait yet) / WILDCARD "?": 0 damage, matches any letter, keeps its own color
+- YELLOW: grants OP (see above) / WILDCARD "?": 0 damage, matches any letter, keeps its own color
 - Enemy HP: stage 1 = 30, +15 max HP per stage / Defeat at player HP 0, COMPLETE after 10 turns
 
 ### Winning Strategy Tips
@@ -135,6 +139,7 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 - **CLEAR**: Remove all cards from workbench
 - **SUBMIT WORD**: Submit your word for scoring
 - **FORMULAS**: Show/hide the calculation formulas and the breakdown of your last word
+- **OP gauge** (gold panel right of the HP bars): always shows the OP you own, how many card moves that buys ("= N MOVES"), and a bar; it pops and floats "+N OP" when you gain OP. Hover it for the full rule.
 
 ## Technical Details
 - Built with Godot Engine

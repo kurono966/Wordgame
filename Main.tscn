@@ -63,6 +63,7 @@ theme_override_constants/separation = 32
 [node name="PlayerHPBox" type="VBoxContainer" parent="Scroll/Center/VBox/StatusBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 
 [node name="PlayerHPLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/PlayerHPBox"]
 layout_mode = 2
@@ -79,6 +80,7 @@ show_percentage = false
 [node name="EnemyHPBox" type="VBoxContainer" parent="Scroll/Center/VBox/StatusBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 
 [node name="EnemyHPLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/EnemyHPBox"]
 layout_mode = 2
@@ -91,6 +93,53 @@ layout_mode = 2
 max_value = 30.0
 value = 30.0
 show_percentage = false
+
+[node name="OPBox" type="PanelContainer" parent="Scroll/Center/VBox/StatusBox"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="OPVBox" type="VBoxContainer" parent="Scroll/Center/VBox/StatusBox/OPBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="OPTitleLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "OP POINTS  (YELLOW)"
+horizontal_alignment = 1
+
+[node name="OPRow" type="HBoxContainer" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="OPValueLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "0 OP"
+vertical_alignment = 1
+
+[node name="OPMovesLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPRow"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 13
+text = "= 0 MOVES"
+vertical_alignment = 1
+
+[node name="OPBar" type="ProgressBar" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+max_value = 5.0
+value = 0.0
+show_percentage = false
+
+[node name="OPHintLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "1 OP = move a card one place"
+horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="StatsLabel" type="Label" parent="Scroll/Center/VBox"]
 layout_mode = 2

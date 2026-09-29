@@ -38,6 +38,13 @@ var _low_time_played: bool = false
 @onready var enemy_hp_bar          : ProgressBar    = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyHPBar
 @onready var stats_label           : Label          = $Scroll/Center/VBox/StatsLabel
 @onready var turn_label            : Label          = $Scroll/Center/VBox/HeaderBox/TurnLabel
+# Operation points (YELLOW trait) — dedicated gauge next to the two HP bars
+@onready var op_panel              : PanelContainer = $Scroll/Center/VBox/StatusBox/OPBox
+@onready var op_title_label        : Label          = $Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPTitleLabel
+@onready var op_value_label        : Label          = $Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPRow/OPValueLabel
+@onready var op_moves_label        : Label          = $Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPRow/OPMovesLabel
+@onready var op_bar                : ProgressBar    = $Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPBar
+@onready var op_hint_label         : Label          = $Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPHintLabel
 @onready var score_up_sound        : AudioStreamPlayer = $ScoreUpSound
 @onready var score_down_sound      : AudioStreamPlayer = $ScoreDownSound
 
@@ -54,6 +61,11 @@ var workbench_cards: Array = []
 var last_word: String = ""
 var last_result: Dictionary = {}
 var last_penalty: Dictionary = {}
+
+# Operation points (YELLOW trait). `_op_displayed` is the value currently shown
+# on the gauge, so a later refresh can tell a gain from a spend and animate it.
+var _op_displayed: int = 0
+var _op_tween: Tween = null
 
 # Card dimensions (all 3 cards are completely visible on screen)
 const SLOT_CARD_W := 120.0
@@ -86,6 +98,14 @@ const TXT_WORKBENCH     := Color(1.0, 1.0, 1.0, 1.0)
 
 const BG_EMPTY        := Color(0.12, 0.13, 0.17, 0.5)
 const BORDER_EMPTY    := Color(0.20, 0.22, 0.28, 0.5)
+
+# Operation points (OP) — gold gauge shown beside the HP bars
+const OP_BAR_CAP      := 5   # how many moves the gauge can display before it caps
+const OP_COLOR_ACTIVE := Color(1.0, 0.85, 0.38, 1.0)
+const OP_COLOR_SUB    := Color(0.85, 0.72, 0.42, 1.0)
+const OP_COLOR_EMPTY  := Color(0.60, 0.58, 0.52, 1.0)
+const OP_COLOR_GAIN   := Color(1.0, 0.95, 0.65, 1.0)
+const OP_COLOR_SPEND  := Color(1.0, 0.70, 0.35, 1.0)
 
 
 
@@ -135,6 +155,7 @@ func _ready() -> void:
 	_setup_sound_effects()
 	_style_global_ui()
 	_style_hp_bars()
+	_style_op_panel()
 	_style_formula_panel()
 	_style_piles_panel()
 	_refresh_formula_panel()
@@ -350,6 +371,7 @@ func _build_formula_text() -> String:
 	var player_max: int = GameManager.PLAYER_MAX_HP
 	var enemy_base: int = GameManager.ENEMY_BASE_HP
 	var enemy_growth: int = GameManager.ENEMY_HP_GROWTH
+	var op: int = GameManager.get_operation_points()
 
 	var lines: Array = [
 		"[BASE]  Base = total damage of every card used in the word.",
@@ -364,9 +386,10 @@ func _build_formula_text() -> String:
 		"[GREEN — heal]  heal = base x 2^(green - 1), up to %d HP" % player_max,
 		"  1 / 2 / 3 / 4 green: x1 / x2 / x4 / x8.",
 		"",
-		"[YELLOW — operation points]  OP = base x 2^(yellow - 1)",
-		"  1 / 2 / 3 / 4 yellow: x1 / x2 / x4 / x8. Current OP: %d" % GameManager.get_operation_points(),
-		"  Spend 1 OP to move a Workbench card one place left or right.",
+		"[YELLOW — operation points]  OP earned = base x 2^(yellow - 1)",
+		"  1 / 2 / 3 / 4 yellow: x1 / x2 / x4 / x8. OP keeps accumulating; damage never spends it.",
+		"  Owned right now: %d OP  =  %d Workbench card move(s)  (gold gauge beside the HP bars)." % [op, op],
+		"  Spend 1 OP to move a Workbench card one place left or right. This costs no turn.",
 		"",
 		"[NIGHT SELF-DAMAGE]  next-slot total x 10^(largest same-color group - 1)",
 		"  2 / 3 / 4 matching colors: x10 / x100 / x1000. BLUE shield applies first.",
@@ -411,8 +434,8 @@ func _build_last_calc_text() -> String:
 			shield_gained, last_result.get("shield_mult", 0),
 			heal_amount, last_result.get("heal_mult", 0)])
 	if op_gained > 0:
-		lines.append("      YELLOW operation points +%d (base x%d)   |   total owned: %d" % [
-			op_gained, last_result.get("yellow_mult", 0), op_total])
+		lines.append("      YELLOW: +%d OP (base %d x%d)  |  owned now: %d OP = %d card move(s)" % [
+			op_gained, base, last_result.get("yellow_mult", 0), op_total, op_total])
 
 	if not last_penalty.is_empty() and last_penalty.get("multiplier", 1) > 1:
 		lines.append("  NIGHT: %d x color x%d = %d  (shield blocked %d, you lost %d)" % [
@@ -491,6 +514,51 @@ func _style_hp_bar(bar: ProgressBar, fill_color: Color) -> void:
 	bg.shadow_size = 4
 	bg.shadow_offset = Vector2(0, 2)
 	bar.add_theme_stylebox_override("background", bg)
+
+# ── Operation points (OP) gauge ───────────────────────────────────────────────
+# The YELLOW trait pays out operation points. They are a currency, not a score,
+# so the gauge always spells out what the number buys: 1 OP = one Workbench card
+# move. Hovering the panel explains where OP comes from and what it costs.
+func _style_op_panel() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.11, 0.10, 0.06, 0.92)
+	sb.border_color = Color("f0cf7e")
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(12)
+	sb.shadow_color = Color(0.0, 0.0, 0.04, 0.6)
+	sb.shadow_size = 10
+	sb.shadow_offset = Vector2(0, 4)
+	sb.content_margin_left = 12.0
+	sb.content_margin_right = 12.0
+	sb.content_margin_top = 6.0
+	sb.content_margin_bottom = 6.0
+	op_panel.add_theme_stylebox_override("panel", sb)
+
+	# Move gauge (same look as the HP bars, but a slightly tighter radius)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = OP_COLOR_ACTIVE
+	fill.set_corner_radius_all(5)
+	fill.content_margin_top = 2.0
+	fill.content_margin_bottom = 2.0
+	op_bar.add_theme_stylebox_override("fill", fill)
+
+	var bar_bg := StyleBoxFlat.new()
+	bar_bg.bg_color = Color("0a1120")
+	bar_bg.border_color = OP_COLOR_ACTIVE.darkened(0.55)
+	bar_bg.set_border_width_all(1)
+	bar_bg.set_corner_radius_all(5)
+	bar_bg.shadow_color = Color(0.0, 0.0, 0.03, 0.5)
+	bar_bg.shadow_size = 4
+	bar_bg.shadow_offset = Vector2(0, 2)
+	op_bar.add_theme_stylebox_override("background", bar_bg)
+
+	op_title_label.add_theme_color_override("font_color", OP_COLOR_SUB)
+	var info: String = "OPERATION POINTS (OP)\nEarned by submitting a word that uses YELLOW cards:\n    OP gained = base damage x 2^(yellow cards - 1)\nOP is never spent by taking damage and never resets.\n\n1 OP moves one Workbench card one place left / right\n(uses no turn). The bar fills up to %d moves." % OP_BAR_CAP
+	op_panel.tooltip_text = info
+	op_bar.tooltip_text = info
+	for node: Label in [op_title_label, op_value_label, op_moves_label, op_hint_label]:
+		node.tooltip_text = info
+		node.mouse_filter = Control.MOUSE_FILTER_STOP
 
 func _animate_enemy_hit() -> void:
 	var tween := create_tween()
@@ -968,18 +1036,22 @@ func move_workbench_card(index: int, direction: int) -> bool:
 	if target < 0 or target >= workbench_cards.size():
 		return false
 	if not GameManager.spend_operation_points(1):
-		_show_step_message("Not enough OP. Use a YELLOW card to earn operation points.", Color(1.0, 0.8, 0.3, 1.0))
+		_refresh_op_display("denied")
+		_show_step_message("Not enough OP: 1 OP moves a Workbench card one place. Submit a word with YELLOW cards to earn more.", Color(1.0, 0.8, 0.3, 1.0))
 		return false
 
 	var card: Dictionary = workbench_cards[index]
 	workbench_cards.remove_at(index)
 	workbench_cards.insert(target, card)
 	_refresh_workbench_ui()
+	_refresh_op_display("spend")
 	_refresh_formula_panel()
-	_show_step_message("Moved card %d %s (1 OP spent; OP left: %d)" % [
+	_show_step_message("Moved card %d %s  —  spent 1 OP  (%d OP = %d move%s left)" % [
 		index + 1,
 		"left" if direction < 0 else "right",
-		GameManager.get_operation_points()
+		GameManager.get_operation_points(),
+		GameManager.get_operation_points(),
+		"" if GameManager.get_operation_points() == 1 else "s"
 	], Color(1.0, 0.9, 0.35, 1.0))
 	return true
 
@@ -1047,10 +1119,13 @@ func _refresh_ui() -> void:
 
 	_refresh_hp_display()
 
-	stats_label.text = "STAGE %d  |  TOTAL DAMAGE: %d  |  DEFEATED: %d  |  OP POINTS: %d" % [
+	stats_label.text = "STAGE %d  |  TOTAL DAMAGE: %d  |  DEFEATED: %d" % [
 		GameManager.get_stage(), GameManager.get_total_damage(),
-		GameManager.get_enemies_defeated(), GameManager.get_operation_points()
+		GameManager.get_enemies_defeated()
 	]
+
+	# OP has its own gauge, so it is not repeated in the stats line
+	_refresh_op_display()
 
 	message_label.text = ""
 
@@ -1084,6 +1159,100 @@ func _refresh_hp_display() -> void:
 	# Center the pivot so hit-shake animations scale from the middle
 	player_hp_label.pivot_offset = player_hp_label.size / 2.0
 	enemy_hp_label.pivot_offset = enemy_hp_label.size / 2.0
+
+# ── Operation points (OP) display ─────────────────────────────────────────────
+# Refreshes the whole gauge: amount, how many card moves it buys, the bar and
+# the one-line explanation. `flash` forces a feedback animation ("gain",
+# "spend" or "denied"); otherwise the change is detected from the previous
+# value, so callers can simply call this after anything that may move OP.
+func _refresh_op_display(flash: String = "") -> void:
+	var op: int = GameManager.get_operation_points()
+	var previous: int = _op_displayed
+	_op_displayed = op
+
+	op_value_label.text = "%d OP" % op
+	if op == 1:
+		op_moves_label.text = "= 1 MOVE"
+	else:
+		op_moves_label.text = "= %d MOVES" % op
+	op_bar.max_value = OP_BAR_CAP
+	op_bar.value = mini(op, OP_BAR_CAP)
+
+	if op > 0:
+		op_value_label.add_theme_color_override("font_color", OP_COLOR_ACTIVE)
+		op_moves_label.add_theme_color_override("font_color", OP_COLOR_SUB)
+		op_hint_label.text = "1 OP = move a card one place"
+		op_hint_label.add_theme_color_override("font_color", OP_COLOR_SUB)
+	else:
+		op_value_label.add_theme_color_override("font_color", OP_COLOR_EMPTY)
+		op_moves_label.add_theme_color_override("font_color", OP_COLOR_EMPTY)
+		op_hint_label.text = "Earn OP with a YELLOW card"
+		op_hint_label.add_theme_color_override("font_color", OP_COLOR_EMPTY)
+
+	_animate_op_change(previous, op, flash)
+
+# Pops the number and floats "+N OP" / "-N OP" over the gauge. Runs one frame
+# later so the label has its final size and the pop scales from its centre.
+func _animate_op_change(previous: int, current: int, flash: String) -> void:
+	var gained: int = maxi(current - previous, 0)
+	var spent: int = maxi(previous - current, 0)
+	if flash == "gain":
+		gained = maxi(gained, 1)
+	elif flash == "spend":
+		spent = maxi(spent, 1)
+	elif flash == "denied":
+		gained = 0
+		spent = 0
+	if gained == 0 and spent == 0 and flash != "denied":
+		return
+
+	await get_tree().process_frame
+	if _op_tween != null and _op_tween.is_valid():
+		_op_tween.kill()
+	op_value_label.scale = Vector2.ONE
+	op_value_label.pivot_offset = op_value_label.size / 2.0
+	op_panel.modulate = Color.WHITE
+
+	_op_tween = create_tween()
+	if flash == "denied":
+		_op_tween.tween_property(op_panel, "modulate", Color(1.0, 0.5, 0.45, 1.0), 0.1)
+		_op_tween.tween_property(op_panel, "modulate", Color.WHITE, 0.35)
+		return
+	_op_tween.tween_property(op_value_label, "scale", Vector2(1.25, 1.25), 0.1)
+	if gained > 0:
+		_op_tween.tween_property(op_panel, "modulate", Color(1.25, 1.18, 0.90, 1.0), 0.08)
+	else:
+		_op_tween.tween_property(op_panel, "modulate", Color(0.82, 0.75, 0.70, 1.0), 0.08)
+	_op_tween.tween_property(op_value_label, "scale", Vector2.ONE, 0.2)
+	_op_tween.tween_property(op_panel, "modulate", Color.WHITE, 0.25)
+	if gained > 0:
+		_pop_op_float("+%d OP" % gained, OP_COLOR_GAIN)
+	elif spent > 0:
+		_pop_op_float("-%d OP" % spent, OP_COLOR_SPEND)
+
+# Floating "+8 OP" text above the gauge. It is parented to the root Control
+# (a plain Control, not a Container) so it can be positioned freely.
+func _pop_op_float(text: String, color: Color) -> void:
+	var floater := Label.new()
+	floater.text = text
+	floater.add_theme_font_size_override("font_size", 18)
+	floater.add_theme_color_override("font_color", color)
+	floater.add_theme_color_override("font_outline_color", Color(0.03, 0.04, 0.08, 1.0))
+	floater.add_theme_constant_override("outline_size", 5)
+	floater.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(floater)
+
+	await get_tree().process_frame
+	var anchor: Vector2 = op_value_label.global_position - global_position
+	floater.position = Vector2(
+		anchor.x + (op_value_label.size.x - floater.size.x) * 0.5,
+		anchor.y - 4.0
+	)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(floater, "position:y", floater.position.y - 26.0, 0.8)
+	tween.tween_property(floater, "modulate:a", 0.0, 0.8)
+	tween.chain().tween_callback(floater.queue_free)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ── Word Submission ──────────────────────────────────────────────────────────
@@ -1269,13 +1438,19 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 		if heal_amount > 0:
 			trait_parts.append("GREEN +%d HP (base %d x%d)" % [heal_amount, word_damage, heal_mult])
 		if op_gained > 0:
-			trait_parts.append("YELLOW +%d OP POINTS (base %d x%d)" % [op_gained, word_damage, op_mult])
+			trait_parts.append("YELLOW +%d OP (base %d x%d)  ->  %d owned" % [
+				op_gained, word_damage, op_mult,
+				result.get("operation_points_after", GameManager.get_operation_points())
+			])
 		var traits_color: Color = Color(0.4, 0.7, 1.0, 1.0)
 		if op_gained > 0 and shield_gained == 0 and heal_amount == 0:
 			traits_color = Color(1.0, 0.9, 0.35, 1.0) # Yellow
 		elif heal_amount > 0 and shield_gained == 0:
 			traits_color = Color(0.55, 0.95, 0.7, 1.0)
 		_show_step_message(" / ".join(trait_parts), traits_color)
+		if op_gained > 0:
+			# Point the player at the gauge and pop it, so the gain is unmissable
+			_refresh_op_display("gain")
 		if heal_amount > 0:
 			_play_score_up_sound()
 			_animate_player_hp(disp_player_hp, disp_player_hp + heal_amount, player_max, 0.5)
@@ -1338,6 +1513,7 @@ func _show_game_over() -> void:
 	$Scroll/Center/VBox/HandSectionLabel.visible      = false
 	$Scroll/Center/VBox/WorkbenchSectionLabel.visible = false
 	stats_label.visible                               = false
+	op_panel.visible                                   = false
 
 	var outcome: String = GameManager.get_game_outcome()
 	var title: String = "GAME OVER"
@@ -1349,11 +1525,12 @@ func _show_game_over() -> void:
 		title = "COMPLETE!"
 		title_color = Color(0.4, 1.0, 0.6, 1.0)
 
-	message_label.text = "%s\n\nStage Reached: %d\nTotal Damage: %d\nEnemies Defeated: %d\nPlayer HP: %d / %d" % [
+	message_label.text = "%s\n\nStage Reached: %d\nTotal Damage: %d\nEnemies Defeated: %d\nOperation Points: %d\nPlayer HP: %d / %d" % [
 		title,
 		GameManager.get_stage(),
 		GameManager.get_total_damage(),
 		GameManager.get_enemies_defeated(),
+		GameManager.get_operation_points(),
 		GameManager.get_player_hp(),
 		GameManager.get_max_player_hp()
 	]
