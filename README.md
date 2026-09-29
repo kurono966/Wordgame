@@ -37,6 +37,15 @@ Build valid English words using cards from your slots and hand. Each card has a 
 5. Used hand cards are discarded and replaced from the deck
 6. Defeat the enemy (reduce its HP to 0) to clear the stage — the next stage starts, your hand is redrawn and all three shared reels roll to the new enemy's cards
 
+### Submit Preview (damage forecast)
+A line above the buttons shows, **while you are still building the word**, exactly what SUBMIT will cost you. It updates every time you add or remove a card on the Workbench.
+
+- It resolves the same word assignment that SUBMIT would use, so the numbers always match the real result
+- It shows the enemy damage, the BLUE shield / GREEN heal your word grants, the NIGHT penalty, and the final `HP you lose -> HP after`
+- **The shared reels rotate as part of submitting**, so the NIGHT penalty is previewed from the cards that will be NEXT *after* that rotation. Using a slot can therefore change the forecast — the label notes how many reels roll
+- Colour codes the risk: green = you take no damage, yellow = you lose HP, red = **this submit would defeat you (LETHAL)**
+- It also flags a Workbench that is not a valid word, so you can see SUBMIT will be rejected
+
 ### Slot Rotation
 - Only slots that are used in your word will rotate: the ★ ACTIVE card you used is spent and the reel rolls so that its NEXT card becomes ACTIVE
 - The card you place in the workbench is always the card that gets consumed — a shared card you used is never silently substituted by a hand card, so the reel you used is guaranteed to rotate
@@ -147,7 +156,7 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 - **CLEAR**: Remove all cards from workbench
 - **SUBMIT WORD**: Submit your word for scoring
 - **FORMULAS**: Show/hide the calculation formulas and the breakdown of your last word
-- **OP gauge** (gold panel right of the HP bars): always shows the OP you own, how many card moves that buys ("= N MOVES"), and a bar; it pops and floats "+N OP" when you gain OP. Hover it for the full rule.
+- **OP gauge** (gold panel right of the HP bars): always shows the OP you own, how many card moves that buys ("= N MOVES"), and a bar; it pops and floats "+N OP" when you gain OP and "-N OP" when a special is paid for. Hover it for the full rule.
 
 ## Technical Details
 - Built with Godot Engine

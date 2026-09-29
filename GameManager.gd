@@ -362,21 +362,35 @@ func get_current_slot_total_damage() -> int:
 		total += get_current_slot_card(s)["damage"]
 	return total
 
-func get_next_slot_penalty_with_multiplier() -> Dictionary:
+# Penalty preview for the NIGHT phase, computed from the NEXT card of every
+# slot. `rotating_slots` lists the slots the pending submission will consume:
+# those reels roll BEFORE the penalty is resolved, so their NEXT card sits one
+# step further along than an untouched slot's. Passing an empty array gives the
+# current (already-rolled) state, which is what the live game applies.
+func get_next_slot_penalty_with_multiplier(rotating_slots: Array = []) -> Dictionary:
 	var total: int = 0
 	var next_cards: Array = []
 	for s in range(NUM_SLOTS):
 		var s_cards: Array = slots[s]
 		var cur_i: int = current_slot_indices[s] % s_cards.size()
-		var next_i: int = (cur_i + 1) % CARDS_PER_SLOT
+		var rolls: bool = rotating_slots.has(s)
+		# An unused slot advances by 1 (NEXT of the current reel position); a used
+		# slot first rolls, so its NEXT card is 2 steps from where it stands now.
+		var next_i: int = (cur_i + (2 if rolls else 1)) % s_cards.size()
 		var next_card: Dictionary = s_cards[next_i].duplicate()
 		next_card["type"] = "slot"
 		next_card["index"] = s
+		next_card["will_rotate"] = rolls
 		next_cards.append(next_card)
 		total += next_card["damage"]
 
 	var multiplier: int = calculate_penalty_color_multiplier(next_cards)
-	return {"base_penalty": total, "multiplier": multiplier, "final_penalty": total * multiplier}
+	return {
+		"base_penalty": total,
+		"multiplier": multiplier,
+		"final_penalty": total * multiplier,
+		"next_cards": next_cards
+	}
 
 func rotate_slots(used_slots: Array) -> void:
 	# Rotate only the slots that were used (the card on the ACTIVE row moves out
@@ -891,6 +905,70 @@ func is_game_over() -> bool:
 
 func get_game_outcome() -> String:
 	return game_outcome
+
+# ─── Submit preview ───────────────────────────────────────────────────────────
+# Predicts EVERYTHING the player will take when submitting `assignment`, without
+# mutating any state. It mirrors the real resolution order exactly:
+#   1. BLUE shield and GREEN heal from the word are granted first
+#   2. negative word damage hits the player (BLUE shield absorbs it)
+#   3. the turn counter advances and the phase flips
+#   4. if the new phase is NIGHT, the slot penalty lands (BLUE shield absorbs it)
+# Slots listed in `used_slots` roll in step 3, so step 4 reads their NEXT card
+# one position further along — see get_next_slot_penalty_with_multiplier().
+func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
+	var base_damage: int = 0
+	for src in assignment:
+		base_damage += int(src.get("damage", 0))
+
+	var multiplier: float = calculate_color_multiplier(assignment)
+	var color_counts: Dictionary = count_colors_in_assignment(assignment)
+	var final_damage: int = int(round(float(base_damage) * multiplier))
+
+	# 1) Traits resolve before the damage exchange (positive base only)
+	var trait_base: int = maxi(base_damage, 0)
+	var shield_gained: int = trait_base * color_trait_multiplier(int(color_counts.get("blue", 0)))
+	var heal_mult: int = color_trait_multiplier(int(color_counts.get("green", 0)))
+	var heal_amount: int = mini(trait_base * heal_mult, PLAYER_MAX_HP - player_hp)
+	var shield_pool: int = shield + shield_gained
+	var hp_pool: int = player_hp + heal_amount
+
+	# 2) Negative word damage hurts the player; the shield absorbs it first
+	var word_self_damage: int = maxi(-final_damage, 0)
+	var word_absorbed: int = mini(shield_pool, word_self_damage)
+	shield_pool -= word_absorbed
+	hp_pool = maxi(hp_pool - (word_self_damage - word_absorbed), 0)
+
+	# 3) The turn advances and the phase flips
+	var next_is_night: bool = not is_night
+
+	# 4) On the new NIGHT phase the slot penalty lands (used slots already rolled)
+	var penalty: Dictionary = get_next_slot_penalty_with_multiplier(used_slots if next_is_night else [])
+	var night_penalty: int = penalty["final_penalty"] if next_is_night else 0
+	var night_absorbed: int = mini(shield_pool, night_penalty)
+	shield_pool -= night_absorbed
+	hp_pool = maxi(hp_pool - (night_penalty - night_absorbed), 0)
+
+	var hp_lost: int = maxi((player_hp + heal_amount) - hp_pool, 0)
+	return {
+		"base_damage": base_damage,
+		"multiplier": multiplier,
+		"final_damage": final_damage,
+		"color_counts": color_counts,
+		"shield_gained": shield_gained,
+		"heal_amount": heal_amount,
+		"word_self_damage": word_self_damage,
+		"word_absorbed": word_absorbed,
+		"next_is_night": next_is_night,
+		"night_base_penalty": penalty["base_penalty"],
+		"night_multiplier": penalty["multiplier"],
+		"night_penalty": night_penalty,
+		"night_absorbed": night_absorbed,
+		"night_next_cards": penalty["next_cards"],
+		"total_absorbed": word_absorbed + night_absorbed,
+		"total_hp_lost": hp_lost,
+		"player_hp_after": hp_pool,
+		"lethal": hp_pool <= 0 and (player_hp + heal_amount) > 0
+	}
 
 func get_turn() -> int:
 	return turn

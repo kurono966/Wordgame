@@ -32,6 +32,7 @@ var _low_time_played: bool = false
 @onready var piles_label           : Label          = $PilesDialog/DialogPanel/DialogVBox/PilesLabel
 @onready var piles_close_button    : Button         = $PilesDialog/DialogPanel/DialogVBox/DialogHeader/CloseButton
 @onready var message_label         : Label          = $Scroll/Center/VBox/MessageLabel
+@onready var preview_label         : Label          = $Scroll/Center/VBox/PreviewLabel
 @onready var player_hp_label       : Label          = $Scroll/Center/VBox/StatusBox/PlayerHPBox/PlayerHPLabel
 @onready var player_hp_bar         : ProgressBar    = $Scroll/Center/VBox/StatusBox/PlayerHPBox/PlayerHPBar
 @onready var enemy_hp_label        : Label          = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyHPLabel
@@ -104,6 +105,14 @@ const TXT_WORKBENCH     := Color(1.0, 1.0, 1.0, 1.0)
 
 const BG_EMPTY        := Color(0.12, 0.13, 0.17, 0.5)
 const BORDER_EMPTY    := Color(0.20, 0.22, 0.28, 0.5)
+
+# Submit-preview label colours (green = safe, yellow = you take damage,
+# red = this submit would defeat you, grey = nothing to preview yet)
+const PREVIEW_COLOR_IDLE    := Color(0.62, 0.68, 0.78, 1.0)
+const PREVIEW_COLOR_SAFE    := Color(0.55, 0.95, 0.70, 1.0)
+const PREVIEW_COLOR_HURT    := Color(1.00, 0.82, 0.35, 1.0)
+const PREVIEW_COLOR_LETHAL  := Color(1.00, 0.38, 0.34, 1.0)
+const PREVIEW_COLOR_INVALID := Color(1.00, 0.55, 0.45, 1.0)
 
 # Operation points (OP) — gold gauge shown beside the HP bars
 const OP_BAR_CAP      := 5   # how many moves the gauge can display before it caps
@@ -209,6 +218,12 @@ func _style_global_ui() -> void:
 
 	message_label.add_theme_color_override("font_outline_color", Color("07101f"))
 	message_label.add_theme_constant_override("outline_size", 3)
+
+	# Submit preview: outlined like the message label so it stays readable over
+	# the procedural background, and recoloured per state in _refresh_submit_preview
+	preview_label.add_theme_color_override("font_outline_color", Color("07101f"))
+	preview_label.add_theme_constant_override("outline_size", 3)
+	preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_IDLE)
 
 func _style_button(button: Button, base_color: Color, border_color: Color, text_color: Color) -> void:
 	var normal := _make_button_style(base_color, border_color)
@@ -1102,7 +1117,9 @@ func _detach_drag_source(panel: PanelContainer) -> void:
 func _on_card_clicked(card_data: Dictionary) -> void:
 	add_card_to_workbench(card_data)
 
-# ── Special Ability (8pt+ cards): long-press or right-click ─────────────────
+# ── Special Ability: cards with SPECIAL_MIN_DAMAGE or more, paid for in OP ─────
+# The card's damage value is its cost; it is spent only when the activation
+# actually succeeds (see GameManager.use_special_ability).
 func _on_card_special_used(card_data: Dictionary) -> void:
 	# Special abilities only work for cards in hand
 	if card_data.get("type", "") != "hand":
@@ -1176,6 +1193,107 @@ func _on_card_special_used(card_data: Dictionary) -> void:
 		result["drawn"], GameManager.get_operation_points()
 	], Color(1.0, 0.85, 0.3, 1.0))
 
+# ── Submit preview: what you will take when you press SUBMIT WORD ───────────
+# Shows the incoming damage BEFORE submitting, so a risky word can be spotted
+# while it is still being built. The shared reels rotate as part of submitting,
+# so the NIGHT penalty is previewed from the cards that will be NEXT *after*
+# that rotation (GameManager.predict_submit_outcome handles the ordering).
+func _refresh_submit_preview() -> void:
+	if workbench_cards.is_empty():
+		preview_label.text = "Place cards on the Workbench to preview the damage you will take on SUBMIT."
+		preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_IDLE)
+		return
+
+	# Resolve the same assignment SUBMIT would use, so the preview matches it
+	var pattern_chars: Array = []
+	for c in workbench_cards:
+		pattern_chars.append(str(c.get("card_letter", c.get("letter", "?"))))
+	var pattern: String = "".join(pattern_chars)
+
+	var valid_assignments: Array = GameManager.find_valid_assignments(pattern)
+	if valid_assignments.is_empty():
+		preview_label.text = "X  '%s' IS NOT A WORD  —  SUBMIT will be rejected." % pattern.to_upper()
+		preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_INVALID)
+		return
+
+	var chosen: Array = _pick_best_assignment(workbench_cards, valid_assignments)
+	var word: String = ""
+	for a in chosen:
+		word += str(a["char"])
+	if not GameManager.is_assignment_valid(word, chosen):
+		preview_label.text = "X  INVALID SLOT ORDER  —  use slots left to right."
+		preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_INVALID)
+		return
+
+	var used_slots: Array = []
+	for a in chosen:
+		if str(a.get("type", "")) == "slot":
+			used_slots.append(int(a.get("index", -1)))
+
+	var plan: Dictionary = GameManager.predict_submit_outcome(chosen, used_slots)
+	preview_label.text = _build_preview_text(plan, word)
+	preview_label.add_theme_color_override("font_color", _preview_color(plan))
+
+
+func _preview_color(plan: Dictionary) -> Color:
+	if bool(plan.get("lethal", false)):
+		return PREVIEW_COLOR_LETHAL
+	var lost: int = int(plan.get("total_hp_lost", 0))
+	if lost > 0:
+		return PREVIEW_COLOR_HURT
+	return PREVIEW_COLOR_SAFE
+
+
+func _build_preview_text(plan: Dictionary, word: String) -> String:
+	var parts: Array = ["ON SUBMIT  '%s'  ->" % word.to_upper()]
+
+	# Enemy side
+	var final_damage: int = int(plan.get("final_damage", 0))
+	if final_damage > 0:
+		parts.append("ENEMY %d dmg" % final_damage)
+	elif final_damage < 0:
+		parts.append("YOUR WORD HITS YOU %d" % -final_damage)
+
+	# Traits the word grants
+	if int(plan.get("shield_gained", 0)) > 0:
+		parts.append("+ %d SHIELD" % int(plan["shield_gained"]))
+	if int(plan.get("heal_amount", 0)) > 0:
+		parts.append("+ %d HP" % int(plan["heal_amount"]))
+
+	# Night penalty (already accounting for the reels rotating on submit)
+	if bool(plan.get("next_is_night", false)):
+		var night: int = int(plan.get("night_penalty", 0))
+		var mult: int = int(plan.get("night_multiplier", 1))
+		if night > 0:
+			var rolls: Array = plan.get("night_next_cards", [])
+			var turning: int = 0
+			for c in rolls:
+				if bool(c.get("will_rotate", false)):
+					turning += 1
+			var note: String = "  (%d x x%d, after %d reel%s roll)" % [
+				int(plan.get("night_base_penalty", 0)), mult, turning,
+				"" if turning == 1 else "s"
+			]
+			parts.append("NIGHT %d dmg%s" % [night, note])
+		else:
+			parts.append("NIGHT 0 dmg")
+	else:
+		parts.append("no NIGHT penalty next turn")
+
+	# Bottom line
+	var absorbed: int = int(plan.get("total_absorbed", 0))
+	var lost: int = int(plan.get("total_hp_lost", 0))
+	var bottom: String = "YOU LOSE %d HP" % lost
+	if absorbed > 0:
+		bottom += "  (shield blocks %d)" % absorbed
+	bottom += "   ->   HP %d" % int(plan.get("player_hp_after", 0))
+	if bool(plan.get("lethal", false)):
+		bottom += "   *** LETHAL: THIS SUBMIT DEFEATS YOU ***"
+	parts.append(bottom)
+
+	return "   |   ".join(parts)
+
+
 # ── Workbench Management ────────────────────────────────────────────────────
 func add_card_to_workbench(card_data: Dictionary) -> void:
 	if _is_card_in_workbench(card_data):
@@ -1185,6 +1303,9 @@ func add_card_to_workbench(card_data: Dictionary) -> void:
 	_refresh_workbench_ui()
 	_refresh_slots()
 	_refresh_hand_and_deck()
+	# Keep the submit forecast in sync with the Workbench (adding a card can
+	# change both the word and which shared reels will roll)
+	_refresh_submit_preview()
 	_animate_workbench_place()
 
 func move_workbench_card(index: int, direction: int) -> bool:
@@ -1210,6 +1331,8 @@ func move_workbench_card(index: int, direction: int) -> bool:
 	_animate_workbench_swap()
 	_refresh_op_display("spend")
 	_refresh_formula_panel()
+	# Reordering can change which assignment the word resolves to, so re-preview
+	_refresh_submit_preview()
 	_show_step_message("Moved card %d %s  —  spent 1 OP  (%d OP = %d move%s left)" % [
 		index + 1,
 		"left" if direction < 0 else "right",
@@ -1228,6 +1351,8 @@ func remove_card_from_workbench_at(idx: int) -> void:
 		_refresh_workbench_ui()
 		_refresh_slots()
 		_refresh_hand_and_deck()
+	# Removing a card changes the previewed word and the set of rolling reels
+	_refresh_submit_preview()
 
 func _refresh_workbench_ui() -> void:
 	for ch in workbench_container.get_children():
@@ -1277,6 +1402,7 @@ func _refresh_ui() -> void:
 	_refresh_slots()
 	_refresh_hand_and_deck()
 	_refresh_workbench_ui()
+	_refresh_submit_preview()
 
 	var phase: String = GameManager.get_phase()
 	var phase_color: Color = COLOR_NIGHT if phase == "NIGHT" else COLOR_DAY
@@ -1493,6 +1619,8 @@ func _on_submit_pressed() -> void:
 	if not GameManager.is_assignment_valid(word, final_workbench_cards):
 		message_label.text = "X INVALID ORDER (Slots must be used in left-to-right order)"
 		message_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4, 1.0))
+		# The Workbench was rewritten above, so bring the forecast back in sync
+		_refresh_submit_preview()
 		return
 
 	submit_button.disabled = true
@@ -1695,6 +1823,7 @@ func _show_game_over() -> void:
 	$Scroll/Center/VBox/WorkbenchSectionLabel.visible = false
 	stats_label.visible                               = false
 	op_panel.visible                                   = false
+	preview_label.visible                              = false
 
 	var outcome: String = GameManager.get_game_outcome()
 	var title: String = "GAME OVER"
