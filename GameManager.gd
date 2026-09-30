@@ -570,6 +570,18 @@ func _load_dictionary_json() -> bool:
 			word_list.append(word.to_upper())
 		_sorted_words.append(word)
 
+	# A word that carries a translation is stored ONLY under "translations" (the
+	# JSON keeps the two sections disjoint), so it must still count as a valid
+	# word here — otherwise translated words would be rejected as not-a-word.
+	for key: String in word_translations:
+		if dictionary.has(key):
+			continue
+		dictionary[key] = true
+		if _is_valid_enemy_name(key):
+			word_list.append(key.to_upper())
+		_sorted_words.append(key)
+	_sorted_words.sort()
+
 	print("Dictionary JSON loaded with ", dictionary.size(), " words (",
 		word_list.size(), " enemy-name candidates, ", word_translations.size(), " translations)")
 	return true

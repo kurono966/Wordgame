@@ -43,7 +43,8 @@ func _check_dictionary_loaded(gm: Node) -> int:
 	return fails
 
 ## The JSON must not change which words are valid. Re-read dictionary.txt and
-## compare the two sets exactly.
+## compare: the ACCEPTED set is `words` + `translations` keys, because the two
+## JSON sections are disjoint (a translated word lives only under "translations").
 func _check_matches_legacy_txt(gm: Node) -> int:
 	var fails: int = 0
 	var legacy: Dictionary = {}
@@ -57,7 +58,7 @@ func _check_matches_legacy_txt(gm: Node) -> int:
 	file.close()
 
 	fails += _check(legacy.size() == gm.dictionary.size(),
-		"JSON and dictionary.txt have the same size (%d vs %d)" % [gm.dictionary.size(), legacy.size()])
+		"the accepted set matches dictionary.txt in size (%d vs %d)" % [gm.dictionary.size(), legacy.size()])
 
 	# Spot-check both directions so a silent difference cannot hide behind size.
 	var missing: int = 0
@@ -68,9 +69,37 @@ func _check_matches_legacy_txt(gm: Node) -> int:
 	for word: String in gm.dictionary:
 		if not legacy.has(word):
 			extra += 1
-	fails += _check(missing == 0, "no legacy word is missing from the JSON (%d missing)" % missing)
-	fails += _check(extra == 0, "the JSON invents no extra words (%d extra)" % extra)
+	fails += _check(missing == 0, "no dictionary word is missing (%d missing)" % missing)
+	fails += _check(extra == 0, "no word is invented (%d extra)" % extra)
+
+	# A translated word is stored only under "translations", yet must still be
+	# accepted by the game. This is the regression that disjoint sections cause.
+	fails += _check(_sections_are_disjoint(), "words and translations do not overlap")
+	for word: String in gm.word_translations:
+		if not gm.dictionary.has(word):
+			fails += _check(false, "translated word '%s' is not accepted as a valid word" % word)
+			break
+	fails += _check(true, "every translated word is still a valid word in game")
 	return fails
+
+
+## Reads the raw JSON and asserts the two sections share no word.
+func _sections_are_disjoint() -> bool:
+	var file := FileAccess.open("res://word_dictionary.json", FileAccess.READ)
+	if file == null:
+		return false
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return false
+	var data: Dictionary = parsed
+	var words: Dictionary = {}
+	for w: Variant in data.get("words", []):
+		words[str(w).to_lower()] = true
+	for key: Variant in data.get("translations", {}):
+		if words.has(str(key).to_lower()):
+			return false
+	return true
 
 func _check_sample_translations(gm: Node) -> int:
 	var fails: int = 0
@@ -84,16 +113,31 @@ func _check_short_translations(gm: Node) -> int:
 	for word: String in ["a", "an", "and", "the", "cat", "dog", "ox", "zoo", "hi"]:
 		var gloss: String = gm.get_word_translation(word)
 		fails += _check(gloss != "", "short word '%s' is translated ('%s')" % [word, gloss])
-	# Every translated word must be 3 letters or fewer, except the 10 samples
-	# that were supplied with the request.
+
+	# The first-2000 batch is translated in full, so translations are no longer
+	# limited to <=3 letters; what still has to hold is that the set is exactly
+	# the three documented sources (samples + head2000 + short words).
+	var head_2000: Dictionary = _load_head_2000_file()
+	fails += _check(head_2000.size() == 2000,
+		"the head-2000 batch holds 2000 entries (%d)" % head_2000.size())
 	for key: String in gm.word_translations:
-		var is_sample: bool = SAMPLE_WORDS.has(key)
-		var ok_len: bool = key.length() <= 3 or is_sample
-		if not ok_len:
-			fails += _check(false, "'%s' is longer than 3 letters but not a sample word" % key)
+		if not SAMPLE_WORDS.has(key) and not head_2000.has(key) and key.length() > 3:
+			fails += _check(false, "'%s' has no documented source" % key)
 			break
-	fails += _check(true, "every translation is <=3 letters or a supplied sample word")
+	fails += _check(true, "every translation traces back to a documented source")
 	return fails
+
+
+## Reads the head-2000 source table straight from disk.
+func _load_head_2000_file() -> Dictionary:
+	var file := FileAccess.open("res://_head2000.json", FileAccess.READ)
+	if file == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return {}
+	return parsed
 
 func _check_case_insensitive(gm: Node) -> int:
 	var fails: int = 0

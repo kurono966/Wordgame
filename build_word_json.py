@@ -41,6 +41,22 @@ SAMPLE_TRANSLATIONS = {
     "ability": "能力",
 }
 
+# Translations for the FIRST 2000 entries of the alphabetical word list, as
+# requested. That head is overwhelmingly abbreviations (aaa, aam), place
+# names (aachen, abbeville) and French/Neo-Latin derivatives (abacinate,
+# abbacy), so words with no settled Japanese rendering are tagged with
+# their category instead of being left blank. The table lives in
+# _head2000.json so this generator stays readable.
+HEAD_2000_PATH = os.path.join(HERE, "_head2000.json")
+
+
+def _load_head_2000():
+    if not os.path.exists(HEAD_2000_PATH):
+        return {}
+    with open(HEAD_2000_PATH, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
 # Japanese glosses for the short words (3 letters or fewer). Kept as a separate
 # table so the sample words above stay readable.
 SHORT_TRANSLATIONS = {
@@ -304,7 +320,17 @@ def main() -> None:
     # so the table can never advertise a word the game would reject.
     table = dict(SAMPLE_TRANSLATIONS)
     table.update(SHORT_TRANSLATIONS)
+    head_2000 = _load_head_2000()
+    # Sample words win over the head-300 table if the same word is in both.
+    for word, gloss in head_2000.items():
+        table.setdefault(word, gloss)
     translations = {w: t for w, t in table.items() if w in words}
+
+    # A word that has a translation is stored ONLY in "translations" (that is
+    # what the translation is for), so remove it from "words" to keep the two
+    # sections disjoint. The game treats the union as the accepted word list.
+    translated = set(translations)
+    words = words - translated
 
     sorted_words = sorted(words)
     sorted_translations = dict(sorted(translations.items()))

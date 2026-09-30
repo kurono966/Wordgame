@@ -1,7 +1,1 @@
-res://_reward_test.gd
-res://GameManager.gd
-res://Main.gd
-res://_preview_ui_test.gd
-res://README_JA.md
-res://_special_cost_test.gd
-res://_special_ui_test.gd
+res://_word_dict_test.gd

@@ -47,7 +47,7 @@ Build valid English words using cards from your slots and hand. Each card has a 
 - **Stages**: Defeat the enemy to advance to the next stage; your hand and the shared slot reels are fully reset on each stage change
 - **10 Turns**: Game ends after 10 turns
 - **Enemy & Shared Cards**: Each enemy gets a random name from the dictionary (3-9 letters). The shared slot reels are built from that enemy's name letters (any shortage is filled by random draws) and are handled separately from your deck.
-- **Dictionary**: Only valid English words are accepted. The word list lives in **`word_dictionary.json`** (416,292 words) together with a Japanese gloss table. It is generated from `dictionary.txt` by `build_word_json.py`; if the JSON is missing or malformed the game falls back to reading `dictionary.txt` directly, so it always runs.
+- **Dictionary**: Only valid English words are accepted. The word list lives in **`word_dictionary.json`** (416,292 words in total) together with a Japanese gloss table. It is generated from `dictionary.txt` by `build_word_json.py`; if the JSON is missing or malformed the game falls back to reading `dictionary.txt` directly, so it always runs.
 
 ### How to Play
 1. Click or drag cards from slots (marked with ★ ACTIVE) or your hand to the Workbench
@@ -71,10 +71,10 @@ While a valid word sits on the Workbench, a line above the damage forecast shows
 
 The lookup happens in two steps:
 
-1. **`word_dictionary.json`** — the bundled glossary. It is instant, needs no network, and works in every export (including Web). Only words that actually have a gloss are listed (no empty entries), and a word with no entry simply falls through to step 2.
+1. **`word_dictionary.json`** — the bundled glossary. It is instant, needs no network, and works in every export (including Web). Only words that actually have a gloss are listed (no empty entries), and a word with no entry simply falls through to step 2. A translated word is stored **only** under `translations`, never in `words`, so the two sections are disjoint; the game treats their union as the accepted word list.
 2. **Jisho** (jisho.org) — used for everything the bundled glossary does not have. The request and its result ranking are described below.
 
-> Currently the bundled glossary covers **252 words**: every common 3-letter-or-shorter word plus the sample set. So a short word (`CAT`, `AND`, `THE`…) is translated instantly and offline, while a longer word goes to Jisho. Adding more words means adding a line to `build_word_json.py` and re-running it — no code change.
+> Currently the bundled glossary covers **2241 words**: the first 2000 entries of the alphabetical list (`_head2000.json`), every common 3-letter-or-shorter word, and the sample set. So `CAT`, `AND`, `THE` and also `ABBACY`, `ABANDONMENT` are translated instantly and offline, while anything else goes to Jisho. Adding more words means adding a line to the source table and re-running `build_word_json.py` — no code change.
 
 > Jisho:
 >
