@@ -311,6 +311,9 @@ func confirm_burn_card(card_id: String) -> Dictionary:
 	else:
 		return {"ok": false, "reason": "unknown source"}
 
+	# Reset shield when claiming a reward after defeating an enemy
+	shield = 0
+
 	pending_burn_index = -1
 	pending_reward_choice = false
 	reward_options = []
@@ -419,6 +422,9 @@ func choose_reward(index: int) -> Dictionary:
 			hand.append(drawn)
 			result["message"] = "Drew %s (%d dmg) into your hand." % [
 				drawn.get("letter", "?"), int(drawn.get("damage", 0))]
+
+	# Reset shield when claiming a reward after defeating an enemy
+	shield = 0
 
 	pending_reward_choice = false
 	reward_options = []
