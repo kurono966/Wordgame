@@ -1294,35 +1294,32 @@ func _on_card_special_used(card_data: Dictionary) -> void:
 		return
 
 	var discarded_panels: Array = []
+	if hand_index >= 0 and hand_index < hand_card_views.size():
+		discarded_panels.append(hand_card_views[hand_index]["panel"])
+
 	var result: Dictionary = GameManager.use_special_ability(hand_index)
 	if not result.get("valid", false):
 		_refresh_op_display("denied")
 		_show_step_message("★ SPECIAL failed: %s." % str(result.get("reason", "unknown")), Color(1.0, 0.8, 0.3, 1.0))
 		return
 
-	var discarded_cards: Array = result.get("discarded", [])
-	if not discarded_cards.is_empty():
-		for d_card in discarded_cards:
-			for i in range(hand_card_views.size()):
-				if i < hand_arr.size() and hand_arr[i] != null and hand_arr[i] == d_card:
-					discarded_panels.append(hand_card_views[i]["panel"])
-		if not discarded_panels.is_empty():
-			await _animate_cards_discard(discarded_panels)
+	if not discarded_panels.is_empty():
+		await _animate_cards_discard(discarded_panels)
 
-		# Remove any workbench cards that were discarded by the effect
-		var grave_tail: Array = GameManager.get_graveyard().slice(GameManager.get_graveyard().size() - result.get("drawn", 0))
-		workbench_cards = workbench_cards.filter(func(c: Dictionary) -> bool:
-			if c.get("type") != "hand":
-				return true
-			var hi: int = c.get("hand_index", -1)
-			var cur_hand: Array = GameManager.get_hand()
-			if hi >= 0 and hi < cur_hand.size() and cur_hand[hi] != null:
-				return true
-			for d in grave_tail:
-				if d.get("letter") == c.get("card_letter") and d.get("damage") == c.get("damage") and d.get("color") == c.get("color"):
-					return false
+	# Remove any workbench cards that were discarded by the effect
+	var grave_tail: Array = GameManager.get_graveyard().slice(GameManager.get_graveyard().size() - result.get("drawn", 1))
+	workbench_cards = workbench_cards.filter(func(c: Dictionary) -> bool:
+		if c.get("type") != "hand":
 			return true
-		)
+		var hi: int = c.get("hand_index", -1)
+		var cur_hand: Array = GameManager.get_hand()
+		if hi >= 0 and hi < cur_hand.size() and cur_hand[hi] != null:
+			return true
+		for d in grave_tail:
+			if d.get("letter") == c.get("card_letter") and d.get("damage") == c.get("damage") and d.get("color") == c.get("color"):
+				return false
+		return true
+	)
 
 	_play_score_up_sound()
 	_animate_next_hand_refresh = true

@@ -94,13 +94,11 @@ const CARD_DEFS: Array = [
 	{"letter": "K", "damage": 5, "color": "red"}, {"letter": "K", "damage": 5, "color": "blue"},
 	{"letter": "K", "damage": 5, "color": "green"},
 
-	# ── 8 Damage: Very Difficult (J, X) ──
+	# ── 8 Damage: Very Difficult (J) ──
 	{"letter": "J", "damage": 8, "color": "green"},
 	{"letter": "J", "damage": 8, "color": "yellow"},
-	{"letter": "X", "damage": 8, "color": "yellow"},
 
-	# ── 10 Damage: Extreme (Q, Z) ──
-	{"letter": "Q", "damage": 10, "color": "red"},
+	# ── 10 Damage: Extreme (Z) ──
 	{"letter": "Z", "damage": 10, "color": "blue"},
 
 	# ── Wildcard (0 damage, can be any letter, has a color for multiplier matching) ──
@@ -178,10 +176,10 @@ const SPECIAL_CARD_DEFS: Array = [
 	},
 	{
 		"letter": "D", "damage": 2, "color": "yellow",
-		"special_id": "spin_charge",
-		"special_name": "SPIN CHARGE",
+		"special_id": "discard_draw",
+		"special_name": "DISCARD & DRAW",
 		"special_cost": 2,
-		"special_desc": "Spin a random shared reel by 1 step."
+		"special_desc": "Discard D + 1 random card from hand, then draw 2 new cards."
 	},
 	{
 		"letter": "O", "damage": 1, "color": "green",
@@ -473,8 +471,12 @@ func reset_game() -> void:
 	pending_burn_index = -1
 	slot_in_use = [false, false, false]
 
-	# Build this game's deck: DECK_SIZE cards picked at random from the card pool
-	var pool: Array = CARD_DEFS.duplicate()
+	# Build this game's deck: DECK_SIZE cards picked at random from the card pool (strictly no X or Q)
+	var pool: Array = []
+	for card_def in CARD_DEFS:
+		var letter: String = str(card_def.get("letter", "")).to_upper()
+		if letter != "X" and letter != "Q":
+			pool.append(card_def.duplicate())
 	pool.shuffle()
 	for i in range(DECK_SIZE):
 		deck.append(pool[i].duplicate())
@@ -644,92 +646,86 @@ func use_special_ability(hand_index: int) -> Dictionary:
 	result["special_id"] = s_id
 	result["special_name"] = s_name
 
+	# Special card is ALWAYS sent to the graveyard upon use
+	graveyard.append(special_card)
+	hand[hand_index] = null
+	result["discarded"] = [special_card]
+	result["drawn"] = 1
+
 	match s_id:
 		"royal_summon":
-			# Add a 'U' (1 dmg, red) card to hand
-			var u_card: Dictionary = {"letter": "U", "damage": 1, "color": "red"}
-			var added: bool = false
-			for i in range(hand.size()):
-				if hand[i] == null:
-					hand[i] = u_card
-					added = true
-					break
-			if not added:
-				hand.append(u_card)
-			result["message"] = "ROYAL SUMMON! Added 'U' (1 dmg, red) to your hand."
+			# Q goes to graveyard, add a 'U' (1 dmg, red) card to hand in its place
+			hand[hand_index] = {"letter": "U", "damage": 1, "color": "red"}
+			result["message"] = "ROYAL SUMMON! Q was sent to graveyard, added 'U' (1 dmg, red) to hand."
 
 		"zero_gravity":
-			# Gain 10 shield and nullify night penalty this turn
+			# Z goes to graveyard, gain 10 shield and nullify night penalty this turn
 			shield += 10
 			night_penalty_immune = true
-			result["message"] = "ZERO GRAVITY! Gained 10 shield and night penalty nullified this turn."
+			_refill_hand()
+			result["message"] = "ZERO GRAVITY! Z was sent to graveyard. Gained 10 shield and nullified night penalty."
 
 		"cross_multiply":
-			# Double next submitted word's effects
+			# X goes to graveyard, double next submitted word's effects
 			word_multiplier = 2
-			result["message"] = "CROSS MULTIPLY! Next word effects will be DOUBLED (2x)!"
+			_refill_hand()
+			result["message"] = "CROSS MULTIPLY! X was sent to graveyard. Next word effects DOUBLED (2x)!"
 
 		"jack_in_the_box":
-			# Transform this card into a wildcard (?)
-			special_card["letter"] = "?"
-			special_card["is_wildcard"] = true
-			result["message"] = "JACK IN THE BOX! J transformed into a wildcard (?)!"
+			# J goes to graveyard, leaves a wildcard (?) in hand in its place
+			hand[hand_index] = {"letter": "?", "damage": 8, "color": "green", "is_wildcard": true}
+			result["message"] = "JACK IN THE BOX! J was sent to graveyard, left a wildcard (?) in hand!"
 
 		"spark":
-			# Deal 4 direct damage to the enemy
+			# E goes to graveyard, deal 4 direct damage to the enemy
 			_apply_damage(4)
-			result["message"] = "SPARK! Dealt 4 direct damage to the enemy."
+			_refill_hand()
+			result["message"] = "SPARK! E was sent to graveyard. Dealt 4 direct damage to the enemy."
 
 		"guard":
-			# Gain 4 shield
+			# S goes to graveyard, gain 4 shield
 			shield += 4
-			result["message"] = "GUARD! Gained 4 shield."
+			_refill_hand()
+			result["message"] = "GUARD! S was sent to graveyard. Gained 4 shield."
 
 		"mini_heal":
-			# Restore 4 HP
+			# A goes to graveyard, restore 4 HP
 			var healed: int = mini(4, PLAYER_MAX_HP - player_hp)
 			player_hp += healed
-			result["message"] = "MINI HEAL! Restored %d HP." % healed
+			_refill_hand()
+			result["message"] = "MINI HEAL! A was sent to graveyard. Restored %d HP." % healed
 
 		"cycle":
-			# Discard this card and draw a new one
-			graveyard.append(hand[hand_index])
-			result["discarded"] = [special_card]
-			hand[hand_index] = _draw_card()
-			result["drawn"] = 1
-			result["message"] = "CYCLE! Discarded %s and drew a new card." % special_card.get("letter", "T")
+			# T goes to graveyard, draw a new card
+			_refill_hand()
+			result["message"] = "CYCLE! %s was sent to graveyard and drew a new card." % special_card.get("letter", "T")
 
-		"spin_charge":
-			# Spin a random shared reel by 1 step
-			var slot_idx: int = randi() % NUM_SLOTS
-			rotate_slots([slot_idx])
-			result["message"] = "SPIN CHARGE! Advanced shared reel %d." % (slot_idx + 1)
+		"discard_draw":
+			# D goes to graveyard (already done above), discard 1 more random card, draw 2
+			var other_indices: Array = []
+			for i in range(hand.size()):
+				if i != hand_index and hand[i] != null:
+					other_indices.append(i)
+			if other_indices.size() > 0:
+				other_indices.shuffle()
+				var discard_idx: int = other_indices[0]
+				graveyard.append(hand[discard_idx])
+				hand[discard_idx] = null
+			_refill_hand()
+			result["message"] = "DISCARD & DRAW! D + 1 card sent to graveyard, drew 2 new cards."
 
 		"vowel_shift":
-			# Shift to a random vowel (A, E, I, U)
-			var cur_l: String = special_card.get("letter", "O")
+			# O goes to graveyard, replace with a random vowel (A, E, I, U)
 			var vowels: Array = ["A", "E", "I", "U"]
 			vowels.shuffle()
 			var new_l: String = vowels[0]
-			special_card["letter"] = new_l
-			result["message"] = "VOWEL SHIFT! Shifted %s to '%s'." % [cur_l, new_l]
+			hand[hand_index] = {"letter": new_l, "damage": 1, "color": "green"}
+			result["message"] = "VOWEL SHIFT! O was sent to graveyard, generated '%s' in hand." % new_l
 
 		_:
 			# Fallback
-			var target_color: String = special_card.get("color", "red")
-			var discarded: Array = []
-			graveyard.append(hand[hand_index])
-			discarded.append(special_card)
-			hand[hand_index] = null
-			for i in range(hand.size()):
-				if hand[i] != null and hand[i].get("color", "red") == target_color:
-					graveyard.append(hand[i])
-					discarded.append(hand[i])
-					hand[i] = null
 			_refill_hand()
-			result["discarded"] = discarded
-			result["drawn"] = discarded.size()
-			result["message"] = "Special activated! Discarded %d cards." % discarded.size()
+			result["message"] = "Special activated! %s was sent to graveyard." % special_card.get("letter", "?")
 
 	result["valid"] = true
 	return result

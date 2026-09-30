@@ -2,7 +2,8 @@ extends SceneTree
 
 # Headless check of the updated special ability & reward system:
 #   - Initial deck NEVER contains special ability cards
-#   - Special abilities have unique costs and effects
+#   - Initial deck NEVER contains X or Q cards
+#   - Special cards are ALWAYS sent to graveyard upon activation
 #   - Q (Royal Summon), Z (Zero Gravity), X (Cross Multiply), J (Jack in the box)
 #   - Generic specials (Spark, Guard, Mini Heal, Cycle)
 #   - Reward system provides special cards
@@ -17,12 +18,17 @@ func _run() -> void:
 
 	var fails: int = 0
 
-	# 1) Initial deck verification: ZERO special cards in initial deck
+	# 1) Initial deck verification: ZERO special cards & ZERO X/Q cards in initial deck
 	var specials_in_initial_deck: int = 0
+	var x_or_q_in_initial_deck: int = 0
 	for card in gm.deck:
 		if gm.has_special_ability(card):
 			specials_in_initial_deck += 1
+		var l: String = str(card.get("letter", "")).to_upper()
+		if l == "X" or l == "Q":
+			x_or_q_in_initial_deck += 1
 	fails += _check(specials_in_initial_deck == 0, "initial deck contains zero special cards (%d found)" % specials_in_initial_deck)
+	fails += _check(x_or_q_in_initial_deck == 0, "initial deck contains zero X or Q cards (%d found)" % x_or_q_in_initial_deck)
 
 	# 2) Special definition check
 	var q_def: Dictionary = {}
@@ -60,25 +66,23 @@ func _run() -> void:
 	fails += _check(not denied.get("valid", false), "activation refused when short on OP")
 	fails += _check(gm.operation_points == 3, "refused activation spends no OP")
 
-	# 4) Test Q: Royal Summon (adds 'U' to hand)
+	# 4) Test Q: Royal Summon (sends Q to graveyard, adds 'U' to hand in place)
+	gm.graveyard.clear()
 	gm.operation_points = 10
-	var hand_size_before: int = gm.hand.size()
 	var q_res: Dictionary = gm.use_special_ability(0)
 	fails += _check(q_res.get("valid", false), "Q special succeeded")
 	fails += _check(gm.operation_points == 4, "10 - 6 = 4 OP left after Q special")
-	var has_u: bool = false
-	for c in gm.hand:
-		if c != null and c.get("letter") == "U":
-			has_u = true
-			break
-	fails += _check(has_u, "Royal Summon added 'U' card to hand")
+	fails += _check(gm.graveyard.size() == 1 and gm.graveyard[0].get("letter") == "Q", "Q was sent to graveyard")
+	fails += _check(gm.hand[0] != null and gm.hand[0].get("letter") == "U", "Royal Summon placed 'U' card in hand")
 
-	# 5) Test Z: Zero Gravity (gains 10 shield and nullifies night penalty)
+	# 5) Test Z: Zero Gravity (sends Z to graveyard, gains 10 shield, nullifies night penalty)
+	var grave_count: int = gm.graveyard.size()
 	gm.shield = 0
 	gm.hand[0] = z_def.duplicate()
 	gm.operation_points = 10
 	var z_res: Dictionary = gm.use_special_ability(0)
 	fails += _check(z_res.get("valid", false), "Z special succeeded")
+	fails += _check(gm.graveyard.size() == grave_count + 1 and gm.graveyard.back().get("letter") == "Z", "Z was sent to graveyard")
 	fails += _check(gm.shield == 10, "Z special granted 10 shield")
 	fails += _check(gm.night_penalty_immune, "night_penalty_immune is true")
 	fails += _check(gm.get_next_slot_total_penalty() == 0, "night penalty preview is 0 during immunity")
@@ -88,27 +92,33 @@ func _run() -> void:
 	fails += _check(pen_res.get("requested_damage") == 0, "night penalty was nullified to 0 damage")
 	fails += _check(not gm.night_penalty_immune, "night_penalty_immune reset after penalty applied")
 
-	# 6) Test X: Cross Multiply (2x next word effects)
+	# 6) Test X: Cross Multiply (sends X to graveyard, 2x next word effects)
+	grave_count = gm.graveyard.size()
 	gm.hand[0] = x_def.duplicate()
 	gm.operation_points = 10
 	var x_res: Dictionary = gm.use_special_ability(0)
 	fails += _check(x_res.get("valid", false), "X special succeeded")
+	fails += _check(gm.graveyard.size() == grave_count + 1 and gm.graveyard.back().get("letter") == "X", "X was sent to graveyard")
 	fails += _check(gm.word_multiplier == 2, "word_multiplier set to 2")
 
-	# 7) Test J: Jack in the box (transforms into wildcard '?')
+	# 7) Test J: Jack in the box (sends J to graveyard, leaves wildcard '?' in hand)
+	grave_count = gm.graveyard.size()
 	gm.hand[0] = j_def.duplicate()
 	gm.operation_points = 10
 	var j_res: Dictionary = gm.use_special_ability(0)
 	fails += _check(j_res.get("valid", false), "J special succeeded")
-	fails += _check(gm.hand[0].get("letter") == "?", "J transformed into '?'")
-	fails += _check(gm.hand[0].get("is_wildcard") == true, "J has is_wildcard = true")
+	fails += _check(gm.graveyard.size() == grave_count + 1 and gm.graveyard.back().get("letter") == "J", "J was sent to graveyard")
+	fails += _check(gm.hand[0].get("letter") == "?", "J left wildcard '?' in hand")
+	fails += _check(gm.hand[0].get("is_wildcard") == true, "wildcard has is_wildcard = true")
 
-	# 8) Test Generic A: Mini Heal
+	# 8) Test Generic A: Mini Heal (sends A to graveyard, restores 4 HP)
+	grave_count = gm.graveyard.size()
 	gm.player_hp = 30
 	gm.hand[0] = a_def.duplicate()
 	gm.operation_points = 5
 	var a_res: Dictionary = gm.use_special_ability(0)
 	fails += _check(a_res.get("valid", false), "Mini heal special succeeded")
+	fails += _check(gm.graveyard.size() == grave_count + 1 and gm.graveyard.back().get("special_id") == "mini_heal", "A was sent to graveyard")
 	fails += _check(gm.player_hp == 34, "player HP restored from 30 to 34")
 
 	# 9) Test reward system offers special cards
