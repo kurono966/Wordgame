@@ -29,7 +29,7 @@ var _low_time_played: bool = false
 @onready var piles_button          : Button         = $Scroll/Center/VBox/ControlRow/PilesButton
 @onready var piles_dialog          : Control        = $PilesDialog
 @onready var piles_panel           : PanelContainer = $PilesDialog/DialogPanel
-@onready var piles_label           : Label          = $PilesDialog/DialogPanel/DialogVBox/PilesLabel
+@onready var piles_grid            : GridContainer  = $PilesDialog/DialogPanel/DialogVBox/Scroll/PilesGrid
 @onready var piles_close_button    : Button         = $PilesDialog/DialogPanel/DialogVBox/DialogHeader/CloseButton
 # Reward choice (offered after every enemy defeat)
 @onready var reward_dialog         : Control        = $RewardDialog
@@ -381,7 +381,6 @@ func _style_piles_panel() -> void:
 	sb.content_margin_top = 14.0
 	sb.content_margin_bottom = 14.0
 	piles_panel.add_theme_stylebox_override("panel", sb)
-	piles_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _on_piles_pressed() -> void:
 	if piles_dialog.visible:
@@ -396,6 +395,9 @@ func _close_piles_dialog() -> void:
 	piles_button.grab_focus()
 
 func _refresh_piles_dialog() -> void:
+	for child in piles_grid.get_children():
+		child.queue_free()
+
 	var draw_pile: Array = GameManager.get_draw_pile_cards()
 	var full_deck: Array = []
 	full_deck.append_array(draw_pile)
@@ -404,12 +406,10 @@ func _refresh_piles_dialog() -> void:
 			full_deck.append(card)
 	full_deck.append_array(GameManager.get_graveyard())
 
-	piles_label.text = "[DECK — %d cards total]\n%s\n\n[DRAW PILE — %d cards]\n%s\n\nDraw order is hidden. Cards are grouped alphabetically, not in draw order." % [
-		full_deck.size(),
-		_format_card_counts(full_deck),
-		draw_pile.size(),
-		_format_card_counts(draw_pile)
-	]
+	# Display all cards visually
+	for card in full_deck:
+		var entry = {"id": "deck_card", "card": card}
+		piles_grid.add_child(_build_piles_card_button(entry))
 
 func _format_card_counts(cards: Array) -> String:
 	if cards.is_empty():
@@ -430,6 +430,45 @@ func _format_card_counts(cards: Array) -> String:
 	for entry in entries:
 		lines.append("  %s  x%d" % [entry, counts[entry]])
 	return "\n".join(lines)
+
+## Builds a visual card button for the Piles dialog (similar to burn card button)
+func _build_piles_card_button(entry: Dictionary) -> Button:
+	var card: Dictionary = entry.get("card", {})
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(78, 100)
+	_style_burn_card_button(button, str(card.get("color", "red")))
+	button.disabled = true  # Cards in piles are read-only
+
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vbox.offset_left = 4.0
+	vbox.offset_top = 6.0
+	vbox.offset_right = -4.0
+	vbox.offset_bottom = -6.0
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 0)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(vbox)
+
+	var consts: Dictionary = get_card_color_constants(str(card.get("color", "red")))
+	var letter := Label.new()
+	letter.text = str(card.get("letter", "?"))
+	letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	letter.add_theme_font_size_override("font_size", 30)
+	letter.add_theme_color_override("font_color", consts["border"])
+	letter.add_theme_color_override("font_outline_color", Color("080d17"))
+	letter.add_theme_constant_override("outline_size", 2)
+	letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(letter)
+
+	var dmg := Label.new()
+	dmg.text = "%d dmg" % int(card.get("damage", 0))
+	dmg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dmg.add_theme_font_size_override("font_size", 12)
+	dmg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 1.0))
+	dmg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(dmg)
+	return button
 
 func _refresh_formula_panel() -> void:
 	formula_label.text = _build_formula_text() + "\n" + _build_last_calc_text()
