@@ -74,6 +74,10 @@ var slot_reels: Array = []
 var hand_card_views: Array = []
 var _hand_visual_keys: Array = []
 var _animate_next_hand_refresh: bool = false
+# Meta key set on a card panel that a discard animation has hidden completely.
+# Hand panels are reused, so the next refresh uses this flag to guarantee the
+# replacement card is made visible again.
+const FADED_OUT_META := "faded_out"
 
 # Workbench state
 var workbench_cards: Array = []
@@ -644,7 +648,14 @@ func _play_card_swap_sound() -> void:
 func _card_visual_key(card: Variant) -> String:
 	if card == null:
 		return ""
-	return "%s:%s:%s" % [card.get("letter", "?"), card.get("color", "red"), card.get("damage", 0)]
+	# The special id is part of the key too, so spending a ★ SPECIAL and then
+	# drawing a plain card that looks exactly the same still counts as a change.
+	return "%s:%s:%s:%s" % [
+		card.get("letter", "?"),
+		card.get("color", "red"),
+		card.get("damage", 0),
+		card.get("special_id", "")
+	]
 
 func _animate_draw_panels(panels: Array) -> void:
 	if panels.is_empty():
@@ -652,6 +663,9 @@ func _animate_draw_panels(panels: Array) -> void:
 	_play_card_draw_sound()
 	for i in range(panels.size()):
 		var panel: Control = panels[i]
+		# This panel fades itself back in, so it is no longer "lost".
+		if panel.has_meta(FADED_OUT_META):
+			panel.remove_meta(FADED_OUT_META)
 		panel.pivot_offset = panel.size / 2.0
 		panel.modulate = Color(1.0, 1.0, 1.0, 0.0)
 		panel.scale = Vector2(0.78, 0.78)
@@ -701,9 +715,27 @@ func _animate_cards_discard(panels: Array) -> void:
 		if panel is Control:
 			var card_panel := panel as Control
 			card_panel.pivot_offset = card_panel.size / 2.0
+			# The card is faded out completely. Hand panels are reused for the
+			# replacement card, so flag them: the next refresh must bring them
+			# back even when the new card looks identical to the old one.
+			card_panel.set_meta(FADED_OUT_META, true)
 			tween.tween_property(card_panel, "modulate", Color(1.0, 0.4, 0.45, 0.0), 0.18)
 			tween.tween_property(card_panel, "scale", Vector2(0.72, 0.72), 0.18)
 	await tween.finished
+
+## Un-hides any hand panel a discard animation left transparent. Normally the
+## draw animation fades those panels back in, but it only runs for cards whose
+## look CHANGED; without this a refill that dealt an identical card (which is
+## exactly what happens when a ★ SPECIAL draws its own card back) would leave
+## the panel invisible.
+func _restore_faded_out_panels() -> void:
+	for cv in hand_card_views:
+		var panel: Control = cv["panel"]
+		if not panel.has_meta(FADED_OUT_META):
+			continue
+		panel.remove_meta(FADED_OUT_META)
+		panel.modulate = Color.WHITE
+		panel.scale = Vector2.ONE
 
 # ── HP visual effects ─────────────────────────────────────────────────────
 func _style_hp_bars() -> void:
@@ -1090,6 +1122,9 @@ func _refresh_hand_and_deck() -> void:
 	if _animate_next_hand_refresh:
 		_animate_next_hand_refresh = false
 		_animate_draw_panels(drawn_panels)
+	# Safety net: any panel a discard animation hid must be visible again, even
+	# when the draw animation above skipped it because the card looks the same.
+	_restore_faded_out_panels()
 
 # ── Setup content for a slot card row ───────────────────────────────────────
 func _setup_slot_card(cv: Dictionary, card: Dictionary, role: String, slot_idx: int) -> void:
