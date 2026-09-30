@@ -15,6 +15,22 @@ Build valid English words using cards from your slots and hand. Each card has a 
 - **Positive damage**: reduces the current enemy's HP. When an enemy's HP reaches 0 the stage is cleared and the next stage begins — any excess damage is wasted and does NOT carry over to the next enemy.
 - **Stages**: Each stage has one enemy. Clearing a stage spawns a stronger enemy (+15 max HP) and **resets your cards**: all 7 hand cards are discarded and redrawn, and the shared slot reels are rebuilt from the new enemy's name (all three reels roll to the newly dealt cards).
 - **Rewards**: after every enemy defeat you pick **1 of 3** rewards before the next fight. Deck rewards are always in the pool while the deck size allows, so you can grow or slim your deck between stages.
+
+### Rewards (Enemy Defeat)
+| Reward | Effect |
+|---|---|
+| **ADD A CARD** | Adds the **specific card shown** to your deck (no strike-through) |
+| **BURN A CARD** | Removes the **specific card shown** from your deck (shown struck through) |
+| **VITALITY** (HP) | Restore HP (25% of max, minimum 10) |
+| **BARRIER** (SH) | Gain 8 shield |
+| **INSIGHT** (OP) | Gain 5 operation points |
+| **IRON WILL** (MAX) | Max HP +5 (heals the same amount) |
+| **CARD DRAW** (DR) | Draw a card into hand |
+
+- **Deck cards are rolled up front and shown face-up.** You are not picking freely from the card pool — you choose between *taking the card on offer* and *burning that card to thin your deck*
+- The card you are shown is always the card you get (or lose). If identical copies exist, any of them counts
+- There are always **three** options, at least one of which is a deck change (add/remove) while the deck size allows
+- The deck is clamped to **5-40 cards**; when the draw pile runs out the graveyard is shuffled back in, so the draw never breaks
 - **Negative damage**: reduces your HP (never below 0). If your HP reaches 0, it's GAME OVER (DEFEAT).
 - **Result**: after 10 turns the game ends (COMPLETE) and you are evaluated by stage reached, total damage dealt and enemies defeated.
 

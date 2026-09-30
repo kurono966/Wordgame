@@ -127,6 +127,93 @@ func _ready() -> void:
 	fails += _check(not gm.has_pending_reward(), "reset_game clears the pending choice")
 	fails += _check(gm.rewards_taken == 0, "reset_game clears rewards_taken")
 
+	# ===== The card you are SHOWN is the card you GET ==============
+	# The reward rolls a concrete card up front so the choice is informed.
+	gm.reset_game()
+	gm.roll_rewards()
+	var deck_opts: Array = gm.get_reward_options()
+	var add_card: Dictionary = {}
+	var burn_card: Dictionary = {}
+	for r: Dictionary in deck_opts:
+		if str(r.get("type", "")) == "add_card":
+			add_card = r
+		elif str(r.get("type", "")) == "remove_card":
+			burn_card = r
+
+	fails += _check(add_card.has("card"), "add_card option carries a concrete card")
+	fails += _check(str(add_card.get("card", {}).get("letter", "")) != "",
+		"shown add card has a letter ('%s')" % str(add_card.get("card", {}).get("letter", "")))
+	fails += _check(burn_card.has("card"), "remove_card option carries a concrete card")
+	if burn_card.has("card"):
+		var bc: Dictionary = burn_card["card"]
+		# The burned card must really exist in the deck right now
+		var in_deck: bool = false
+		for c: Dictionary in gm.deck:
+			if str(c.get("letter", "")) == str(bc.get("letter", "")) \
+					and int(c.get("damage", -1)) == int(bc.get("damage", -2)) \
+					and str(c.get("color", "")) == str(bc.get("color", "")):
+				in_deck = true
+		fails += _check(in_deck, "the burn card shown really is in the deck")
+
+	# Taking add_card must add EXACTLY the card that was displayed
+	if add_card.has("card"):
+		var expected: Dictionary = add_card["card"]
+		var exp_letter: String = str(expected.get("letter", ""))
+		var exp_dmg: int = int(expected.get("damage", 0))
+		var exp_color: String = str(expected.get("color", ""))
+		var before_add: int = gm.get_deck_size()
+		var res_add: Dictionary = gm.choose_reward(gm.get_reward_options().find(add_card))
+		fails += _check(res_add.get("ok", false), "add_card applies")
+		fails += _check(gm.get_deck_size() == before_add + 1, "deck grew by 1")
+		var granted: Dictionary = res_add.get("card", {})
+		fails += _check(str(granted.get("letter", "")) == exp_letter
+				and int(granted.get("damage", -1)) == exp_dmg
+				and str(granted.get("color", "")) == exp_color,
+			"granted card matches the one shown (%s %d %s)" % [exp_letter, exp_dmg, exp_color])
+		# And it must really be in the deck now
+		var now_in_deck: bool = false
+		for c: Dictionary in gm.deck:
+			if str(c.get("letter", "")) == exp_letter \
+					and int(c.get("damage", -1)) == exp_dmg \
+					and str(c.get("color", "")) == exp_color:
+				now_in_deck = true
+		fails += _check(now_in_deck, "the shown card really landed in the deck")
+
+	# Taking remove_card must remove EXACTLY the card that was displayed
+	# (re-roll first: the add_card above already consumed this choice)
+	gm.roll_rewards()
+	var rm_card: Dictionary = {}
+	for r: Dictionary in gm.get_reward_options():
+		if str(r.get("type", "")) == "remove_card":
+			rm_card = r
+	if rm_card.has("card"):
+		var shown: Dictionary = rm_card["card"]
+		var s_letter: String = str(shown.get("letter", ""))
+		var s_dmg: int = int(shown.get("damage", 0))
+		var s_color: String = str(shown.get("color", ""))
+		var count_before: int = 0
+		for c: Dictionary in gm.deck:
+			if str(c.get("letter", "")) == s_letter \
+					and int(c.get("damage", -1)) == s_dmg \
+					and str(c.get("color", "")) == s_color:
+				count_before += 1
+		var idx_rm2: int = gm.get_reward_options().find(rm_card)
+		var before_rm: int = gm.get_deck_size()
+		var res_rm: Dictionary = gm.choose_reward(idx_rm2)
+		fails += _check(res_rm.get("ok", false), "remove_card applies")
+		fails += _check(gm.get_deck_size() == before_rm - 1, "deck shrank by 1")
+		var count_after: int = 0
+		for c: Dictionary in gm.deck:
+			if str(c.get("letter", "")) == s_letter \
+					and int(c.get("damage", -1)) == s_dmg \
+					and str(c.get("color", "")) == s_color:
+				count_after += 1
+		fails += _check(count_after == count_before - 1,
+			"exactly the shown card was removed (%d -> %d of %s %d %s)" % [
+				count_before, count_after, s_letter, s_dmg, s_color])
+		fails += _check(str(res_rm.get("card", {}).get("letter", "")) == s_letter,
+			"the burn message names the card that was shown")
+
 	print("FAILURES=%d" % fails)
 	print("TEST_EXIT=%d" % fails)
 	get_tree().quit(fails)

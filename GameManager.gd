@@ -163,14 +163,31 @@ func roll_rewards() -> Array:
 	return reward_options
 
 
-## Adds one "gain a card" and one "burn a card" option when the deck size allows.
+## Adds one "gain this card" and one "burn this card" option when the deck size
+## allows. The concrete card is rolled UP FRONT and stored on the option, so the
+## player can compare "take this exact card" against "thin the deck" instead of
+## gambling on an unknown card.
 func _build_deck_rewards() -> void:
 	if deck.size() < MAX_DECK_SIZE:
 		reward_options.append({"type": "add_card", "title": "ADD A CARD",
-			"detail": "Put a new card into your deck."})
+			"detail": "Add this card to your deck.",
+			"card": _pick_reward_card()})
 	if deck.size() > MIN_DECK_SIZE:
+		# Burn target is chosen now too, so the risk is visible before committing.
+		var target: Dictionary = _pick_burn_target()
 		reward_options.append({"type": "remove_card", "title": "BURN A CARD",
-			"detail": "Remove one card from your deck."})
+			"detail": "Remove this card from your deck.",
+			"card": target})
+
+
+## Picks the card the "burn a card" reward will remove, without removing it yet.
+func _pick_burn_target() -> Dictionary:
+	if not deck.is_empty():
+		return deck[randi() % deck.size()].duplicate()
+	for card: Variant in hand:
+		if card != null:
+			return card.duplicate()
+	return {"letter": "?", "damage": 0, "color": "red"}
 
 
 ## Stat rewards, offered with weights that keep all three useful.
@@ -203,16 +220,21 @@ func choose_reward(index: int) -> Dictionary:
 
 	match str(reward.get("type", "")):
 		"add_card":
-			var card: Dictionary = _pick_reward_card()
-			deck.append(card)
-			result["message"] = "Added %s (%d dmg, %s) to your deck." % [
+			# Use the card that was rolled when the option was created, so the
+			# player gets exactly the card they were shown.
+			var card: Dictionary = reward.get("card", _pick_reward_card())
+			deck.append(card.duplicate())
+			result["card"] = card
+			result["message"] = "Added %s (%d dmg, %s) to your deck (now %d cards)." % [
 				card.get("letter", "?"), int(card.get("damage", 0)),
-				str(card.get("color", "red")).to_upper()]
+				str(card.get("color", "red")).to_upper(), deck.size()]
 		"remove_card":
-			var burned: Dictionary = _burn_random_deck_card()
-			result["message"] = "Burned %s (%d dmg, %s) from your deck." % [
+			# Remove the card that was shown, so nothing is swapped underfoot.
+			var burned: Dictionary = _remove_shown_card(reward)
+			result["card"] = burned
+			result["message"] = "Burned %s (%d dmg, %s) from your deck (now %d cards)." % [
 				burned.get("letter", "?"), int(burned.get("damage", 0)),
-				str(burned.get("color", "red")).to_upper()]
+				str(burned.get("color", "red")).to_upper(), deck.size()]
 		"heal":
 			var amount: int = maxi(10, int(round(float(player_hp) * 0.25)))
 			amount = mini(amount, PLAYER_MAX_HP - player_hp)
@@ -246,6 +268,25 @@ func _pick_reward_card() -> Dictionary:
 	if CARD_DEFS.is_empty():
 		return {"letter": "E", "damage": 1, "color": "red"}
 	return CARD_DEFS[randi() % CARD_DEFS.size()].duplicate()
+
+
+## Removes the exact card that was shown on the "burn a card" option. Falls back
+## to a random deck card if the shown one is no longer in the deck, so the reward
+## can never fail. Identical duplicates are interchangeable, so the first match
+## of the same letter/damage/colour is removed.
+func _remove_shown_card(reward: Dictionary) -> Dictionary:
+	var shown: Dictionary = reward.get("card", {})
+	var letter: String = str(shown.get("letter", ""))
+	var damage: int = int(shown.get("damage", -1))
+	var color: String = str(shown.get("color", ""))
+	for i in range(deck.size()):
+		var card: Dictionary = deck[i]
+		if str(card.get("letter", "")) == letter \
+				and int(card.get("damage", -1)) == damage \
+				and str(card.get("color", "")) == color:
+			deck.remove_at(i)
+			return card
+	return _burn_random_deck_card()
 
 
 ## Removes and returns a random card from the deck. Prefers the draw pile; falls

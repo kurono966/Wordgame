@@ -1983,7 +1983,7 @@ func show_reward_choice() -> void:
 	for i in range(options.size()):
 		var reward: Dictionary = options[i]
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(210, 200)
+		button.custom_minimum_size = Vector2(220, 268)
 		button.text = ""
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_style_reward_button(button)
@@ -2000,6 +2000,9 @@ func show_reward_choice() -> void:
 
 ## Paints the title / body text inside a reward button. Godot 4 Buttons do not
 ## render BBCode, so the label colours come from the theme, not markup.
+## Deck rewards show the ACTUAL card that will be gained or burned, drawn with
+## the same colour language as the cards on the table, so the player can weigh
+## "take this card" against "thin the deck".
 func _style_reward_button_content(button: Button, reward: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2011,6 +2014,8 @@ func _style_reward_button_content(button: Button, reward: Dictionary) -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(box)
 
+	var type: String = str(reward.get("type", ""))
+
 	var title := Label.new()
 	title.text = str(reward.get("title", "?"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -2020,13 +2025,16 @@ func _style_reward_button_content(button: Button, reward: Dictionary) -> void:
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(title)
 
-	var icon := Label.new()
-	icon.text = _reward_icon(str(reward.get("type", "")))
-	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon.add_theme_font_size_override("font_size", 30)
-	icon.add_theme_color_override("font_color", REWARD_COLOR_ICON)
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(icon)
+	if reward.has("card"):
+		box.add_child(_build_reward_card_view(reward.get("card", {}), type == "remove_card"))
+	else:
+		var icon := Label.new()
+		icon.text = _reward_icon(type)
+		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		icon.add_theme_font_size_override("font_size", 30)
+		icon.add_theme_color_override("font_color", REWARD_COLOR_ICON)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(icon)
 
 	var detail := Label.new()
 	detail.text = str(reward.get("detail", ""))
@@ -2037,6 +2045,67 @@ func _style_reward_button_content(button: Button, reward: Dictionary) -> void:
 	detail.add_theme_color_override("font_color", REWARD_COLOR_DETAIL)
 	detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(detail)
+
+
+## A miniature version of a game card: letter, damage, and the card's own colour.
+## Burned cards are tinted red and struck through so the two deck rewards never
+## look alike at a glance.
+func _build_reward_card_view(card: Dictionary, is_burn: bool) -> Control:
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(104, 128)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	var color_name: String = str(card.get("color", "red"))
+	var consts: Dictionary = get_card_color_constants(color_name)
+	sb.bg_color = consts["bg"]
+	sb.border_color = consts["border"]
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.shadow_color = Color(0, 0, 0, 0.45)
+	sb.shadow_size = 6
+	sb.shadow_offset = Vector2(0, 3)
+	panel.add_theme_stylebox_override("panel", sb)
+	center.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 0)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(vbox)
+
+	var letter := Label.new()
+	letter.text = str(card.get("letter", "?"))
+	letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	letter.add_theme_font_size_override("font_size", 46)
+	letter.add_theme_color_override("font_color", consts["border"])
+	letter.add_theme_color_override("font_outline_color", Color("080d17"))
+	letter.add_theme_constant_override("outline_size", 2)
+	letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(letter)
+
+	var dmg := Label.new()
+	dmg.text = "%d dmg" % int(card.get("damage", 0))
+	dmg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dmg.add_theme_font_size_override("font_size", 14)
+	dmg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 1.0))
+	dmg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(dmg)
+
+	if is_burn:
+		# Strike the card through so "burn this" is unmistakable
+		var strike := ColorRect.new()
+		strike.color = Color(1.0, 0.35, 0.3, 0.95)
+		strike.set_anchors_preset(Control.PRESET_CENTER)
+		strike.anchor_left = 0.0
+		strike.anchor_right = 1.0
+		strike.anchor_top = 0.42
+		strike.anchor_bottom = 0.5
+		strike.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_child(strike)
+	return center
 
 
 func _reward_icon(type: String) -> String:

@@ -191,6 +191,29 @@ func _ready() -> void:
 			"button %d has its content labels" % i)
 		fails += _check(btn.get_global_rect().size.y > 0.0,
 			"button %d has a real size (%.0fx%.0f)" % [i, btn.get_global_rect().size.x, btn.get_global_rect().size.y])
+
+	# A deck reward must render the CONCRETE card, not just the words "ADD A CARD".
+	# The letter on the button has to match the card the reward rolled.
+	var rendered_letter: String = ""
+	var rendered_damage: String = ""
+	for i in range(offered.size()):
+		var reward: Dictionary = offered[i]
+		if not reward.has("card"):
+			continue
+		var expected_letter: String = str(reward["card"].get("letter", ""))
+		var expected_damage: String = "%d dmg" % int(reward["card"].get("damage", 0))
+		var btn2: Button = main.reward_row.get_child(i) as Button
+		var labels: Array = _collect_label_texts(btn2)
+		fails += _check(labels.has(expected_letter),
+			"deck reward %d shows the card letter '%s' (got %s)" % [i, expected_letter, str(labels)])
+		fails += _check(labels.has(expected_damage),
+			"deck reward %d shows the damage '%s'" % [i, expected_damage])
+		fails += _check(str(reward.get("detail", "")).contains("this card"),
+			"deck reward %d says it is THIS specific card ('%s')" % [i, str(reward.get("detail", ""))])
+		rendered_letter = expected_letter
+		rendered_damage = expected_damage
+	fails += _check(rendered_letter != "", "at least one reward showed a concrete card (%s %s)" % [
+		rendered_letter, rendered_damage])
 	# Choosing must close the dialog and apply
 	var deck_before: int = GameManager.get_deck_size()
 	main._on_reward_chosen(0)
@@ -220,3 +243,13 @@ func _check(ok: bool, label: String) -> int:
 		return 0
 	printerr("  FAIL - ", label)
 	return 1
+
+
+## Gathers the text of every Label under a node, recursively.
+func _collect_label_texts(node: Node) -> Array:
+	var out: Array = []
+	if node is Label:
+		out.append(str((node as Label).text))
+	for child in node.get_children():
+		out.append_array(_collect_label_texts(child))
+	return out
