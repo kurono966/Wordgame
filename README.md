@@ -47,7 +47,7 @@ Build valid English words using cards from your slots and hand. Each card has a 
 - **Stages**: Defeat the enemy to advance to the next stage; your hand and the shared slot reels are fully reset on each stage change
 - **10 Turns**: Game ends after 10 turns
 - **Enemy & Shared Cards**: Each enemy gets a random name from the dictionary (3-9 letters). The shared slot reels are built from that enemy's name letters (any shortage is filled by random draws) and are handled separately from your deck.
-- **Dictionary**: Only valid English words are accepted
+- **Dictionary**: Only valid English words are accepted. The word list lives in **`word_dictionary.json`** (416,292 words) together with a Japanese gloss table. It is generated from `dictionary.txt` by `build_word_json.py`; if the JSON is missing or malformed the game falls back to reading `dictionary.txt` directly, so it always runs.
 
 ### How to Play
 1. Click or drag cards from slots (marked with ★ ACTIVE) or your hand to the Workbench
@@ -66,13 +66,28 @@ A line above the buttons shows, **while you are still building the word**, exact
 - Colour codes the risk: green = you take no damage, yellow = you lose HP, red = **this submit would defeat you (LETHAL)**
 - It also flags a Workbench that is not a valid word, so you can see SUBMIT will be rejected
 
-### Word Meanings (Jisho API)
-While a valid word sits on the Workbench, a line above the damage forecast looks it up on **Jisho** (jisho.org) and shows the **English → Japanese** translation:
+### Word Meanings (bundled glossary, then Jisho API)
+While a valid word sits on the Workbench, a line above the damage forecast shows its **English → Japanese** translation.
 
-```
-GOAT   →   山羊 (やぎ)  Noun
-                goat
-```
+The lookup happens in two steps:
+
+1. **`word_dictionary.json`** — the bundled glossary. It is instant, needs no network, and works in every export (including Web). Only words that actually have a gloss are listed (no empty entries), and a word with no entry simply falls through to step 2.
+2. **Jisho** (jisho.org) — used for everything the bundled glossary does not have. The request and its result ranking are described below.
+
+> Currently the bundled glossary covers **252 words**: every common 3-letter-or-shorter word plus the sample set. So a short word (`CAT`, `AND`, `THE`…) is translated instantly and offline, while a longer word goes to Jisho. Adding more words means adding a line to `build_word_json.py` and re-running it — no code change.
+
+> Jisho:
+>
+> ```
+> GOAT   →   山羊 (やぎ)  Noun
+>                 goat
+> ```
+>
+> A bundled-glossary hit looks like this instead (no headword, no network):
+>
+> ```
+> CAT    →   猫
+> ```
 
 - The headword is shown in gold and the English glosses in pale blue (two separate labels — Godot 4's `Label` cannot render BBCode, so no markup is used)
 - Jisho's search is a **full-text search over English glosses**, so a raw lookup returns unrelated words too (searching "goat" also matches 未 "the Ram; the Goat", and the top hit is not always a translation at all). Entries are therefore scored so the word shown **actually translates the word you built**:
@@ -84,7 +99,7 @@ GOAT   →   山羊 (やぎ)  Noun
 - Lookups are **cached**, so a word is only ever fetched once
 - It updates as you change the word, and a late answer for an abandoned word is discarded instead of overwriting the current one
 - Misses and network failures are reported inline and are also cached, so the game never stalls or retries in a loop
-- **Web export limitation**: jisho.org sends no `Access-Control-Allow-Origin` header, so browsers block the request. Meanings work in the **editor and desktop builds**; in a Web export the line explains that it is unavailable. Use a CORS proxy if you need it in the browser.
+- **Web export limitation**: jisho.org sends no `Access-Control-Allow-Origin` header, so browsers block the request. The **bundled glossary still works** in a Web export (it is a local file), so short words are translated there; only the Jisho fallback is unavailable, and the line says so. Use a CORS proxy if you need the fallback in the browser.
 
 ### Slot Rotation
 - Only slots that are used in your word will rotate: the ★ ACTIVE card you used is spent and the reel rolls so that its NEXT card becomes ACTIVE

@@ -1465,6 +1465,14 @@ func _refresh_word_meaning(word: String) -> void:
 		_set_definition_text("", MEANING_COLOR_NONE)
 		return
 
+	# Bundled translation first: it is instant, offline, and the word is
+	# guaranteed to be one the game accepts.
+	var gloss: String = GameManager.get_word_translation(word)
+	if gloss != "":
+		_set_meaning_text(gloss, MEANING_COLOR_JP)
+		_set_definition_text("", MEANING_COLOR_NONE)
+		return
+
 	# Cached answer (or an explicit "unavailable in Web export") resolves at once
 	var cached: Dictionary = JishoClient.peek(word)
 	if not cached.is_empty():
@@ -1487,6 +1495,9 @@ func _refresh_word_meaning(word: String) -> void:
 func _on_jisho_lookup_finished(word: String, _result: Dictionary) -> void:
 	# Ignore an answer for a word the player has since changed
 	if word.to_lower() != _looked_up_word.to_lower():
+		return
+	# A bundled translation always wins, so a late Jisho answer must not replace it
+	if GameManager.get_word_translation(word) != "":
 		return
 	_apply_meaning(JishoClient.peek(word))
 

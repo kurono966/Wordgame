@@ -1,5 +1,10 @@
-res://Main.tscn::9a8bbd6c8bb2ae79edd6887e205ebd90::1790708312::res://.godot/exported/133200997/export-bcb0d2eb5949c52b6a65bfe9de3e985b-Main.scn
+res://Main.tscn::2a33c157b14a4546f6be67819d83fc8b::1790736823::res://.godot/exported/133200997/export-bcb0d2eb5949c52b6a65bfe9de3e985b-Main.scn
 res://_jisho_test.tscn::9a7b9a4c6fbdd487c0e95257fabe1233::1790707077::res://.godot/exported/133200997/export-52fbf885efe531bba4e12d84021da72b-_jisho_test.scn
 res://_preview_test.tscn::fa01c1d823883ac335c01563c3b40e86::1790699755::res://.godot/exported/133200997/export-d23c9d2fa6e0d9f9b5df4645e054b8f3-_preview_test.scn
-res://_preview_ui_test.tscn::d5ee1397742801f672af6bde981b8bcb::1790699919::res://.godot/exported/133200997/export-c7a2e1d5c8fb78521f49ff43f8527af6-_preview_ui_test.scn
-res://_special_ui_test.tscn::8544d780fc0888ca3bc5bd918bfbcce5::1790696020::res://.godot/exported/133200997/export-bfbb79f591436538bf9790e0d7c81a08-_special_ui_test.scn
+res://_preview_ui_test.tscn::aaaa3606d2950d5e7802b9d00b673665::1790734293::res://.godot/exported/133200997/export-c7a2e1d5c8fb78521f49ff43f8527af6-_preview_ui_test.scn
+res://_special_ui_test.tscn::eff1adaf4ed52543a128bcd0d2677594::1790734257::res://.godot/exported/133200997/export-bfbb79f591436538bf9790e0d7c81a08-_special_ui_test.scn
+res://_defeat_immunity_test.tscn::d0da8e711038de68680310b8fe8002df::1790741219::res://.godot/exported/133200997/export-402d5d448cb4bc9a80314a001e6551c4-_defeat_immunity_test.scn
+res://_max_hp_reward_test.tscn::aa330b718863fe8407d9feaabe5462c3::1790741615::res://.godot/exported/133200997/export-eff6c09aa531d1f2685568f732978271-_max_hp_reward_test.scn
+res://_reward_test.tscn::3b94255a49302a5a86bee2a421ed488d::1790734280::res://.godot/exported/133200997/export-0e88a79078a48f5208536fcaf0719aa6-_reward_test.scn
+res://_special_visual_test.tscn::b842c6991b62865b2cb8345801ab3327::1790739064::res://.godot/exported/133200997/export-8da1beb24d5b308b50e0dae9e8765dca-_special_visual_test.scn
+res://_spin_test.tscn::f9899098b95db6d656a13dc893a8125b::1790732252::res://.godot/exported/133200997/export-721fcb12db89424ab4d56d03378f28fc-_spin_test.scn
