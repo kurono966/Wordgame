@@ -115,6 +115,83 @@ const CARD_DEFS: Array = [
 	{"letter": "?", "damage": 0, "color": "red"}
 ]
 
+# ── SPECIAL CARD POOL: Available via rewards, NEVER in the initial deck ──
+const SPECIAL_CARD_DEFS: Array = [
+	# ── 高難度文字（固有大技） ──
+	{
+		"letter": "Q", "damage": 10, "color": "red",
+		"special_id": "royal_summon",
+		"special_name": "ROYAL SUMMON",
+		"special_cost": 6,
+		"special_desc": "Add a 'U' (1 dmg, red) card to your hand."
+	},
+	{
+		"letter": "Z", "damage": 10, "color": "blue",
+		"special_id": "zero_gravity",
+		"special_name": "ZERO GRAVITY",
+		"special_cost": 6,
+		"special_desc": "Gain 10 shield and nullify night penalty this turn."
+	},
+	{
+		"letter": "X", "damage": 8, "color": "yellow",
+		"special_id": "cross_multiply",
+		"special_name": "CROSS MULTIPLY",
+		"special_cost": 6,
+		"special_desc": "Double all effects (dmg, shield, heal, OP) of next word."
+	},
+	{
+		"letter": "J", "damage": 8, "color": "green",
+		"special_id": "jack_in_the_box",
+		"special_name": "JACK IN THE BOX",
+		"special_cost": 5,
+		"special_desc": "Transform this card into a wildcard (?) for this fight."
+	},
+
+	# ── 汎用文字（弱くてシンプルなプチ効果） ──
+	{
+		"letter": "E", "damage": 1, "color": "red",
+		"special_id": "spark",
+		"special_name": "SPARK",
+		"special_cost": 2,
+		"special_desc": "Deal 4 direct damage to the enemy."
+	},
+	{
+		"letter": "S", "damage": 1, "color": "blue",
+		"special_id": "guard",
+		"special_name": "GUARD",
+		"special_cost": 2,
+		"special_desc": "Gain 4 shield."
+	},
+	{
+		"letter": "A", "damage": 1, "color": "green",
+		"special_id": "mini_heal",
+		"special_name": "MINI HEAL",
+		"special_cost": 2,
+		"special_desc": "Restore 4 HP."
+	},
+	{
+		"letter": "T", "damage": 1, "color": "yellow",
+		"special_id": "cycle",
+		"special_name": "CYCLE",
+		"special_cost": 2,
+		"special_desc": "Discard this card and draw a new card."
+	},
+	{
+		"letter": "D", "damage": 2, "color": "yellow",
+		"special_id": "spin_charge",
+		"special_name": "SPIN CHARGE",
+		"special_cost": 2,
+		"special_desc": "Spin a random shared reel by 1 step."
+	},
+	{
+		"letter": "O", "damage": 1, "color": "green",
+		"special_id": "vowel_shift",
+		"special_name": "VOWEL SHIFT",
+		"special_cost": 1,
+		"special_desc": "Shift this card to a random vowel (A, E, I, U)."
+	}
+]
+
 var deck: Array = []        # Draw pile: DECK_SIZE cards randomly chosen from CARD_DEFS (the pool)
 var graveyard: Array = []   # Discarded / spent cards
 var slots: Array = []       # 3 slots, each an Array of 3 cards
@@ -135,6 +212,8 @@ var game_outcome: String = ""  # "DEFEAT" when HP hits 0, "COMPLETE" at the turn
 var dictionary: Dictionary = {}
 var word_list: Array = []   # Candidate enemy names (A-Z only, NAME_MIN_LEN..NAME_MAX_LEN)
 var operation_points: int = 0      # YELLOW trait: currency for Workbench card moves and special activations
+var word_multiplier: int = 1       # Active multiplier from X's Cross Multiply (resets after word submission)
+var night_penalty_immune: bool = false # Active immunity from Z's Zero Gravity (resets after night penalty)
 
 # ── Rewards (chosen after every enemy defeat) ────────────────────────────────
 # Three options are offered each time an enemy is defeated; the player picks
@@ -167,14 +246,22 @@ func roll_rewards() -> Array:
 
 
 ## Adds one "gain this card" and one "burn a card" option when the deck size
-## allows. The card you GAIN is rolled up front and shown face-up. The card you
-## BURN is chosen by the player from their own deck, so nothing is decided for
-## them: the trade is "take this card" vs "thin the deck how you like".
+## allows. The card you GAIN is rolled up front and shown face-up.
 func _build_deck_rewards() -> void:
 	if deck.size() < MAX_DECK_SIZE:
-		reward_options.append({"type": "add_card", "title": "ADD A CARD",
-			"detail": "Add this card to your deck.",
-			"card": _pick_reward_card()})
+		var card: Dictionary = _pick_reward_card()
+		var title: String = "ADD A CARD"
+		var detail: String = "Add this card to your deck."
+		if has_special_ability(card):
+			title = "★ SPECIAL CARD"
+			detail = "★ %s (%d OP)\n%s" % [
+				get_special_name(card),
+				get_special_cost(card),
+				get_special_desc(card)
+			]
+		reward_options.append({"type": "add_card", "title": title,
+			"detail": detail,
+			"card": card})
 	if deck.size() > MIN_DECK_SIZE:
 		# No card is chosen here: the player picks one from the burn list.
 		reward_options.append({"type": "remove_card", "title": "BURN A CARD",
@@ -249,9 +336,18 @@ func is_burning() -> bool:
 	return pending_burn_index >= 0
 
 
-## Picks a random card from the master pool for the "add card" reward. It is
-## not removed from the pool, so the same card can reward twice.
+## Picks a random card from SPECIAL_CARD_DEFS.
+func _pick_special_reward_card() -> Dictionary:
+	if SPECIAL_CARD_DEFS.is_empty():
+		return _pick_reward_card()
+	return SPECIAL_CARD_DEFS[randi() % SPECIAL_CARD_DEFS.size()].duplicate()
+
+
+## Picks a random card for the reward. 70% chance to offer a SPECIAL card,
+## ensuring specials appear reliably through victory rewards.
 func _pick_reward_card() -> Dictionary:
+	if not SPECIAL_CARD_DEFS.is_empty() and randf() < 0.7:
+		return _pick_special_reward_card()
 	if CARD_DEFS.is_empty():
 		return {"letter": "E", "damage": 1, "color": "red"}
 	return CARD_DEFS[randi() % CARD_DEFS.size()].duplicate()
@@ -295,9 +391,10 @@ func choose_reward(index: int) -> Dictionary:
 			var card: Dictionary = reward.get("card", _pick_reward_card())
 			deck.append(card.duplicate())
 			result["card"] = card
-			result["message"] = "Added %s (%d dmg, %s) to your deck (now %d cards)." % [
+			var special_note: String = (" ★ " + get_special_name(card)) if has_special_ability(card) else ""
+			result["message"] = "Added %s (%d dmg, %s%s) to your deck (now %d cards)." % [
 				card.get("letter", "?"), int(card.get("damage", 0)),
-				str(card.get("color", "red")).to_upper(), deck.size()]
+				str(card.get("color", "red")).to_upper(), special_note, deck.size()]
 		"remove_card":
 			# Wait for the player to pick which card to burn.
 			pending_burn_index = index
@@ -353,6 +450,8 @@ func reset_game() -> void:
 	shield = 0
 	enemy_hp = ENEMY_BASE_HP
 	operation_points = 0
+	word_multiplier = 1
+	night_penalty_immune = false
 	turn = 0
 
 	enemy_max_hp = ENEMY_BASE_HP
@@ -476,11 +575,21 @@ func get_card_cost(card: Variant) -> int:
 		return 0
 	return maxi(int(card.get("damage", 0)), 0)
 
-# OP needed to activate a card's special ability (the card's own damage value).
+# OP needed to activate a card's special ability.
 func get_special_cost(card: Variant) -> int:
 	if not has_special_ability(card):
 		return 0
-	return get_card_cost(card)
+	return int(card.get("special_cost", card.get("damage", 0)))
+
+func get_special_name(card: Variant) -> String:
+	if not has_special_ability(card):
+		return ""
+	return str(card.get("special_name", "SPECIAL"))
+
+func get_special_desc(card: Variant) -> String:
+	if not has_special_ability(card):
+		return ""
+	return str(card.get("special_desc", ""))
 
 # OP still missing before this card's special can be activated.
 func get_special_cost_deficit(card: Variant) -> int:
@@ -489,23 +598,28 @@ func get_special_cost_deficit(card: Variant) -> int:
 func can_use_special_ability(card: Variant) -> bool:
 	return has_special_ability(card) and operation_points >= get_special_cost(card)
 
-# ─── Special ability: cards with SPECIAL_MIN_DAMAGE or more ───────────────────
-# Activate by long-press or right-click on the special card in hand. It COSTS the
-# card's damage value in OP (see get_card_cost); the OP are only spent when the
-# activation actually succeeds.
-# Discards the special card AND all same-color cards in hand (including those
-# just placed on the workbench), then draws replacement cards.
+# ─── Special abilities ────────────────────────────────────────────────────────
+# Cards with special_id have unique active abilities.
+# Activate by long-press or right-click on the special card in hand. Costs OP.
 # Does not consume a turn.
 func has_special_ability(card: Variant) -> bool:
-	return typeof(card) == TYPE_DICTIONARY and int(card.get("damage", 0)) >= SPECIAL_MIN_DAMAGE
+	if typeof(card) != TYPE_DICTIONARY:
+		return false
+	return card.has("special_id") and str(card.get("special_id", "")).strip_edges() != ""
 
 func use_special_ability(hand_index: int) -> Dictionary:
 	var op_before: int = operation_points
 	var result := {
-		"valid": false, "discarded": [], "drawn": 0,
-		"cost": 0, "operation_points_spent": 0,
+		"valid": false,
+		"special_id": "",
+		"special_name": "",
+		"cost": 0,
+		"operation_points_spent": 0,
 		"operation_points_before": op_before,
 		"operation_points_after": operation_points,
+		"discarded": [],
+		"drawn": 0,
+		"message": "",
 		"reason": ""
 	}
 	if hand_index < 0 or hand_index >= hand.size():
@@ -516,7 +630,6 @@ func use_special_ability(hand_index: int) -> Dictionary:
 		result["reason"] = "No special ability"
 		return result
 
-	# The card's damage value is its cost, paid in OP
 	var cost: int = get_special_cost(special_card)
 	result["cost"] = cost
 	if operation_points < cost:
@@ -526,28 +639,99 @@ func use_special_ability(hand_index: int) -> Dictionary:
 	result["operation_points_spent"] = cost
 	result["operation_points_after"] = operation_points
 
-	var target_color: String = special_card.get("color", "red")
-	var discarded: Array = []
+	var s_id: String = str(special_card.get("special_id", ""))
+	var s_name: String = get_special_name(special_card)
+	result["special_id"] = s_id
+	result["special_name"] = s_name
 
-	# Discard the special card itself
-	graveyard.append(hand[hand_index])
-	discarded.append(special_card)
-	hand[hand_index] = null
+	match s_id:
+		"royal_summon":
+			# Add a 'U' (1 dmg, red) card to hand
+			var u_card: Dictionary = {"letter": "U", "damage": 1, "color": "red"}
+			var added: bool = false
+			for i in range(hand.size()):
+				if hand[i] == null:
+					hand[i] = u_card
+					added = true
+					break
+			if not added:
+				hand.append(u_card)
+			result["message"] = "ROYAL SUMMON! Added 'U' (1 dmg, red) to your hand."
 
-	# Discard all other same-color cards in hand
-	for i in range(hand.size()):
-		if hand[i] != null and hand[i].get("color", "red") == target_color:
-			graveyard.append(hand[i])
-			discarded.append(hand[i])
-			hand[i] = null
+		"zero_gravity":
+			# Gain 10 shield and nullify night penalty this turn
+			shield += 10
+			night_penalty_immune = true
+			result["message"] = "ZERO GRAVITY! Gained 10 shield and night penalty nullified this turn."
 
-	# Draw replacements for all emptied slots
-	_refill_hand()
+		"cross_multiply":
+			# Double next submitted word's effects
+			word_multiplier = 2
+			result["message"] = "CROSS MULTIPLY! Next word effects will be DOUBLED (2x)!"
+
+		"jack_in_the_box":
+			# Transform this card into a wildcard (?)
+			special_card["letter"] = "?"
+			special_card["is_wildcard"] = true
+			result["message"] = "JACK IN THE BOX! J transformed into a wildcard (?)!"
+
+		"spark":
+			# Deal 4 direct damage to the enemy
+			_apply_damage(4)
+			result["message"] = "SPARK! Dealt 4 direct damage to the enemy."
+
+		"guard":
+			# Gain 4 shield
+			shield += 4
+			result["message"] = "GUARD! Gained 4 shield."
+
+		"mini_heal":
+			# Restore 4 HP
+			var healed: int = mini(4, PLAYER_MAX_HP - player_hp)
+			player_hp += healed
+			result["message"] = "MINI HEAL! Restored %d HP." % healed
+
+		"cycle":
+			# Discard this card and draw a new one
+			graveyard.append(hand[hand_index])
+			result["discarded"] = [special_card]
+			hand[hand_index] = _draw_card()
+			result["drawn"] = 1
+			result["message"] = "CYCLE! Discarded %s and drew a new card." % special_card.get("letter", "T")
+
+		"spin_charge":
+			# Spin a random shared reel by 1 step
+			var slot_idx: int = randi() % NUM_SLOTS
+			rotate_slots([slot_idx])
+			result["message"] = "SPIN CHARGE! Advanced shared reel %d." % (slot_idx + 1)
+
+		"vowel_shift":
+			# Shift to a random vowel (A, E, I, U)
+			var cur_l: String = special_card.get("letter", "O")
+			var vowels: Array = ["A", "E", "I", "U"]
+			vowels.shuffle()
+			var new_l: String = vowels[0]
+			special_card["letter"] = new_l
+			result["message"] = "VOWEL SHIFT! Shifted %s to '%s'." % [cur_l, new_l]
+
+		_:
+			# Fallback
+			var target_color: String = special_card.get("color", "red")
+			var discarded: Array = []
+			graveyard.append(hand[hand_index])
+			discarded.append(special_card)
+			hand[hand_index] = null
+			for i in range(hand.size()):
+				if hand[i] != null and hand[i].get("color", "red") == target_color:
+					graveyard.append(hand[i])
+					discarded.append(hand[i])
+					hand[i] = null
+			_refill_hand()
+			result["discarded"] = discarded
+			result["drawn"] = discarded.size()
+			result["message"] = "Special activated! Discarded %d cards." % discarded.size()
 
 	result["valid"] = true
-	result["discarded"] = discarded
-	result["color"] = target_color
-	result["drawn"] = discarded.size()
 	return result
 
 # ─── Slot helpers ────────────────────────────────────────────────────────────
@@ -901,11 +1085,14 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 	# ─── Accessors ───────────────────────────────────────────────────────────────
 	var multiplier: float = calculate_color_multiplier(assignment)
 	var color_counts: Dictionary = count_colors_in_assignment(assignment)
+	var active_w_mult: int = word_multiplier
+	word_multiplier = 1
+
 	# RED trait (attack multiplier), applied EXACTLY ONCE:
 	#   0 red = x1 (no effect), exactly 1 red = x1.5 (exception),
 	#   2+ red = base x 2^(red - 1). The multiplier is NOT stacked with
 	# any further per-card bonus.
-	var group_damage: int = int(round(base_damage * multiplier))
+	var group_damage: int = int(round(base_damage * multiplier)) * active_w_mult
 	var final_damage: int = group_damage
 
 	for hi in used_hand_indices:
@@ -926,16 +1113,16 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 	var trait_base: int = maxi(base_damage, 0)
 	var shield_before: int = shield
 	var shield_mult: int = color_trait_multiplier(blue_count)
-	var shield_gained: int = trait_base * shield_mult
+	var shield_gained: int = trait_base * shield_mult * active_w_mult
 	shield += shield_gained
 	var heal_mult: int = color_trait_multiplier(green_count)
-	var heal_amount: int = mini(trait_base * heal_mult, PLAYER_MAX_HP - player_hp)
+	var heal_amount: int = mini(trait_base * heal_mult * active_w_mult, PLAYER_MAX_HP - player_hp)
 	player_hp += heal_amount
 	# YELLOW: earn operation points (same base-scaled stacking). Points accumulate
 	# and can be spent to move a card on the Workbench.
 	var operation_points_before: int = operation_points
 	var yellow_mult: int = color_trait_multiplier(yellow_count)
-	var operation_points_gained: int = trait_base * yellow_mult
+	var operation_points_gained: int = trait_base * yellow_mult * active_w_mult
 	operation_points += operation_points_gained
 	var player_hp_after_traits: int = player_hp
 
@@ -1206,13 +1393,14 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 
 	var multiplier: float = calculate_color_multiplier(assignment)
 	var color_counts: Dictionary = count_colors_in_assignment(assignment)
-	var final_damage: int = int(round(float(base_damage) * multiplier))
+	var active_w: int = word_multiplier
+	var final_damage: int = int(round(float(base_damage) * multiplier)) * active_w
 
 	# 1) Traits resolve before the damage exchange (positive base only)
 	var trait_base: int = maxi(base_damage, 0)
-	var shield_gained: int = trait_base * color_trait_multiplier(int(color_counts.get("blue", 0)))
+	var shield_gained: int = trait_base * color_trait_multiplier(int(color_counts.get("blue", 0))) * active_w
 	var heal_mult: int = color_trait_multiplier(int(color_counts.get("green", 0)))
-	var heal_amount: int = mini(trait_base * heal_mult, PLAYER_MAX_HP - player_hp)
+	var heal_amount: int = mini(trait_base * heal_mult * active_w, PLAYER_MAX_HP - player_hp)
 	var shield_pool: int = shield + shield_gained
 	var hp_pool: int = player_hp + heal_amount
 
@@ -1227,7 +1415,7 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 
 	# 4) On the new NIGHT phase the slot penalty lands (used slots already rolled)
 	var penalty: Dictionary = get_next_slot_penalty_with_multiplier(used_slots if next_is_night else [])
-	var night_penalty: int = penalty["final_penalty"] if next_is_night else 0
+	var night_penalty: int = (0 if night_penalty_immune else penalty["final_penalty"]) if next_is_night else 0
 	var night_absorbed: int = mini(shield_pool, night_penalty)
 	shield_pool -= night_absorbed
 	hp_pool = maxi(hp_pool - (night_penalty - night_absorbed), 0)
@@ -1261,6 +1449,8 @@ func get_phase() -> String:
 	return "NIGHT" if is_night else "DAY"
 
 func get_next_slot_total_penalty() -> int:
+	if night_penalty_immune:
+		return 0
 	return get_next_slot_penalty_with_multiplier()["final_penalty"]
 
 func apply_turn_start_penalty() -> Dictionary:
@@ -1277,6 +1467,9 @@ func apply_turn_start_penalty() -> Dictionary:
 
 	var penalty: Dictionary = get_next_slot_penalty_with_multiplier()
 	var requested_damage: int = penalty["final_penalty"]
+	if night_penalty_immune:
+		requested_damage = 0
+		night_penalty_immune = false
 	var previous_player_hp: int = player_hp
 	# Night self-damage: the BLUE shield absorbs first, then HP
 	var damage_result: Dictionary = _take_self_damage(requested_damage)

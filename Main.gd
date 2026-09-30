@@ -457,12 +457,11 @@ func _build_formula_text() -> String:
 		"  1 / 2 / 3 / 4 yellow: x1 / x2 / x4 / x8. OP keeps accumulating; damage never spends it.",
 		"  Owned right now: %d OP  =  %d Workbench card move(s)  (gold gauge beside the HP bars)." % [op, op],
 		"  Spend 1 OP to move a Workbench card one place left or right. This costs no turn.",
-"[CARD COST — the damage number IS the cost]  paid in OP",
-		"  Every card's cost = its printed damage value.",
-		"  ★ SPECIAL (cards with %d+ damage) costs that damage value in OP:" % GameManager.SPECIAL_MIN_DAMAGE,
-		"    an 8-damage card costs 8 OP, a 10-damage card costs 10 OP. No turn is used.",
-		"    It discards that card and every same-color card in hand, then redraws.",
-		"    With too few OP the activation is refused: no card is spent and no OP is lost.",
+		"[CARD COST & SPECIAL ABILITIES]  paid in OP",
+		"  ★ SPECIAL cards have unique active powers unlocked via stage rewards.",
+		"    Activate by right-clicking or long-pressing the special card in hand.",
+		"    Costs OP as specified on the card. Uses no turn.",
+		"    With too few OP the activation is refused: no OP is lost.",
 		"",
 		"",
 		"[NIGHT SELF-DAMAGE]  next-slot total x 10^(largest same-color group - 1)",
@@ -728,7 +727,7 @@ func _style_op_panel() -> void:
 	op_bar.add_theme_stylebox_override("background", bar_bg)
 
 	op_title_label.add_theme_color_override("font_color", OP_COLOR_SUB)
-	var info: String = "OPERATION POINTS (OP)\nEarned by submitting a word that uses YELLOW cards:\n    OP gained = base damage x 2^(yellow cards - 1)\nOP is never spent by taking damage and never resets.\n\nA card's damage number is also its COST, paid in OP:\n    1 OP = move one Workbench card one place left / right (uses no turn)\n    \u2605 SPECIAL of a %d+ damage card = that card's damage value in OP\n        (an 8-damage card costs 8 OP, a 10-damage card costs 10 OP)\nThe bar fills up to %d moves." % [GameManager.SPECIAL_MIN_DAMAGE, OP_BAR_CAP]
+	var info: String = "OPERATION POINTS (OP)\nEarned by submitting a word that uses YELLOW cards:\n    OP gained = base damage x 2^(yellow cards - 1)\nOP is never spent by taking damage and never resets.\n\nOP Uses:\n    1 OP = move one Workbench card one place left / right (uses no turn)\n    1 OP = spin one shared reel (SPIN button)\n    ★ SPECIAL = activate card's unique power (costs OP specified on card)\nThe bar fills up to %d moves." % OP_BAR_CAP
 	op_panel.tooltip_text = info
 	op_bar.tooltip_text = info
 	for node: Label in [op_title_label, op_value_label, op_moves_label, op_hint_label]:
@@ -1018,16 +1017,18 @@ func _refresh_hand_and_deck() -> void:
 				_detach_drag_source(panel)
 			else:
 				if GameManager.has_special_ability(card):
-					# A card's damage number doubles as its special's OP cost
 					var special_cost: int = GameManager.get_special_cost(card)
 					var affordable: bool = GameManager.get_operation_points() >= special_cost
+					var s_name: String = GameManager.get_special_name(card)
 					cv["sub"].text = "%d dmg ★ %d OP" % [card["damage"], special_cost]
+					panel.tooltip_text = "★ %s (%d OP): %s" % [s_name, special_cost, GameManager.get_special_desc(card)]
 					if affordable:
 						cv["sub"].add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
 					else:
 						# Too costly right now: dim it so the cost is still readable
 						cv["sub"].add_theme_color_override("font_color", Color(0.62, 0.55, 0.45, 0.9))
 				else:
+					panel.tooltip_text = ""
 					cv["sub"].text = "%d dmg" % card["damage"]
 					cv["sub"].add_theme_color_override("font_color", Color.WHITE)
 				cv["letter"].add_theme_color_override("font_color", Color.WHITE)
@@ -1275,63 +1276,61 @@ func _on_card_special_used(card_data: Dictionary) -> void:
 
 	var card: Dictionary = hand_arr[hand_index]
 	if not GameManager.has_special_ability(card):
-		message_label.text = "%s (%ddmg) has no special ability. (%d+ dmg only)" % [
-			card["letter"], card["damage"], GameManager.SPECIAL_MIN_DAMAGE
+		message_label.text = "%s (%ddmg) has no special ability." % [
+			card["letter"], card["damage"]
 		]
 		message_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3, 1.0))
 		return
 
-	# A card's damage value is its cost: the special is paid for in OP. Refuse
-	# before touching any card when the player cannot afford it.
+	# Refuse before touching any card when the player cannot afford it.
 	var cost: int = GameManager.get_special_cost(card)
 	if GameManager.get_operation_points() < cost:
 		var deficit: int = GameManager.get_special_cost_deficit(card)
 		_refresh_op_display("denied")
 		_refresh_formula_panel()
-		_show_step_message("Not enough OP: ★ SPECIAL of %s costs %d OP (its damage value) — you need %d more. Submit a word with YELLOW cards to earn OP." % [
-			card["letter"], cost, deficit
+		_show_step_message("Not enough OP: ★ SPECIAL [%s] costs %d OP — you need %d more. Submit a word with YELLOW cards to earn OP." % [
+			GameManager.get_special_name(card), cost, deficit
 		], Color(1.0, 0.8, 0.3, 1.0))
 		return
 
 	var discarded_panels: Array = []
-	var target_color: String = card.get("color", "red")
-	for i in range(hand_card_views.size()):
-		if i < hand_arr.size() and hand_arr[i] != null and hand_arr[i].get("color", "red") == target_color:
-			discarded_panels.append(hand_card_views[i]["panel"])
 	var result: Dictionary = GameManager.use_special_ability(hand_index)
 	if not result.get("valid", false):
-		# The OP check above normally catches this; keep a safe fallback message
 		_refresh_op_display("denied")
 		_show_step_message("★ SPECIAL failed: %s." % str(result.get("reason", "unknown")), Color(1.0, 0.8, 0.3, 1.0))
 		return
-	await _animate_cards_discard(discarded_panels)
 
-	# Remove any workbench cards that were discarded by the effect
-	# (match workbench "hand" cards against the graveyard entries just added)
-	var grave_tail: Array = GameManager.get_graveyard().slice(GameManager.get_graveyard().size() - result.get("drawn", 0))
-	workbench_cards = workbench_cards.filter(func(c: Dictionary) -> bool:
-		if c.get("type") != "hand":
+	var discarded_cards: Array = result.get("discarded", [])
+	if not discarded_cards.is_empty():
+		for d_card in discarded_cards:
+			for i in range(hand_card_views.size()):
+				if i < hand_arr.size() and hand_arr[i] != null and hand_arr[i] == d_card:
+					discarded_panels.append(hand_card_views[i]["panel"])
+		if not discarded_panels.is_empty():
+			await _animate_cards_discard(discarded_panels)
+
+		# Remove any workbench cards that were discarded by the effect
+		var grave_tail: Array = GameManager.get_graveyard().slice(GameManager.get_graveyard().size() - result.get("drawn", 0))
+		workbench_cards = workbench_cards.filter(func(c: Dictionary) -> bool:
+			if c.get("type") != "hand":
+				return true
+			var hi: int = c.get("hand_index", -1)
+			var cur_hand: Array = GameManager.get_hand()
+			if hi >= 0 and hi < cur_hand.size() and cur_hand[hi] != null:
+				return true
+			for d in grave_tail:
+				if d.get("letter") == c.get("card_letter") and d.get("damage") == c.get("damage") and d.get("color") == c.get("color"):
+					return false
 			return true
-		var hi: int = c.get("hand_index", -1)
-		var cur_hand: Array = GameManager.get_hand()
-		if hi >= 0 and hi < cur_hand.size() and cur_hand[hi] != null:
-			return true  # still in hand
-		# Hand slot is empty: check if this card was one just discarded
-		for d in grave_tail:
-			if d.get("letter") == c.get("card_letter") and d.get("damage") == c.get("damage") and d.get("color") == c.get("color"):
-				return false
-		return true
-	)
+		)
 
+	_play_score_up_sound()
 	_animate_next_hand_refresh = true
-	# Flash the OP spend BEFORE _refresh_ui(), which refreshes the gauge itself and
-	# would otherwise consume the delta and only ever animate a "-1 OP".
 	_refresh_op_display("spend")
 	_refresh_ui()
 	_refresh_formula_panel()
-	_show_step_message("★ SPECIAL: spent %d OP (cost = damage value), %s discarded %d %s-color cards and drew %d new cards!  [%d OP left]" % [
-		result["cost"], card["letter"], result["drawn"], result["color"].to_upper(),
-		result["drawn"], GameManager.get_operation_points()
+	_show_step_message("★ SPECIAL: spent %d OP! %s  [%d OP left]" % [
+		result["cost"], result.get("message", ""), GameManager.get_operation_points()
 	], Color(1.0, 0.85, 0.3, 1.0))
 
 # ── Submit preview: what you will take when you press SUBMIT WORD ───────────
@@ -2198,6 +2197,15 @@ func _build_reward_card_view(card: Dictionary, is_burn: bool) -> Control:
 	dmg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 1.0))
 	dmg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(dmg)
+
+	if GameManager.has_special_ability(card):
+		var sp_cost_lbl := Label.new()
+		sp_cost_lbl.text = "★ %d OP" % GameManager.get_special_cost(card)
+		sp_cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sp_cost_lbl.add_theme_font_size_override("font_size", 12)
+		sp_cost_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+		sp_cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(sp_cost_lbl)
 
 	if is_burn:
 		# Strike the card through so "burn this" is unmistakable

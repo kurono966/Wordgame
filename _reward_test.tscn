@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://_reward_test.gd" id="1_rewardtest"]
+[ext_resource type="Script" path="res://_reward_test.gd" id="1_test"]
 
 [node name="RewardTest" type="Node"]
-script = ExtResource("1_rewardtest")
+script = ExtResource("1_test")

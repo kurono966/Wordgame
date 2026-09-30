@@ -1,9 +1,11 @@
 extends SceneTree
 
-# Headless check of the "damage value = OP cost" rule:
-#   - get_card_cost / get_special_cost read the card's damage value
-#   - a special costs exactly its damage value in OP
-#   - a special is refused (no cards discarded, no OP lost) when OP are short
+# Headless check of the updated special ability & reward system:
+#   - Initial deck NEVER contains special ability cards
+#   - Special abilities have unique costs and effects
+#   - Q (Royal Summon), Z (Zero Gravity), X (Cross Multiply), J (Jack in the box)
+#   - Generic specials (Spark, Guard, Mini Heal, Cycle)
+#   - Reward system provides special cards
 
 func _initialize() -> void:
 	_run()
@@ -14,56 +16,112 @@ func _run() -> void:
 	await process_frame
 
 	var fails: int = 0
-	fails += _check(gm.get_card_cost({"letter": "E", "damage": 3, "color": "red"}) == 3, "cost of a 3-damage card is 3")
-	fails += _check(gm.get_card_cost({"letter": "?", "damage": 0, "color": "red"}) == 0, "wildcard cost is 0")
-	fails += _check(gm.get_card_cost(null) == 0, "null card cost is 0")
 
-	var c8: Dictionary = {"letter": "J", "damage": 8, "color": "green"}
-	var c10: Dictionary = {"letter": "Q", "damage": 10, "color": "red"}
-	var c5: Dictionary = {"letter": "K", "damage": 5, "color": "blue"}
-	fails += _check(gm.has_special_ability(c8) and gm.has_special_ability(c10), "8/10 damage cards have a special")
-	fails += _check(not gm.has_special_ability(c5), "5 damage card has no special")
-	fails += _check(gm.get_special_cost(c8) == 8, "8-damage special costs 8 OP")
-	fails += _check(gm.get_special_cost(c10) == 10, "10-damage special costs 10 OP")
-	fails += _check(gm.get_special_cost(c5) == 0, "non-special card costs 0 OP for a special")
+	# 1) Initial deck verification: ZERO special cards in initial deck
+	var specials_in_initial_deck: int = 0
+	for card in gm.deck:
+		if gm.has_special_ability(card):
+			specials_in_initial_deck += 1
+	fails += _check(specials_in_initial_deck == 0, "initial deck contains zero special cards (%d found)" % specials_in_initial_deck)
 
-	# Deterministic hand so the discard behaviour is observable
-	gm.hand = [c8, {"letter": "E", "damage": 1, "color": "green"}, c5, {"letter": "A", "damage": 1, "color": "red"}]
+	# 2) Special definition check
+	var q_def: Dictionary = {}
+	var z_def: Dictionary = {}
+	var x_def: Dictionary = {}
+	var j_def: Dictionary = {}
+	var a_def: Dictionary = {}
+	for s in gm.SPECIAL_CARD_DEFS:
+		if s.get("letter") == "Q": q_def = s.duplicate()
+		elif s.get("letter") == "Z": z_def = s.duplicate()
+		elif s.get("letter") == "X": x_def = s.duplicate()
+		elif s.get("letter") == "J": j_def = s.duplicate()
+		elif s.get("special_id") == "mini_heal": a_def = s.duplicate()
 
-	# 1) Too few OP -> refused, nothing changes
-	gm.operation_points = 5
-	gm.graveyard.clear()
-	fails += _check(gm.get_special_cost_deficit(c8) == 3, "deficit of an 8-cost with 5 OP is 3")
-	fails += _check(not gm.can_use_special_ability(c8), "cannot activate without enough OP")
+	fails += _check(gm.has_special_ability(q_def), "Q card has special ability")
+	fails += _check(gm.has_special_ability(z_def), "Z card has special ability")
+	fails += _check(gm.has_special_ability(x_def), "X card has special ability")
+	fails += _check(gm.has_special_ability(j_def), "J card has special ability")
+	fails += _check(gm.get_special_cost(q_def) == 6, "Q special costs 6 OP")
+	fails += _check(gm.get_special_cost(z_def) == 6, "Z special costs 6 OP")
+	fails += _check(gm.get_special_cost(x_def) == 6, "X special costs 6 OP")
+	fails += _check(gm.get_special_cost(j_def) == 5, "J special costs 5 OP")
+
+	# Plain card has no special
+	var plain_card: Dictionary = {"letter": "E", "damage": 1, "color": "red"}
+	fails += _check(not gm.has_special_ability(plain_card), "plain card has no special")
+	fails += _check(gm.get_special_cost(plain_card) == 0, "plain card costs 0 OP for special")
+
+	# 3) Test OP deficit refusal
+	gm.hand = [q_def.duplicate(), plain_card.duplicate()]
+	gm.operation_points = 3
+	fails += _check(gm.get_special_cost_deficit(q_def) == 3, "deficit of 6-cost with 3 OP is 3")
+	fails += _check(not gm.can_use_special_ability(q_def), "cannot activate without enough OP")
 	var denied: Dictionary = gm.use_special_ability(0)
 	fails += _check(not denied.get("valid", false), "activation refused when short on OP")
-	fails += _check(str(denied.get("reason", "")) == "Not enough OP", "refusal reason is 'Not enough OP'")
-	fails += _check(gm.operation_points == 5, "refused activation spends no OP")
-	fails += _check(gm.graveyard.is_empty(), "refused activation discards nothing")
-	fails += _check(gm.hand[0] == c8, "refused activation keeps the special card in hand")
+	fails += _check(gm.operation_points == 3, "refused activation spends no OP")
 
-	# 2) Exactly enough OP -> succeeds and costs the damage value
-	gm.operation_points = 8
-	fails += _check(gm.can_use_special_ability(c8), "8 OP is enough for an 8-cost special")
-	var ok: Dictionary = gm.use_special_ability(0)
-	fails += _check(ok.get("valid", false), "activation succeeds with enough OP")
-	fails += _check(int(ok.get("cost", 0)) == 8, "result reports a cost of 8")
-	fails += _check(int(ok.get("operation_points_spent", 0)) == 8, "result reports 8 OP spent")
-	fails += _check(gm.operation_points == 0, "8 OP are deducted by the 8-damage special")
-	fails += _check(int(ok.get("drawn", 0)) == 2, "special + 1 same-color card are discarded (green group)")
-	fails += _check(gm.hand[0] != null, "the spent hand slot is redrawn")
-	fails += _check(gm.graveyard.size() == 2, "the special and its same-color card reached the graveyard")
+	# 4) Test Q: Royal Summon (adds 'U' to hand)
+	gm.operation_points = 10
+	var hand_size_before: int = gm.hand.size()
+	var q_res: Dictionary = gm.use_special_ability(0)
+	fails += _check(q_res.get("valid", false), "Q special succeeded")
+	fails += _check(gm.operation_points == 4, "10 - 6 = 4 OP left after Q special")
+	var has_u: bool = false
+	for c in gm.hand:
+		if c != null and c.get("letter") == "U":
+			has_u = true
+			break
+	fails += _check(has_u, "Royal Summon added 'U' card to hand")
 
-	# 3) Wildcards / plain cards carry no special cost
-	gm.operation_points = 100
-	fails += _check(gm.get_special_cost({"letter": "?", "damage": 0, "color": "red"}) == 0, "wildcard has no special cost")
-
-	# 4) OP still survive damage (cost is spent explicitly, never by damage)
-	gm.operation_points = 7
+	# 5) Test Z: Zero Gravity (gains 10 shield and nullifies night penalty)
 	gm.shield = 0
-	gm.player_hp = 50
-	gm._take_self_damage(3)
-	fails += _check(gm.operation_points == 7, "taking damage does not spend OP")
+	gm.hand[0] = z_def.duplicate()
+	gm.operation_points = 10
+	var z_res: Dictionary = gm.use_special_ability(0)
+	fails += _check(z_res.get("valid", false), "Z special succeeded")
+	fails += _check(gm.shield == 10, "Z special granted 10 shield")
+	fails += _check(gm.night_penalty_immune, "night_penalty_immune is true")
+	fails += _check(gm.get_next_slot_total_penalty() == 0, "night penalty preview is 0 during immunity")
+	# Apply turn penalty during night
+	gm.is_night = true
+	var pen_res: Dictionary = gm.apply_turn_start_penalty()
+	fails += _check(pen_res.get("requested_damage") == 0, "night penalty was nullified to 0 damage")
+	fails += _check(not gm.night_penalty_immune, "night_penalty_immune reset after penalty applied")
+
+	# 6) Test X: Cross Multiply (2x next word effects)
+	gm.hand[0] = x_def.duplicate()
+	gm.operation_points = 10
+	var x_res: Dictionary = gm.use_special_ability(0)
+	fails += _check(x_res.get("valid", false), "X special succeeded")
+	fails += _check(gm.word_multiplier == 2, "word_multiplier set to 2")
+
+	# 7) Test J: Jack in the box (transforms into wildcard '?')
+	gm.hand[0] = j_def.duplicate()
+	gm.operation_points = 10
+	var j_res: Dictionary = gm.use_special_ability(0)
+	fails += _check(j_res.get("valid", false), "J special succeeded")
+	fails += _check(gm.hand[0].get("letter") == "?", "J transformed into '?'")
+	fails += _check(gm.hand[0].get("is_wildcard") == true, "J has is_wildcard = true")
+
+	# 8) Test Generic A: Mini Heal
+	gm.player_hp = 30
+	gm.hand[0] = a_def.duplicate()
+	gm.operation_points = 5
+	var a_res: Dictionary = gm.use_special_ability(0)
+	fails += _check(a_res.get("valid", false), "Mini heal special succeeded")
+	fails += _check(gm.player_hp == 34, "player HP restored from 30 to 34")
+
+	# 9) Test reward system offers special cards
+	var found_special_reward: bool = false
+	for _attempt in range(20):
+		var rewards: Array = gm.roll_rewards()
+		for rew in rewards:
+			if rew.has("card") and gm.has_special_ability(rew["card"]):
+				found_special_reward = true
+				break
+		if found_special_reward:
+			break
+	fails += _check(found_special_reward, "special card offered via roll_rewards")
 
 	print("FAILURES=%d" % fails)
 	print("TEST_EXIT=%d" % fails)
