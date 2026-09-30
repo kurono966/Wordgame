@@ -51,7 +51,7 @@ func _ready() -> void:
 	var twice: Dictionary = gm.choose_reward(0)
 	fails += _check(not twice.get("ok", false), "a second reward cannot be taken")
 
-	# ===== remove_card shrinks the deck ==========================
+	# ===== remove_card: the player PICKS the card ==================
 	gm.roll_rewards()
 	var opts2: Array = gm.get_reward_options()
 	var types2: Array = []
@@ -61,9 +61,77 @@ func _ready() -> void:
 	if idx_rm >= 0:
 		var before2: int = gm.get_deck_size()
 		var res2: Dictionary = gm.choose_reward(idx_rm)
-		fails += _check(res2.get("ok", false), "remove_card succeeds")
-		fails += _check(gm.get_deck_size() == before2 - 1,
-			"deck shrank by 1 (%d -> %d)" % [before2, gm.get_deck_size()])
+		fails += _check(res2.get("ok", false), "remove_card step 1 succeeds")
+		fails += _check(bool(res2.get("needs_card", false)),
+			"remove_card asks the player to pick a card")
+		fails += _check(gm.is_burning(), "a burn pick is now in progress")
+		fails += _check(gm.has_pending_reward(), "the reward stays pending until a card is picked")
+		fails += _check(gm.get_deck_size() == before2, "nothing is removed before the pick")
+
+		# The pick list offers the deck AND the hand
+		var burnable: Array = gm.get_burnable_cards()
+		fails += _check(burnable.size() == gm.deck.size() + _hand_filled(gm),
+			"burnable list covers the deck and the hand (%d)" % burnable.size())
+		var has_hand_entry: bool = false
+		for e: Dictionary in burnable:
+			if str(e.get("source", "")) == "hand":
+				has_hand_entry = true
+		fails += _check(has_hand_entry, "a card in hand can also be burned")
+		fails += _check(_all_ids_unique(burnable), "every burnable id is unique")
+
+		# The player picks a SPECIFIC card; exactly that one is removed
+		var picked: Dictionary = burnable[burnable.size() - 1]
+		var picked_id: String = str(picked.get("id", ""))
+		var want_letter: String = str(picked.get("card", {}).get("letter", ""))
+		var want_damage: int = int(picked.get("card", {}).get("damage", -1))
+		var want_color: String = str(picked.get("card", {}).get("color", ""))
+		var count_before: int = _count_matching(gm, want_letter, want_damage, want_color)
+		var res3: Dictionary = gm.confirm_burn_card(picked_id)
+		fails += _check(res3.get("ok", false), "confirming the pick succeeds")
+		fails += _check(not gm.is_burning(), "the burn pick is finished")
+		fails += _check(not gm.has_pending_reward(), "the reward is consumed")
+		fails += _check(gm.rewards_taken >= 1, "rewards_taken counted the burn")
+		var count_after: int = _count_matching(gm, want_letter, want_damage, want_color)
+		fails += _check(count_after == count_before - 1,
+			"exactly the picked card was removed (%s %d %s: %d -> %d)" % [
+				want_letter, want_damage, want_color, count_before, count_after])
+		fails += _check(str(res3.get("card", {}).get("letter", "")) == want_letter,
+			"the burn message names the picked card")
+
+	# A burn pick can be cancelled without spending the reward
+	gm.roll_rewards()
+	var opts_c: Array = gm.get_reward_options()
+	var idx_c: int = -1
+	for i in range(opts_c.size()):
+		if str(opts_c[i].get("type", "")) == "remove_card":
+			idx_c = i
+	if idx_c >= 0:
+		gm.choose_reward(idx_c)
+		fails += _check(gm.is_burning(), "burn pick started")
+		gm.cancel_burn_card()
+		fails += _check(not gm.is_burning(), "cancel_burn_card() leaves the picker")
+		fails += _check(gm.has_pending_reward(), "cancelling keeps the reward available")
+		fails += _check(gm.get_deck_size() > 0, "cancelling removes nothing")
+
+	# A bad id must not consume the reward
+	gm.roll_rewards()
+	var opts_b: Array = gm.get_reward_options()
+	var idx_b: int = -1
+	for i in range(opts_b.size()):
+		if str(opts_b[i].get("type", "")) == "remove_card":
+			idx_b = i
+	if idx_b >= 0:
+		gm.choose_reward(idx_b)
+		fails += _check(not gm.confirm_burn_card("nonsense").get("ok", false),
+			"a malformed id is refused")
+		fails += _check(not gm.confirm_burn_card("deck:99999").get("ok", false),
+			"an out-of-range index is refused")
+		fails += _check(gm.has_pending_reward(), "a refused pick keeps the reward pending")
+		gm.cancel_burn_card()
+
+	# confirm_burn_card without a pick in progress is refused
+	fails += _check(not gm.confirm_burn_card("deck:0").get("ok", false),
+		"confirm_burn_card() outside a burn is refused")
 
 	# ===== Deck size is clamped ==============================
 	# At the maximum, "add_card" must not be offered
@@ -143,17 +211,12 @@ func _ready() -> void:
 	fails += _check(add_card.has("card"), "add_card option carries a concrete card")
 	fails += _check(str(add_card.get("card", {}).get("letter", "")) != "",
 		"shown add card has a letter ('%s')" % str(add_card.get("card", {}).get("letter", "")))
-	fails += _check(burn_card.has("card"), "remove_card option carries a concrete card")
-	if burn_card.has("card"):
-		var bc: Dictionary = burn_card["card"]
-		# The burned card must really exist in the deck right now
-		var in_deck: bool = false
-		for c: Dictionary in gm.deck:
-			if str(c.get("letter", "")) == str(bc.get("letter", "")) \
-					and int(c.get("damage", -1)) == int(bc.get("damage", -2)) \
-					and str(c.get("color", "")) == str(bc.get("color", "")):
-				in_deck = true
-		fails += _check(in_deck, "the burn card shown really is in the deck")
+	# The burn option is a CHOICE, not a pre-rolled card: nothing is decided for
+	# the player, and the option stays open until they pick one.
+	fails += _check(not burn_card.has("card"),
+		"remove_card option does NOT pre-roll a card")
+	fails += _check(gm.get_burnable_cards().size() >= gm.get_deck_size(),
+		"the burn picker offers every deck card")
 
 	# Taking add_card must add EXACTLY the card that was displayed
 	if add_card.has("card"):
@@ -179,40 +242,69 @@ func _ready() -> void:
 				now_in_deck = true
 		fails += _check(now_in_deck, "the shown card really landed in the deck")
 
-	# Taking remove_card must remove EXACTLY the card that was displayed
-	# (re-roll first: the add_card above already consumed this choice)
+	# remove_card must NOT pre-decide a card any more: the option carries no
+	# concrete card, and the deck is only trimmed once the player picks.
 	gm.roll_rewards()
-	var rm_card: Dictionary = {}
-	for r: Dictionary in gm.get_reward_options():
-		if str(r.get("type", "")) == "remove_card":
-			rm_card = r
-	if rm_card.has("card"):
-		var shown: Dictionary = rm_card["card"]
-		var s_letter: String = str(shown.get("letter", ""))
-		var s_dmg: int = int(shown.get("damage", 0))
-		var s_color: String = str(shown.get("color", ""))
-		var count_before: int = 0
-		for c: Dictionary in gm.deck:
-			if str(c.get("letter", "")) == s_letter \
-					and int(c.get("damage", -1)) == s_dmg \
-					and str(c.get("color", "")) == s_color:
-				count_before += 1
-		var idx_rm2: int = gm.get_reward_options().find(rm_card)
-		var before_rm: int = gm.get_deck_size()
-		var res_rm: Dictionary = gm.choose_reward(idx_rm2)
-		fails += _check(res_rm.get("ok", false), "remove_card applies")
-		fails += _check(gm.get_deck_size() == before_rm - 1, "deck shrank by 1")
-		var count_after: int = 0
-		for c: Dictionary in gm.deck:
-			if str(c.get("letter", "")) == s_letter \
-					and int(c.get("damage", -1)) == s_dmg \
-					and str(c.get("color", "")) == s_color:
-				count_after += 1
-		fails += _check(count_after == count_before - 1,
-			"exactly the shown card was removed (%d -> %d of %s %d %s)" % [
-				count_before, count_after, s_letter, s_dmg, s_color])
-		fails += _check(str(res_rm.get("card", {}).get("letter", "")) == s_letter,
-			"the burn message names the card that was shown")
+	var rm_opt: Dictionary = {}
+	var rm_index: int = -1
+	var all_options: Array = gm.get_reward_options()
+	for i in range(all_options.size()):
+		if str(all_options[i].get("type", "")) == "remove_card":
+			rm_opt = all_options[i]
+			rm_index = i
+	if not rm_opt.is_empty():
+		fails += _check(not rm_opt.has("card"),
+			"the burn option does not pre-roll a card to remove")
+		fails += _check(str(rm_opt.get("detail", "")).to_lower().find("choose") >= 0,
+			"the burn option tells the player to choose")
+		var before_pick: int = gm.get_deck_size()
+		gm.choose_reward(rm_index)
+		fails += _check(gm.get_deck_size() == before_pick,
+			"the deck is untouched until a card is picked")
+		# Pick the very first candidate, then confirm
+		var list2: Array = gm.get_burnable_cards()
+		if not list2.is_empty():
+			var first: Dictionary = list2[0]
+			var f_card: Dictionary = first.get("card", {})
+			var f_letter: String = str(f_card.get("letter", ""))
+			var f_dmg: int = int(f_card.get("damage", -1))
+			var f_color: String = str(f_card.get("color", ""))
+			var f_before: int = _count_matching(gm, f_letter, f_dmg, f_color)
+			var res_f: Dictionary = gm.confirm_burn_card(str(first.get("id", "")))
+			fails += _check(res_f.get("ok", false), "burning the chosen card applies")
+			fails += _check(_count_matching(gm, f_letter, f_dmg, f_color) == f_before - 1,
+				"the chosen card is exactly the one removed (%s %d %s)" % [
+					f_letter, f_dmg, f_color])
+
+	# Burning a card from hand also works, and the hand refills afterwards
+	gm.reset_game()
+	gm.roll_rewards()
+	var h_opt_index: int = -1
+	var h_options: Array = gm.get_reward_options()
+	for i in range(h_options.size()):
+		if str(h_options[i].get("type", "")) == "remove_card":
+			h_opt_index = i
+	if h_opt_index >= 0:
+		gm.choose_reward(h_opt_index)
+		var hand_entry: Dictionary = {}
+		for e: Dictionary in gm.get_burnable_cards():
+			if str(e.get("source", "")) == "hand":
+				hand_entry = e
+				break
+		if not hand_entry.is_empty():
+			var hand_size_before: int = _hand_filled(gm)
+			var res_h: Dictionary = gm.confirm_burn_card(str(hand_entry.get("id", "")))
+			fails += _check(res_h.get("ok", false), "a hand card can be burned")
+			# Hand is refilled from the deck, so it stays full but the card is gone
+			fails += _check(_hand_filled(gm) == hand_size_before,
+				"hand refills after burning one of its cards")
+			var hb: Dictionary = res_h.get("card", {})
+			var h_letter: String = str(hb.get("letter", ""))
+			var h_dmg: int = int(hb.get("damage", -1))
+			var h_color: String = str(hb.get("color", ""))
+			fails += _check(_count_matching(gm, h_letter, h_dmg, h_color) + _hand_count_matching(
+				gm, h_letter, h_dmg, h_color) < gm.MAX_DECK_SIZE + gm.HAND_SIZE,
+				"burned hand card is no longer in hand")
 
 	print("FAILURES=%d" % fails)
 	print("TEST_EXIT=%d" % fails)
@@ -225,3 +317,46 @@ func _check(ok: bool, label: String) -> int:
 		return 0
 	printerr("  FAIL - ", label)
 	return 1
+
+
+# How many cards in the hand slot array are actually filled.
+func _hand_filled(gm: Node) -> int:
+	var n: int = 0
+	for c: Variant in gm.hand:
+		if c != null:
+			n += 1
+	return n
+
+
+func _all_ids_unique(entries: Array) -> bool:
+	var seen: Dictionary = {}
+	for e: Dictionary in entries:
+		var id: String = str(e.get("id", ""))
+		if id.is_empty() or seen.has(id):
+			return false
+		seen[id] = true
+	return true
+
+
+# Counts matching cards across the draw pile and the hand.
+func _count_matching(gm: Node, letter: String, damage: int, color: String) -> int:
+	var n: int = 0
+	for c: Dictionary in gm.deck:
+		if str(c.get("letter", "")) == letter \
+				and int(c.get("damage", -1)) == damage \
+				and str(c.get("color", "")) == color:
+			n += 1
+	return n + _hand_count_matching(gm, letter, damage, color)
+
+
+func _hand_count_matching(gm: Node, letter: String, damage: int, color: String) -> int:
+	var n: int = 0
+	for c: Variant in gm.hand:
+		if c == null:
+			continue
+		var card: Dictionary = c
+		if str(card.get("letter", "")) == letter \
+				and int(card.get("damage", -1)) == damage \
+				and str(card.get("color", "")) == color:
+			n += 1
+	return n

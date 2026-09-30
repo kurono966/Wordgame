@@ -37,6 +37,12 @@ var _low_time_played: bool = false
 @onready var reward_title_label    : Label          = $RewardDialog/DialogPanel/DialogVBox/Title
 @onready var reward_subtitle_label : Label          = $RewardDialog/DialogPanel/DialogVBox/Subtitle
 @onready var reward_row            : HBoxContainer  = $RewardDialog/DialogPanel/DialogVBox/RewardRow
+# Deck-trimming picker (opened by the BURN A CARD reward)
+@onready var burn_dialog           : Control        = $BurnDialog
+@onready var burn_panel            : PanelContainer = $BurnDialog/DialogPanel
+@onready var burn_subtitle_label   : Label          = $BurnDialog/DialogPanel/DialogVBox/Subtitle
+@onready var burn_grid             : GridContainer  = $BurnDialog/DialogPanel/DialogVBox/Scroll/BurnGrid
+@onready var burn_cancel_button    : Button         = $BurnDialog/DialogPanel/DialogVBox/ButtonRow/CancelButton
 @onready var message_label         : Label          = $Scroll/Center/VBox/MessageLabel
 @onready var preview_label         : Label          = $Scroll/Center/VBox/PreviewLabel
 @onready var meaning_label         : Label          = $Scroll/Center/VBox/MeaningLabel
@@ -198,6 +204,8 @@ func _ready() -> void:
 	_style_formula_panel()
 	_style_piles_panel()
 	_style_reward_panel()
+	_style_burn_panel()
+	burn_cancel_button.pressed.connect(_on_burn_cancel_pressed)
 	_refresh_formula_panel()
 	_refresh_ui()
 
@@ -877,14 +885,23 @@ func _create_card_view(w: float, h: float, letter_size: int, sub_size: int) -> D
 	}
 
 # ── Build 3 Slot Reels with Clipping Window ─────────────────────────────────
+## Each reel is a VBox: the scrolling card window plus a SPIN button underneath,
+## so the player can advance that one reel for OP without touching the others.
 func _build_slot_reels() -> void:
 	slot_reels.clear()
 	for s in range(GameManager.NUM_SLOTS):
+		# Column wrapper holding the reel window and its SPIN button. The button is
+		# deliberately slim so the reels still fit the 800px-tall window.
+		var column := VBoxContainer.new()
+		column.alignment = BoxContainer.ALIGNMENT_CENTER
+		column.add_theme_constant_override("separation", 2)
+		slot_container.add_child(column)
+
 		# Window container: clips children to show exactly 3 card rows
 		var window := Control.new()
 		window.custom_minimum_size = Vector2(SLOT_CARD_W, REEL_WINDOW_H)
 		window.clip_contents = true
-		slot_container.add_child(window)
+		column.add_child(window)
 
 		# Moving strip of cards inside window
 		var strip := VBoxContainer.new()
@@ -904,8 +921,20 @@ func _build_slot_reels() -> void:
 			strip.add_child(cv["panel"])
 			card_views.append(cv)
 
+		# SPIN button: advances THIS reel by one step for OP
+		var spin_btn := Button.new()
+		spin_btn.custom_minimum_size = Vector2(SLOT_CARD_W, 20)
+		spin_btn.text = "SPIN %d OP" % GameManager.SPIN_COST
+		spin_btn.tooltip_text = "Advance this reel one step for %d OP." % GameManager.SPIN_COST
+		spin_btn.add_theme_font_size_override("font_size", 11)
+		_style_spin_button(spin_btn)
+		spin_btn.pressed.connect(_on_spin_pressed.bind(s))
+		column.add_child(spin_btn)
+
 		slot_reels.append({
 			"window": window,
+			"column": column,
+			"spin_button": spin_btn,
 			"strip": strip,
 			"card_views": card_views
 		})
@@ -1113,6 +1142,80 @@ func _refresh_slots() -> void:
 		# Start blinking on NEXT card only during DAY phase
 		if is_day:
 			_start_blinking_animation(card_views[2]["panel"])
+
+	_refresh_spin_buttons()
+
+
+## Keeps the Workbench's "which reel is in use" flags in sync with the game, and
+## reflects the current OP / in-use state on every SPIN button.
+func _sync_slot_in_use() -> void:
+	for s in range(GameManager.NUM_SLOTS):
+		var s_cards: Array = GameManager.get_slot_cards(s)
+		if s_cards.is_empty():
+			GameManager.set_slot_in_use(s, false)
+			continue
+		var cur_i: int = GameManager.current_slot_indices[s] % s_cards.size()
+		var active: Dictionary = s_cards[cur_i]
+		GameManager.set_slot_in_use(s, _is_slot_in_workbench(s, str(active.get("letter", ""))))
+
+
+## Whether reel `slot_idx`'s current ACTIVE card sits on the Workbench.
+func _is_slot_in_workbench(slot_idx: int, _letter: String) -> bool:
+	for c: Dictionary in workbench_cards:
+		if str(c.get("type", "")) == "slot" and int(c.get("index", -1)) == slot_idx:
+			return true
+	return false
+
+
+## Enables/disables each SPIN button and shows why when it is not available.
+func _refresh_spin_buttons() -> void:
+	_sync_slot_in_use()
+	for s in range(GameManager.NUM_SLOTS):
+		if s >= slot_reels.size():
+			continue
+		var btn: Button = slot_reels[s].get("spin_button", null)
+		if btn == null:
+			continue
+		var check: Dictionary = GameManager.can_spin_slot(s)
+		btn.disabled = not check.get("ok", false)
+		if check.get("ok", false):
+			btn.text = "SPIN %d OP" % GameManager.SPIN_COST
+			btn.tooltip_text = "Advance this reel one step for %d OP." % GameManager.SPIN_COST
+		else:
+			btn.tooltip_text = "Cannot spin: %s" % str(check.get("reason", ""))
+
+
+func _style_spin_button(btn: Button) -> void:
+	_style_button(btn, Color("1e3350"), Color("5fa8d3"), Color("e6f4ff"))
+
+
+## Spends OP to advance one shared reel by a single step, with the same scroll
+## animation the end-of-turn rotation uses.
+func _on_spin_pressed(slot_idx: int) -> void:
+	if slot_idx < 0 or slot_idx >= slot_reels.size():
+		return
+	var result: Dictionary = GameManager.spin_slot(slot_idx)
+	if not result.get("ok", false):
+		message_label.text = str(result.get("reason", "Cannot spin this reel."))
+		message_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3, 1.0))
+		return
+
+	_play_card_swap_sound()
+	var step_dist: float = SLOT_CARD_H + SLOT_SEP
+	var strip: VBoxContainer = slot_reels[slot_idx]["strip"]
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(strip, "position:y", -step_dist, 0.3)
+	tween.tween_callback(func():
+		_refresh_slots()
+		_refresh_ui()
+		_refresh_formula_panel()
+	)
+
+	_refresh_ui()
+	message_label.text = str(result.get("message", ""))
+	message_label.add_theme_color_override("font_color", Color(0.6, 0.9, 1.0, 1.0))
 
 # ── Slot Rotation Animation (Smooth reel roll upwards) ───────────────────────
 func animate_slot_rotations(used_slots: Array, on_complete: Callable) -> void:
@@ -1941,6 +2044,7 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 	# Defeat takes priority over the turn limit
 	if GameManager.is_game_over() and GameManager.get_game_outcome() == "DEFEAT":
 		reward_dialog.visible = false
+		burn_dialog.visible = false
 		_show_game_over()
 		return
 
@@ -1949,6 +2053,7 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 		GameManager.game_outcome = "COMPLETE"
 		_show_game_over()
 		reward_dialog.visible = false
+		burn_dialog.visible = false
 
 # ── Reward choice (three options after every enemy defeat) ───────────────────
 # Buttons are built in code so the option count and wording always match the
@@ -2111,7 +2216,7 @@ func _build_reward_card_view(card: Dictionary, is_burn: bool) -> Control:
 func _reward_icon(type: String) -> String:
 	match type:
 		"add_card":    return "+"
-		"remove_card": return "-"
+		"remove_card": return "PICK"
 		"heal":        return "HP"
 		"shield":      return "SH"
 		"op":          return "OP"
@@ -2132,16 +2237,134 @@ func _style_reward_button(button: Button) -> void:
 
 
 ## Applies the chosen reward, closes the dialog and reports the result.
+## "BURN A CARD" is two-step: this opens the card picker instead of resolving
+## immediately, and _on_burn_card_picked() finishes the reward.
 func _on_reward_chosen(index: int) -> void:
 	var result: Dictionary = GameManager.choose_reward(index)
-	reward_dialog.visible = false
 	if not result.get("ok", false):
+		reward_dialog.visible = false
 		_refresh_ui()
+		return
+	if bool(result.get("needs_card", false)):
+		# Hide the three options and show the deck picker on top
+		reward_dialog.visible = false
+		_open_burn_picker()
+		return
+	reward_dialog.visible = false
+	_play_score_up_sound()
+	_refresh_ui()
+	_refresh_formula_panel()
+	_show_step_message("REWARD: %s" % str(result.get("message", "")), Color(1.0, 0.88, 0.45, 1.0))
+
+
+# ── Deck-trimming picker ─────────────────────────────────────────────────────
+# Shows every card that can be removed (draw pile + hand) and removes the one
+# the player clicks, giving them full control over which card leaves the deck.
+func _style_burn_panel() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.11, 0.13, 0.19, 1.0)
+	sb.border_color = Color(0.95, 0.45, 0.40, 0.95)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(14)
+	sb.shadow_color = Color(0.0, 0.0, 0.04, 0.72)
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2(0, 7)
+	sb.content_margin_left = 18.0
+	sb.content_margin_right = 18.0
+	sb.content_margin_top = 14.0
+	sb.content_margin_bottom = 14.0
+	burn_panel.add_theme_stylebox_override("panel", sb)
+	$BurnDialog/DialogPanel/DialogVBox/Title.add_theme_color_override(
+		"font_color", Color(1.0, 0.72, 0.65, 1.0))
+	_style_button(burn_cancel_button, Color("3a2230"), Color("e08a80"), Color("ffecea"))
+
+
+func _open_burn_picker() -> void:
+	for child in burn_grid.get_children():
+		child.queue_free()
+
+	var candidates: Array = GameManager.get_burnable_cards()
+	burn_subtitle_label.text = "Click a card to remove it from your deck.  (%d cards)" % candidates.size()
+	for entry: Dictionary in candidates:
+		burn_grid.add_child(_build_burn_card_button(entry))
+
+	burn_dialog.visible = true
+	if burn_grid.get_child_count() > 0:
+		(burn_grid.get_child(0) as Button).grab_focus()
+
+
+## One clickable card in the picker, drawn in the card's own colour so it reads
+## the same as the cards on the table.
+func _build_burn_card_button(entry: Dictionary) -> Button:
+	var card: Dictionary = entry.get("card", {})
+	var card_id: String = str(entry.get("id", ""))
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(78, 100)
+	_style_burn_card_button(button, str(card.get("color", "red")))
+	button.pressed.connect(_on_burn_card_picked.bind(card_id))
+
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vbox.offset_left = 4.0
+	vbox.offset_top = 6.0
+	vbox.offset_right = -4.0
+	vbox.offset_bottom = -6.0
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 0)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(vbox)
+
+	var consts: Dictionary = get_card_color_constants(str(card.get("color", "red")))
+	var letter := Label.new()
+	letter.text = str(card.get("letter", "?"))
+	letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	letter.add_theme_font_size_override("font_size", 30)
+	letter.add_theme_color_override("font_color", consts["border"])
+	letter.add_theme_color_override("font_outline_color", Color("080d17"))
+	letter.add_theme_constant_override("outline_size", 2)
+	letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(letter)
+
+	var dmg := Label.new()
+	dmg.text = "%d dmg" % int(card.get("damage", 0))
+	dmg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dmg.add_theme_font_size_override("font_size", 12)
+	dmg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 1.0))
+	dmg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(dmg)
+	return button
+
+
+func _style_burn_card_button(button: Button, color_name: String) -> void:
+	var consts: Dictionary = get_card_color_constants(color_name)
+	var normal := _make_button_style(consts["bg"], consts["border"])
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", _make_button_style(consts["bg"].lightened(0.18), consts["border"]))
+	button.add_theme_stylebox_override("pressed", _make_button_style(consts["bg"].darkened(0.2), consts["border"]))
+	button.add_theme_stylebox_override("focus", _make_button_style(consts["bg"].lightened(0.12), consts["border"]))
+
+
+## Removes the clicked card and finishes the reward.
+func _on_burn_card_picked(card_id: String) -> void:
+	var result: Dictionary = GameManager.confirm_burn_card(card_id)
+	burn_dialog.visible = false
+	if not result.get("ok", false):
+		# The card vanished under us; the reward is still pending, so re-offer it
+		_show_step_message("That card is no longer there. Pick again.", Color(1.0, 0.7, 0.6, 1.0))
+		_refresh_ui()
+		show_reward_choice()
 		return
 	_play_score_up_sound()
 	_refresh_ui()
 	_refresh_formula_panel()
 	_show_step_message("REWARD: %s" % str(result.get("message", "")), Color(1.0, 0.88, 0.45, 1.0))
+
+
+## Backs out of the picker without spending the reward.
+func _on_burn_cancel_pressed() -> void:
+	GameManager.cancel_burn_card()
+	burn_dialog.visible = false
+	show_reward_choice()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -2161,6 +2384,7 @@ func _show_game_over() -> void:
 	preview_label.visible                              = false
 	meaning_label.visible                              = false
 	definition_label.visible                           = false
+	burn_dialog.visible                               = false
 
 	var outcome: String = GameManager.get_game_outcome()
 	var title: String = "GAME OVER"

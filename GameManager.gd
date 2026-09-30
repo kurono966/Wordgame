@@ -143,6 +143,9 @@ var operation_points: int = 0      # YELLOW trait: currency for Workbench card m
 var reward_options: Array = []     # 3 reward dictionaries, empty when none pending
 var rewards_taken: int = 0         # How many rewards the player has claimed
 var pending_reward_choice: bool = false  # True while a choice is on screen
+# Index into reward_options while the player is picking WHICH card to burn.
+# -1 means no pick is in progress.
+var pending_burn_index: int = -1
 
 # Deck size limits, so "add card" / "remove card" can never break the draw loop.
 const MIN_DECK_SIZE: int = 5
@@ -163,31 +166,95 @@ func roll_rewards() -> Array:
 	return reward_options
 
 
-## Adds one "gain this card" and one "burn this card" option when the deck size
-## allows. The concrete card is rolled UP FRONT and stored on the option, so the
-## player can compare "take this exact card" against "thin the deck" instead of
-## gambling on an unknown card.
+## Adds one "gain this card" and one "burn a card" option when the deck size
+## allows. The card you GAIN is rolled up front and shown face-up. The card you
+## BURN is chosen by the player from their own deck, so nothing is decided for
+## them: the trade is "take this card" vs "thin the deck how you like".
 func _build_deck_rewards() -> void:
 	if deck.size() < MAX_DECK_SIZE:
 		reward_options.append({"type": "add_card", "title": "ADD A CARD",
 			"detail": "Add this card to your deck.",
 			"card": _pick_reward_card()})
 	if deck.size() > MIN_DECK_SIZE:
-		# Burn target is chosen now too, so the risk is visible before committing.
-		var target: Dictionary = _pick_burn_target()
+		# No card is chosen here: the player picks one from the burn list.
 		reward_options.append({"type": "remove_card", "title": "BURN A CARD",
-			"detail": "Remove this card from your deck.",
-			"card": target})
+			"detail": "Choose a card from your deck to remove."})
 
 
-## Picks the card the "burn a card" reward will remove, without removing it yet.
-func _pick_burn_target() -> Dictionary:
-	if not deck.is_empty():
-		return deck[randi() % deck.size()].duplicate()
-	for card: Variant in hand:
-		if card != null:
-			return card.duplicate()
-	return {"letter": "?", "damage": 0, "color": "red"}
+## Lists every card the player may burn, as stable pick entries.
+## Includes the draw pile and the hand, so a card already in hand can be
+## discarded too. Each entry carries the source and index so the UI can hand
+## back a precise reference instead of guessing from letter/damage.
+func get_burnable_cards() -> Array:
+	var out: Array = []
+	for i in range(deck.size()):
+		out.append({"id": "deck:%d" % i, "source": "deck", "index": i,
+			"card": deck[i].duplicate()})
+	for i in range(hand.size()):
+		if hand[i] != null:
+			out.append({"id": "hand:%d" % i, "source": "hand", "index": i,
+				"card": hand[i].duplicate()})
+	# The graveyard is shuffled back into the deck when it runs dry, so burning a
+	# card from there would not actually shrink the deck. Those are not offered.
+	return out
+
+
+## Finishes a "burn a card" reward by removing the card the player picked.
+## `card_id` is one of the ids from get_burnable_cards(). Leaves the reward
+## pending if the id is unknown, so a mis-click cannot consume the reward.
+func confirm_burn_card(card_id: String) -> Dictionary:
+	if not pending_reward_choice or pending_burn_index < 0:
+		return {"ok": false, "reason": "no burn in progress"}
+	var parts: PackedStringArray = card_id.split(":")
+	if parts.size() != 2:
+		return {"ok": false, "reason": "bad card id"}
+	var source: String = parts[0]
+	var idx: int = int(parts[1])
+
+	var burned: Dictionary = {}
+	if source == "deck":
+		if idx < 0 or idx >= deck.size():
+			return {"ok": false, "reason": "card no longer in deck"}
+		burned = deck[idx]
+		deck.remove_at(idx)
+	elif source == "hand":
+		if idx < 0 or idx >= hand.size() or hand[idx] == null:
+			return {"ok": false, "reason": "card no longer in hand"}
+		burned = hand[idx]
+		hand[idx] = null
+		_refill_hand()
+	else:
+		return {"ok": false, "reason": "unknown source"}
+
+	pending_burn_index = -1
+	pending_reward_choice = false
+	reward_options = []
+	rewards_taken += 1
+	return {
+		"ok": true,
+		"type": "remove_card",
+		"card": burned,
+		"message": "Burned %s (%d dmg, %s) from your deck (now %d cards)." % [
+			burned.get("letter", "?"), int(burned.get("damage", 0)),
+			str(burned.get("color", "red")).to_upper(), deck.size()]
+	}
+
+
+## Abandons a burn pick so the three reward options come back.
+func cancel_burn_card() -> void:
+	pending_burn_index = -1
+
+
+func is_burning() -> bool:
+	return pending_burn_index >= 0
+
+
+## Picks a random card from the master pool for the "add card" reward. It is
+## not removed from the pool, so the same card can reward twice.
+func _pick_reward_card() -> Dictionary:
+	if CARD_DEFS.is_empty():
+		return {"letter": "E", "damage": 1, "color": "red"}
+	return CARD_DEFS[randi() % CARD_DEFS.size()].duplicate()
 
 
 ## Stat rewards, offered with weights that keep all three useful.
@@ -208,7 +275,10 @@ func _build_stat_rewards() -> void:
 
 
 ## Applies the reward the player chose. `index` is the position in reward_options.
-## Returns a dictionary describing what happened, for the UI to report.
+##
+## "remove_card" is a two-step reward: the first call opens the pick list (it
+## returns {"ok": true, "needs_card": true} and keeps the choice pending), then
+## the player picks a card and confirm_burn_card() finishes it.
 func choose_reward(index: int) -> Dictionary:
 	if not pending_reward_choice:
 		return {"ok": false, "reason": "no pending choice"}
@@ -229,12 +299,11 @@ func choose_reward(index: int) -> Dictionary:
 				card.get("letter", "?"), int(card.get("damage", 0)),
 				str(card.get("color", "red")).to_upper(), deck.size()]
 		"remove_card":
-			# Remove the card that was shown, so nothing is swapped underfoot.
-			var burned: Dictionary = _remove_shown_card(reward)
-			result["card"] = burned
-			result["message"] = "Burned %s (%d dmg, %s) from your deck (now %d cards)." % [
-				burned.get("letter", "?"), int(burned.get("damage", 0)),
-				str(burned.get("color", "red")).to_upper(), deck.size()]
+			# Wait for the player to pick which card to burn.
+			pending_burn_index = index
+			result["needs_card"] = true
+			result["message"] = "Choose a card to burn from your deck."
+			return result
 		"heal":
 			var amount: int = maxi(10, int(round(float(player_hp) * 0.25)))
 			amount = mini(amount, PLAYER_MAX_HP - player_hp)
@@ -260,49 +329,6 @@ func choose_reward(index: int) -> Dictionary:
 	reward_options = []
 	rewards_taken += 1
 	return result
-
-
-## Picks a random card from the master pool for the "add card" reward. It is
-## not removed from the pool, so the same card can reward twice.
-func _pick_reward_card() -> Dictionary:
-	if CARD_DEFS.is_empty():
-		return {"letter": "E", "damage": 1, "color": "red"}
-	return CARD_DEFS[randi() % CARD_DEFS.size()].duplicate()
-
-
-## Removes the exact card that was shown on the "burn a card" option. Falls back
-## to a random deck card if the shown one is no longer in the deck, so the reward
-## can never fail. Identical duplicates are interchangeable, so the first match
-## of the same letter/damage/colour is removed.
-func _remove_shown_card(reward: Dictionary) -> Dictionary:
-	var shown: Dictionary = reward.get("card", {})
-	var letter: String = str(shown.get("letter", ""))
-	var damage: int = int(shown.get("damage", -1))
-	var color: String = str(shown.get("color", ""))
-	for i in range(deck.size()):
-		var card: Dictionary = deck[i]
-		if str(card.get("letter", "")) == letter \
-				and int(card.get("damage", -1)) == damage \
-				and str(card.get("color", "")) == color:
-			deck.remove_at(i)
-			return card
-	return _burn_random_deck_card()
-
-
-## Removes and returns a random card from the deck. Prefers the draw pile; falls
-## back to a card in hand so the reward still works if the pile is empty.
-func _burn_random_deck_card() -> Dictionary:
-	if not deck.is_empty():
-		var idx: int = randi() % deck.size()
-		var burned: Dictionary = deck[idx]
-		deck.remove_at(idx)
-		return burned
-	for i in range(hand.size()):
-		if hand[i] != null:
-			var burned: Dictionary = hand[i]
-			hand[i] = null
-			return burned
-	return {"letter": "E", "damage": 1, "color": "red"}
 
 
 func has_pending_reward() -> bool:
@@ -345,6 +371,8 @@ func reset_game() -> void:
 	reward_options = []
 	rewards_taken = 0
 	pending_reward_choice = false
+	pending_burn_index = -1
+	slot_in_use = [false, false, false]
 
 	# Build this game's deck: DECK_SIZE cards picked at random from the card pool
 	var pool: Array = CARD_DEFS.duplicate()
@@ -582,6 +610,79 @@ func rotate_slots(used_slots: Array) -> void:
 		if int(s) < 0 or int(s) >= current_slot_indices.size():
 			continue
 		current_slot_indices[s] = (current_slot_indices[s] + 1) % CARDS_PER_SLOT
+
+
+# ─── OP ability: spin a shared reel ──────────────────────────────────────────
+# SPIN_COST OP advances ONE shared reel by one step, so the card that was showing
+# as NEXT becomes ACTIVE. Each reel is spun independently, so a player can nudge
+# one bad reel and leave the others alone.
+const SPIN_COST: int = 1
+
+# Which reels currently have their ACTIVE card on the Workbench. The UI owns the
+# Workbench, so it reports this back here.
+var slot_in_use: Array = []
+
+
+## What spinning reel `slot_idx` right now would do, without doing it.
+## Used by the UI to label the buttons and to grey them out when spinning is
+## not allowed, so the rules are never hidden from the player.
+func can_spin_slot(slot_idx: int) -> Dictionary:
+	if slot_idx < 0 or slot_idx >= slots.size():
+		return {"ok": false, "reason": "No such reel"}
+	if slot_idx >= current_slot_indices.size():
+		return {"ok": false, "reason": "Reel is not ready"}
+	if operation_points < SPIN_COST:
+		return {"ok": false, "reason": "Not enough OP"}
+	# Spinning a reel whose ACTIVE card is already part of the word being built
+	# would silently change the word, so it is refused. The player must remove
+	# the card from the Workbench first.
+	if is_slot_active_in_use(slot_idx):
+		return {"ok": false, "reason": "That card is in your word"}
+	return {"ok": true, "reason": ""}
+
+
+## Whether the reel's ACTIVE card is currently placed on the Workbench. The UI
+## owns the Workbench, so it reports this back to the game logic.
+func set_slot_in_use(slot_idx: int, in_use: bool) -> void:
+	while slot_in_use.size() < slots.size():
+		slot_in_use.append(false)
+	if slot_idx >= 0 and slot_idx < slot_in_use.size():
+		slot_in_use[slot_idx] = in_use
+
+
+func is_slot_active_in_use(slot_idx: int) -> bool:
+	return slot_idx >= 0 and slot_idx < slot_in_use.size() and slot_in_use[slot_idx]
+
+
+## Spends OP to advance one reel by a single step. Returns what happened so the
+## UI can report it. The OP are only spent when the spin actually happens, so a
+## refused spin never costs anything.
+func spin_slot(slot_idx: int) -> Dictionary:
+	var check: Dictionary = can_spin_slot(slot_idx)
+	if not check.get("ok", false):
+		return {"ok": false, "reason": check.get("reason", "Cannot spin")}
+
+	var spend: Dictionary = try_spend_operation_points(SPIN_COST)
+	if not spend.get("valid", false):
+		return {"ok": false, "reason": spend.get("reason", "Not enough OP")}
+
+	var s_cards: Array = slots[slot_idx]
+	var cur_i: int = current_slot_indices[slot_idx] % s_cards.size()
+	var next_i: int = (cur_i + 1) % s_cards.size()
+	current_slot_indices[slot_idx] = next_i
+
+	var shown: Dictionary = s_cards[next_i]
+	return {
+		"ok": true,
+		"slot": slot_idx,
+		"card": shown,
+		"remaining": spend.get("remaining", operation_points),
+		"message": "Spun reel %d for %d OP — now showing %s (%d dmg, %s). %d OP left." % [
+			slot_idx + 1, SPIN_COST, shown.get("letter", "?"),
+			int(shown.get("damage", 0)),
+			str(shown.get("color", "red")).to_upper(),
+			int(spend.get("remaining", operation_points))]
+	}
 
 # Calculate the word-damage color multiplier. RED is exceptional:
 # 0 red = x1, 1 red = x1.5 (exception), 2+ red = 2^(n-1)

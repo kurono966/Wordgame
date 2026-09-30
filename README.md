@@ -20,15 +20,18 @@ Build valid English words using cards from your slots and hand. Each card has a 
 | Reward | Effect |
 |---|---|
 | **ADD A CARD** | Adds the **specific card shown** to your deck (no strike-through) |
-| **BURN A CARD** | Removes the **specific card shown** from your deck (shown struck through) |
+| **BURN A CARD** | **You pick the card**: a picker opens with every card you hold — click one to remove it |
 | **VITALITY** (HP) | Restore HP (25% of max, minimum 10) |
 | **BARRIER** (SH) | Gain 8 shield |
 | **INSIGHT** (OP) | Gain 5 operation points |
 | **IRON WILL** (MAX) | Max HP +5 (heals the same amount) |
 | **CARD DRAW** (DR) | Draw a card into hand |
 
-- **Deck cards are rolled up front and shown face-up.** You are not picking freely from the card pool — you choose between *taking the card on offer* and *burning that card to thin your deck*
-- The card you are shown is always the card you get (or lose). If identical copies exist, any of them counts
+- **ADD A CARD is rolled up front and shown face-up.** You are not picking freely from the card pool — you are offered one specific card
+- The card you are shown is always the card you get. If identical copies exist, any of them counts
+- **BURN A CARD is the opposite: nothing is decided for you.** Taking it opens a picker listing every card in your draw pile *and* your hand, each drawn in its own colour. Click the one you want gone and only that card is removed
+- You can press **BACK TO REWARDS** in the picker to change your mind; the reward is not spent until you click a card
+- Burned cards are gone for good. The graveyard is not offered, because those cards get shuffled back into the draw pile
 - There are always **three** options, at least one of which is a deck change (add/remove) while the deck size allows
 - The deck is clamped to **5-40 cards**; when the draw pile runs out the graveyard is shuffled back in, so the draw never breaks
 - **Negative damage**: reduces your HP (never below 0). If your HP reaches 0, it's GAME OVER (DEFEAT).
@@ -120,6 +123,10 @@ Cards of each color grant a trait when used in a valid word (shared slot cards c
 - **GREEN — Heal**: HP healed scales off the base total: `base x 2^(green - 1)` (up to your max HP).
 - **YELLOW — Operation points (OP)**: OP gained scales off the base total: `base x 2^(yellow - 1)` (1 yellow = x1, 2 = x2, 3 = x4, 4 = x8). OP is a currency, not a score: it is never spent by damage and never resets, and **1 OP moves one Workbench card one place left or right** (costs no turn).
 - **★ SPECIAL (cards with 8+ damage)**: activated by long-pressing or right-clicking the card in hand. It costs **the card's own damage value in OP** (an 8-damage card costs 8 OP, a 10-damage card costs 10 OP), then discards that card and every same-color card in hand and redraws (no turn used). With too few OP the activation is refused.
+- **⟳ SPIN a shared reel**: each of the three shared reels has its own **SPIN 1 OP** button underneath it. Pressing it advances **that one reel by a single step**, so the card showing as `→ NEXT` becomes the new `★ ACTIVE` card, and the reel scrolls with the same animation used at end of turn. The other two reels are left alone, so you can nudge a bad reel without giving up a good one. The OP are only spent when the spin actually happens.
+  - A reel whose ACTIVE card is **already on your Workbench cannot be spun** — that would silently change the word you are building. Clear the card first (or the button stays greyed out with the reason in its tooltip).
+  - Spinning costs no turn, and a full three-card cycle returns the reel to where it started — there is no way to shuffle for free.
+  - OP comes from YELLOW word cards and the **INSIGHT** reward, so spending it on a spin is a real trade-off against using **SPECIAL**.
 
 All traits use the **positive base total** (a negative word grants no trait value), and every trait is applied once.
 

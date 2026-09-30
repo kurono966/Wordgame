@@ -40,7 +40,7 @@ grow_vertical = 2
 [node name="VBox" type="VBoxContainer" parent="Scroll/Center"]
 custom_minimum_size = Vector2(960, 0)
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="HeaderBox" type="HBoxContainer" parent="Scroll/Center/VBox"]
 layout_mode = 2
@@ -191,7 +191,7 @@ alignment = 1
 theme_override_constants/separation = 8
 
 [node name="MeaningLabel" type="Label" parent="Scroll/Center/VBox"]
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
 size_flags_vertical = 0
 theme_override_font_sizes/font_size = 15
@@ -202,10 +202,10 @@ autowrap_mode = 3
 clip_text = false
 
 [node name="DefinitionLabel" type="Label" parent="Scroll/Center/VBox"]
-custom_minimum_size = Vector2(0, 20)
+custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 size_flags_vertical = 0
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -328,6 +328,75 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 16
 alignment = 1
+
+[node name="BurnDialog" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dimmer" type="ColorRect" parent="BurnDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.03, 0.06, 0.88)
+
+[node name="DialogPanel" type="PanelContainer" parent="BurnDialog"]
+layout_mode = 1
+anchor_left = 0.08
+anchor_top = 0.14
+anchor_right = 0.92
+anchor_bottom = 0.86
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="DialogVBox" type="VBoxContainer" parent="BurnDialog/DialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="BurnDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "BURN A CARD - CHOOSE ONE TO REMOVE"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="BurnDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "Click a card to remove it from your deck."
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="BurnDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="BurnGrid" type="GridContainer" parent="BurnDialog/DialogPanel/DialogVBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 10
+
+[node name="ButtonRow" type="HBoxContainer" parent="BurnDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="CancelButton" type="Button" parent="BurnDialog/DialogPanel/DialogVBox/ButtonRow"]
+custom_minimum_size = Vector2(180, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "BACK TO REWARDS"
 
 [node name="FormulaDialog" type="Control" parent="."]
 visible = false

@@ -192,39 +192,118 @@ func _ready() -> void:
 		fails += _check(btn.get_global_rect().size.y > 0.0,
 			"button %d has a real size (%.0fx%.0f)" % [i, btn.get_global_rect().size.x, btn.get_global_rect().size.y])
 
-	# A deck reward must render the CONCRETE card, not just the words "ADD A CARD".
-	# The letter on the button has to match the card the reward rolled.
-	var rendered_letter: String = ""
-	var rendered_damage: String = ""
+	# "ADD A CARD" must render the CONCRETE card it rolled. "BURN A CARD" is the
+	# opposite: the player picks the card, so the button must NOT name one.
+	var add_letter: String = ""
+	var add_damage: String = ""
+	var add_index: int = -1
+	var burn_index: int = -1
 	for i in range(offered.size()):
 		var reward: Dictionary = offered[i]
-		if not reward.has("card"):
-			continue
-		var expected_letter: String = str(reward["card"].get("letter", ""))
-		var expected_damage: String = "%d dmg" % int(reward["card"].get("damage", 0))
-		var btn2: Button = main.reward_row.get_child(i) as Button
-		var labels: Array = _collect_label_texts(btn2)
-		fails += _check(labels.has(expected_letter),
-			"deck reward %d shows the card letter '%s' (got %s)" % [i, expected_letter, str(labels)])
-		fails += _check(labels.has(expected_damage),
-			"deck reward %d shows the damage '%s'" % [i, expected_damage])
-		fails += _check(str(reward.get("detail", "")).contains("this card"),
-			"deck reward %d says it is THIS specific card ('%s')" % [i, str(reward.get("detail", ""))])
-		rendered_letter = expected_letter
-		rendered_damage = expected_damage
-	fails += _check(rendered_letter != "", "at least one reward showed a concrete card (%s %s)" % [
-		rendered_letter, rendered_damage])
-	# Choosing must close the dialog and apply
-	var deck_before: int = GameManager.get_deck_size()
-	main._on_reward_chosen(0)
+		var rtype: String = str(reward.get("type", ""))
+		if rtype == "add_card" and reward.has("card"):
+			add_index = i
+			var expected_letter: String = str(reward["card"].get("letter", ""))
+			var expected_damage: String = "%d dmg" % int(reward["card"].get("damage", 0))
+			var btn2: Button = main.reward_row.get_child(i) as Button
+			var labels: Array = _collect_label_texts(btn2)
+			fails += _check(labels.has(expected_letter),
+				"add reward %d shows the card letter '%s' (got %s)" % [i, expected_letter, str(labels)])
+			fails += _check(labels.has(expected_damage),
+				"add reward %d shows the damage '%s'" % [i, expected_damage])
+			add_letter = expected_letter
+			add_damage = expected_damage
+		elif rtype == "remove_card":
+			burn_index = i
+			fails += _check(not reward.has("card"),
+				"the burn option does not pre-decide a card")
+			fails += _check(str(reward.get("detail", "")).contains("Choose"),
+				"the burn option tells the player to choose")
+	fails += _check(add_letter != "",
+		"the add reward showed a concrete card (%s %s)" % [add_letter, add_damage])
+
+	# Taking ADD A CARD applies immediately. The option order is shuffled, so the
+	# add option is looked up rather than assumed to be first.
+	if add_index >= 0:
+		var deck_before: int = GameManager.get_deck_size()
+		main._on_reward_chosen(add_index)
+		await get_tree().process_frame
+		fails += _check(not main.reward_dialog.visible, "choosing closes the dialog")
+		fails += _check(not GameManager.has_pending_reward(), "choosing clears the pending flag")
+		fails += _check(GameManager.rewards_taken == 1, "rewards_taken incremented via UI")
+		fails += _check(not main.burn_dialog.visible, "the burn picker stays closed")
+		fails += _check(GameManager.get_deck_size() == deck_before + 1,
+			"add_card grew the deck via the UI (%d -> %d)" % [
+				deck_before, GameManager.get_deck_size()])
+
+	# Taking BURN A CARD opens the picker instead of applying. Re-roll first, since
+	# taking the add reward above consumed the current choice.
+	GameManager.roll_rewards()
+	burn_index = _find_burn_option(GameManager)
+	if burn_index >= 0:
+		main.show_reward_choice()
+		await get_tree().process_frame
+		fails += _check(not main.burn_dialog.visible, "the burn picker starts hidden")
+		var deck_before_burn: int = GameManager.get_deck_size()
+		main._on_reward_chosen(_find_burn_option(GameManager))
+		await get_tree().process_frame
+		fails += _check(main.burn_dialog.visible, "choosing BURN opens the picker")
+		fails += _check(not main.reward_dialog.visible, "the three options close")
+		fails += _check(GameManager.has_pending_reward(), "the reward is still pending")
+		fails += _check(GameManager.is_burning(), "the game is in a burn pick")
+		fails += _check(GameManager.get_deck_size() == deck_before_burn,
+			"nothing is removed before the player picks")
+		# One picker button per burnable card, all with a real size
+		var burnable: Array = GameManager.get_burnable_cards()
+		fails += _check(main.burn_grid.get_child_count() == burnable.size(),
+			"one picker button per burnable card (%d vs %d)" % [
+				main.burn_grid.get_child_count(), burnable.size()])
+		fails += _check(main.burn_grid.get_child_count() > 0, "the picker is not empty")
+		for ci in range(mini(3, main.burn_grid.get_child_count())):
+			var cbtn: Button = main.burn_grid.get_child(ci) as Button
+			fails += _check(cbtn != null and cbtn.get_global_rect().size.y > 0.0,
+				"picker card %d has a real size (%.0fx%.0f)" % [ci,
+					cbtn.get_global_rect().size.x, cbtn.get_global_rect().size.y])
+		# Clicking a card burns exactly that card
+		if main.burn_grid.get_child_count() > 0 and not burnable.is_empty():
+			var target_card: Dictionary = burnable[0].get("card", {})
+			var t_letter: String = str(target_card.get("letter", ""))
+			var t_dmg: int = int(target_card.get("damage", 0))
+			var tbtn: Button = main.burn_grid.get_child(0) as Button
+			fails += _check(_collect_label_texts(tbtn).has(t_letter),
+				"the picker card shows its letter '%s'" % t_letter)
+			fails += _check(_collect_label_texts(tbtn).has("%d dmg" % t_dmg),
+				"the picker card shows its damage '%d dmg'" % t_dmg)
+			var t_before: int = _count_cards(GameManager, t_letter, t_dmg, str(target_card.get("color", "")))
+			var rewards_before: int = GameManager.rewards_taken
+			main._on_burn_card_picked(str(burnable[0].get("id", "")))
+			await get_tree().process_frame
+			fails += _check(not main.burn_dialog.visible, "the picker closes after burning")
+			fails += _check(not GameManager.has_pending_reward(), "the burn reward is consumed")
+			fails += _check(GameManager.rewards_taken == rewards_before + 1,
+				"rewards_taken counted the burn (%d -> %d)" % [
+					rewards_before, GameManager.rewards_taken])
+			var t_after: int = _count_cards(GameManager, t_letter, t_dmg, str(target_card.get("color", "")))
+			fails += _check(t_after == t_before - 1,
+				"exactly the clicked card was removed (%s: %d -> %d)" % [t_letter, t_before, t_after])
+
+	# Cancelling the picker keeps the reward and returns to the three options
+	GameManager.roll_rewards()
+	main.show_reward_choice()
 	await get_tree().process_frame
-	fails += _check(not main.reward_dialog.visible, "choosing closes the dialog")
-	fails += _check(not GameManager.has_pending_reward(), "choosing clears the pending flag")
-	fails += _check(GameManager.rewards_taken == 1, "rewards_taken incremented via UI")
-	fails += _check(GameManager.get_deck_size() == deck_before or GameManager.rewards_taken == 1,
-		"deck size is consistent after the UI pick")
-	print("reward dialog shown with %d buttons, deck now %d" % [
-		main.reward_row.get_child_count(), GameManager.get_deck_size()])
+	var bi2: int = _find_burn_option(GameManager)
+	if bi2 >= 0:
+		main._on_reward_chosen(bi2)
+		await get_tree().process_frame
+		fails += _check(main.burn_dialog.visible, "picker reopened for the cancel test")
+		main._on_burn_cancel_pressed()
+		await get_tree().process_frame
+		fails += _check(not main.burn_dialog.visible, "cancel closes the picker")
+		fails += _check(not GameManager.is_burning(), "cancel leaves the burn pick")
+		fails += _check(GameManager.has_pending_reward(), "cancel keeps the reward pending")
+		fails += _check(main.reward_dialog.visible, "cancel returns to the three options")
+		GameManager.cancel_burn_card()
+	main.reward_dialog.visible = false
 
 	# Clearing the workbench must return to the idle prompt
 	main.workbench_cards.clear()
@@ -253,3 +332,30 @@ func _collect_label_texts(node: Node) -> Array:
 	for child in node.get_children():
 		out.append_array(_collect_label_texts(child))
 	return out
+
+
+## Position of the "BURN A CARD" option in the current reward list, or -1.
+func _find_burn_option(gm: Node) -> int:
+	for i in range(gm.get_reward_options().size()):
+		if str(gm.get_reward_options()[i].get("type", "")) == "remove_card":
+			return i
+	return -1
+
+
+## Counts matching cards across the draw pile and the hand.
+func _count_cards(gm: Node, letter: String, damage: int, color: String) -> int:
+	var n: int = 0
+	for c: Dictionary in gm.deck:
+		if str(c.get("letter", "")) == letter \
+				and int(c.get("damage", -1)) == damage \
+				and str(c.get("color", "")) == color:
+			n += 1
+	for c: Variant in gm.hand:
+		if c == null:
+			continue
+		var card: Dictionary = c
+		if str(card.get("letter", "")) == letter \
+				and int(card.get("damage", -1)) == damage \
+				and str(card.get("color", "")) == color:
+			n += 1
+	return n
