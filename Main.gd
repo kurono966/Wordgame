@@ -478,7 +478,7 @@ func _refresh_formula_panel() -> void:
 	formula_label.text = _build_formula_text() + "\n" + _build_last_calc_text()
 
 func _build_formula_text() -> String:
-	var player_max: int = GameManager.PLAYER_MAX_HP
+	var player_max: int = GameManager.get_max_player_hp()
 	var enemy_base: int = GameManager.ENEMY_BASE_HP
 	var enemy_growth: int = GameManager.ENEMY_HP_GROWTH
 	var op: int = GameManager.get_operation_points()
@@ -1577,6 +1577,8 @@ func _build_preview_text(plan: Dictionary, word: String) -> String:
 				"" if turning == 1 else "s"
 			]
 			parts.append("NIGHT %d dmg%s" % [night, note])
+		elif bool(plan.get("defeats_enemy", false)):
+			parts.append("NIGHT 0 dmg  (enemy defeated)")
 		else:
 			parts.append("NIGHT 0 dmg")
 	else:
@@ -2077,6 +2079,7 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 	# ── Step 5: Night self-damage (negative damage hurts the player) ──
 	var applied_damage: int = penalty_result.get("applied_damage", 0)
 	var night_blocked: int = penalty_result.get("absorbed", 0)
+	var stage_cleared: bool = penalty_result.get("stage_cleared", false)
 	if applied_damage > 0:
 		total_taken += applied_damage
 		_play_score_down_sound()
@@ -2088,6 +2091,11 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 	elif night_blocked > 0:
 		_play_score_up_sound()
 		_show_step_message("NIGHT: SHIELD blocked %d damage!" % night_blocked, Color(0.4, 0.7, 1.0, 1.0))
+		await get_tree().create_timer(0.9).timeout
+	elif stage_cleared:
+		# Defeating the enemy ends the fight, so the turn costs nothing.
+		_play_score_up_sound()
+		_show_step_message("NIGHT: no damage — the enemy was defeated this turn!", Color(0.4, 1.0, 0.6, 1.0))
 		await get_tree().create_timer(0.9).timeout
 
 	_refresh_ui()

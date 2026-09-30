@@ -6,7 +6,7 @@ const NUM_SLOTS: int = 3
 const CARDS_PER_SLOT: int = 3
 const HAND_SIZE: int = 7
 const DECK_SIZE: int = 20   # Cards picked at random from the pool for each game
-const MAX_TURNS: int = 10
+const MAX_TURNS: int = 50
 
 # ── Enemy name settings ──
 const ALPHA: String = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -28,7 +28,8 @@ const FALLBACK_ENEMY_NAMES: Array = ["DRAGON", "SLIME", "GOLEM", "WRAITH", "TROL
 # except RED which is x1.5 for exactly 1 card)
 
 # ── HP & Damage settings ──
-const PLAYER_MAX_HP: int = 50     # Player's maximum HP
+const PLAYER_MAX_HP: int = 50     # Player's maximum HP at the START of a game
+const MAX_HP_REWARD_GAIN: int = 5  # HP ceiling granted by the "IRON WILL" reward
 const ENEMY_BASE_HP: int = 30     # HP of the first enemy
 const ENEMY_HP_GROWTH: int = 15   # Max HP increase for each next enemy
 
@@ -196,6 +197,7 @@ var slots: Array = []       # 3 slots, each an Array of 3 cards
 var current_slot_indices: Array = [0, 0, 0] # Index of currently displayed card per slot
 var hand: Array = []        # 7 cards (or null if empty)
 var player_hp: int = PLAYER_MAX_HP     # Player HP (negative damage / night self-damage reduces it)
+var player_max_hp: int = PLAYER_MAX_HP # Current HP ceiling; the "IRON WILL" reward raises it
 var shield: int = 0                    # BLUE shield: absorbs incoming damage before HP
 var enemy_hp: int = ENEMY_BASE_HP      # Current enemy HP (positive damage reduces it)
 var enemy_max_hp: int = ENEMY_BASE_HP  # Current enemy's max HP
@@ -212,6 +214,9 @@ var word_list: Array = []   # Candidate enemy names (A-Z only, NAME_MIN_LEN..NAM
 var operation_points: int = 0      # YELLOW trait: currency for Workbench card moves and special activations
 var word_multiplier: int = 1       # Active multiplier from X's Cross Multiply (resets after word submission)
 var night_penalty_immune: bool = false # Active immunity from Z's Zero Gravity (resets after night penalty)
+# Set when a submit defeats the enemy. Defeating an enemy ends the fight, so the
+# NIGHT self-damage of THAT turn is skipped (consumed by apply_turn_start_penalty).
+var stage_cleared_immune: bool = false
 
 # ── Rewards (chosen after every enemy defeat) ────────────────────────────────
 # Three options are offered each time an enemy is defeated; the player picks
@@ -384,6 +389,9 @@ func choose_reward(index: int) -> Dictionary:
 	var reward: Dictionary = reward_options[index]
 	var result: Dictionary = {"ok": true, "type": reward.get("type", ""),
 		"title": reward.get("title", ""), "message": ""}
+	# Carried shield from the fight that just ended is dropped, unless the
+	# reward being claimed IS the shield reward.
+	var keep_shield: bool = str(reward.get("type", "")) == "shield"
 
 	match str(reward.get("type", "")):
 		"add_card":
@@ -404,27 +412,34 @@ func choose_reward(index: int) -> Dictionary:
 			return result
 		"heal":
 			var amount: int = maxi(10, int(round(float(player_hp) * 0.25)))
-			amount = mini(amount, PLAYER_MAX_HP - player_hp)
+			amount = mini(amount, player_max_hp - player_hp)
 			player_hp += amount
 			result["message"] = "Restored %d HP (now %d)." % [amount, player_hp]
 		"shield":
 			var gain: int = 8
-			shield += gain
+			shield = gain
 			result["message"] = "Gained %d shield (now %d)." % [gain, shield]
 		"op":
 			operation_points += 5
 			result["message"] = "Gained 5 OP (now %d)." % operation_points
 		"max_hp":
-			player_hp += 5
-			result["message"] = "Max HP is now %d." % PLAYER_MAX_HP
+			# Raise the CEILING, and grant the new headroom as current HP too so
+			# the reward is felt immediately (previously this only added 5 to
+			# current HP, pushing the player ABOVE the old ceiling and making
+			# every later heal subtract HP).
+			player_max_hp += MAX_HP_REWARD_GAIN
+			player_hp = mini(player_hp + MAX_HP_REWARD_GAIN, player_max_hp)
+			result["message"] = "Max HP is now %d (+%d)." % [player_max_hp, MAX_HP_REWARD_GAIN]
 		"draw":
 			var drawn: Dictionary = _draw_card()
 			hand.append(drawn)
 			result["message"] = "Drew %s (%d dmg) into your hand." % [
 				drawn.get("letter", "?"), int(drawn.get("damage", 0))]
 
-	# Reset shield when claiming a reward after defeating an enemy
-	shield = 0
+	# Reset shield when claiming a reward after defeating an enemy. A shield
+	# reward keeps its own value, otherwise it would cancel itself out.
+	if not keep_shield:
+		shield = 0
 
 	pending_reward_choice = false
 	reward_options = []
@@ -451,11 +466,13 @@ func _ready() -> void:
 
 func reset_game() -> void:
 	player_hp = PLAYER_MAX_HP
+	player_max_hp = PLAYER_MAX_HP
 	shield = 0
 	enemy_hp = ENEMY_BASE_HP
 	operation_points = 0
 	word_multiplier = 1
 	night_penalty_immune = false
+	stage_cleared_immune = false
 	turn = 0
 
 	enemy_max_hp = ENEMY_BASE_HP
@@ -696,7 +713,7 @@ func use_special_ability(hand_index: int) -> Dictionary:
 
 		"mini_heal":
 			# A goes to graveyard, restore 4 HP
-			var healed: int = mini(4, PLAYER_MAX_HP - player_hp)
+			var healed: int = mini(4, player_max_hp - player_hp)
 			player_hp += healed
 			_refill_hand()
 			result["message"] = "MINI HEAL! A was sent to graveyard. Restored %d HP." % healed
@@ -1118,7 +1135,7 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 	var shield_gained: int = trait_base * shield_mult * active_w_mult
 	shield += shield_gained
 	var heal_mult: int = color_trait_multiplier(green_count)
-	var heal_amount: int = mini(trait_base * heal_mult * active_w_mult, PLAYER_MAX_HP - player_hp)
+	var heal_amount: int = mini(trait_base * heal_mult * active_w_mult, player_max_hp - player_hp)
 	player_hp += heal_amount
 	# YELLOW: earn operation points (same base-scaled stacking). Points accumulate
 	# and can be spent to move a card on the Workbench.
@@ -1131,6 +1148,11 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 	# Positive damage is dealt to the enemy, negative damage hurts the player
 	# (the BLUE shield absorbs incoming damage first)
 	var damage_result: Dictionary = _apply_damage(final_damage)
+
+	# Defeating an enemy ends the fight, so this turn's NIGHT self-damage is
+	# nullified (see apply_turn_start_penalty). The flag is one-shot.
+	var defeated_delta: int = enemies_defeated - defeated_before
+	stage_cleared_immune = defeated_delta > 0
 
 	turn += 1
 	is_night = not is_night
@@ -1329,7 +1351,7 @@ func get_shield() -> int:
 	return shield
 
 func get_max_player_hp() -> int:
-	return PLAYER_MAX_HP
+	return player_max_hp
 
 func get_enemy_hp() -> int:
 	return enemy_hp
@@ -1402,7 +1424,7 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 	var trait_base: int = maxi(base_damage, 0)
 	var shield_gained: int = trait_base * color_trait_multiplier(int(color_counts.get("blue", 0))) * active_w
 	var heal_mult: int = color_trait_multiplier(int(color_counts.get("green", 0)))
-	var heal_amount: int = mini(trait_base * heal_mult * active_w, PLAYER_MAX_HP - player_hp)
+	var heal_amount: int = mini(trait_base * heal_mult * active_w, player_max_hp - player_hp)
 	var shield_pool: int = shield + shield_gained
 	var hp_pool: int = player_hp + heal_amount
 
@@ -1415,9 +1437,14 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 	# 3) The turn advances and the phase flips
 	var next_is_night: bool = not is_night
 
+	# Killing the enemy ends the fight, so this turn's NIGHT self-damage is
+	# nullified — the preview must show the same 0 the real submit will charge.
+	var defeats_enemy: bool = final_damage > 0 and final_damage >= enemy_hp
+
 	# 4) On the new NIGHT phase the slot penalty lands (used slots already rolled)
 	var penalty: Dictionary = get_next_slot_penalty_with_multiplier(used_slots if next_is_night else [])
-	var night_penalty: int = (0 if night_penalty_immune else penalty["final_penalty"]) if next_is_night else 0
+	var penalty_immune: bool = night_penalty_immune or defeats_enemy
+	var night_penalty: int = (0 if penalty_immune else penalty["final_penalty"]) if next_is_night else 0
 	var night_absorbed: int = mini(shield_pool, night_penalty)
 	shield_pool -= night_absorbed
 	hp_pool = maxi(hp_pool - (night_penalty - night_absorbed), 0)
@@ -1438,6 +1465,8 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 		"night_penalty": night_penalty,
 		"night_absorbed": night_absorbed,
 		"night_next_cards": penalty["next_cards"],
+		"night_penalty_immune": penalty_immune,
+		"defeats_enemy": defeats_enemy,
 		"total_absorbed": word_absorbed + night_absorbed,
 		"total_hp_lost": hp_lost,
 		"player_hp_after": hp_pool,
@@ -1451,11 +1480,16 @@ func get_phase() -> String:
 	return "NIGHT" if is_night else "DAY"
 
 func get_next_slot_total_penalty() -> int:
-	if night_penalty_immune:
+	if night_penalty_immune or stage_cleared_immune:
 		return 0
 	return get_next_slot_penalty_with_multiplier()["final_penalty"]
 
 func apply_turn_start_penalty() -> Dictionary:
+	# Defeating an enemy ends the fight, so the NIGHT self-damage of THAT turn is
+	# skipped. The immunity is one-shot, so it is consumed here either way.
+	var stage_cleared: bool = stage_cleared_immune
+	stage_cleared_immune = false
+
 	if not is_night:
 		return {
 			"base_damage": 0,
@@ -1463,15 +1497,16 @@ func apply_turn_start_penalty() -> Dictionary:
 			"requested_damage": 0,
 			"absorbed": 0,
 			"applied_damage": 0,
+			"stage_cleared": stage_cleared,
 			"previous_player_hp": player_hp,
 			"player_hp": player_hp
 		}
 
 	var penalty: Dictionary = get_next_slot_penalty_with_multiplier()
 	var requested_damage: int = penalty["final_penalty"]
-	if night_penalty_immune:
+	if night_penalty_immune or stage_cleared:
 		requested_damage = 0
-		night_penalty_immune = false
+	night_penalty_immune = false
 	var previous_player_hp: int = player_hp
 	# Night self-damage: the BLUE shield absorbs first, then HP
 	var damage_result: Dictionary = _take_self_damage(requested_damage)
@@ -1481,6 +1516,7 @@ func apply_turn_start_penalty() -> Dictionary:
 		"requested_damage": requested_damage,
 		"absorbed": damage_result["absorbed"],
 		"applied_damage": previous_player_hp - player_hp,
+		"stage_cleared": stage_cleared,
 		"previous_player_hp": previous_player_hp,
 		"player_hp": player_hp
 	}

@@ -97,6 +97,8 @@ The game alternates between DAY and NIGHT phases each turn:
 **DAY Phase**: No incoming damage
 **NIGHT Phase**: At the start of the turn, you take damage equal to the total damage values of the NEXT cards in all slots
 
+The turn on which you defeat an enemy is exempt: no NIGHT self-damage is applied that turn
+
 ### Card Colors & Multipliers
 Each card has a color attribute (Red, Blue, Green, Yellow, or Gold for wildcards). The damage multiplier applies ONLY to red cards used together in the same word:
 
@@ -163,7 +165,7 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 - `blocked` = min(shield, incoming damage); the shield absorbs night self-damage and negative word damage before HP is lost
 
 **GREEN heal (player)**
-- `heal` = base x 2 ^ (green cards - 1) → 1 green = x1, 2 green = x2, 3 green = x4, 4 green = x8 (capped at your max HP, 50)
+- `heal` = base x 2 ^ (green cards - 1) → 1 green = x1, 2 green = x2, 3 green = x4, 4 green = x8 (capped at your current max HP, 50 at the start of a game and raised by the IRON WILL reward)
 
 **YELLOW operation points (player)**
 - `OP` = base x 2 ^ (yellow cards - 1) → 1 yellow = x1, 2 = x2, 3 = x4, 4 = x8
@@ -178,6 +180,7 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 **NIGHT self-damage**
 - `penalty` = (sum of the NEXT card damage of all 3 slots) x 10 ^ (same-color cards - 1) → 2 same color = x10, 3 = x100, 4 = x1000
 - The BLUE shield absorbs it first, then HP
+- **The turn on which you defeat an enemy deals no damage**: the fight is over, so the NIGHT penalty of that turn is skipped (the submit preview shows `NIGHT 0 dmg (enemy defeated)`). This exemption applies to that turn only — the next turn is charged normally
 
 **Other**
 - Negative words grant no trait value (traits use the positive base total)
