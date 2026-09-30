@@ -36,6 +36,53 @@ const MAX_HP_REWARD_GAIN: int = 5  # HP ceiling granted by the "IRON WILL" rewar
 const ENEMY_BASE_HP: int = 30     # HP of the first enemy
 const ENEMY_HP_GROWTH: int = 15   # Max HP increase for each next enemy
 
+# ── Enemy skills ──────────────────────────────────────────────────────────────
+# Every enemy binds THREE of the letters of its OWN name to a skill (see
+# _roll_enemy_skills). Spelling a word that uses one of those letters fires that
+# skill — but ONLY if the enemy survives the word: a killing blow ends the fight
+# before anything can fire back.
+# Every skill is temporary. _clear_enemy_skills() wipes the whole set the moment
+# a stage is cleared, so no shield, hand limit or night curse ever leaks into the
+# next fight. Damage the player already took is NOT undone (that is HP they can
+# heal back), and nothing is silently destroyed either.
+const ENEMY_SKILL_COUNT: int = 3      # How many letters of the name carry a skill
+const ENEMY_MIN_HAND_LIMIT: int = 3   # HAND DOWN can never empty the hand
+
+# Skills grow with the stage so later enemies bite harder. `max` caps them so a
+# deep run never becomes unplayable.
+const ENEMY_SKILL_DEFS: Array = [
+	{
+		"id": "aegis", "name": "AEGIS", "icon": "SH",
+		"desc": "The enemy raises a shield that absorbs damage before its HP.",
+		"base": 6, "step": 3, "max": 30,
+	},
+	{
+		"id": "hand_down", "name": "HAND DOWN", "icon": "HAND",
+		"desc": "Your hand holds fewer cards until this enemy falls.",
+		"base": 1, "step": 1, "max": 2,
+	},
+	{
+		"id": "drain", "name": "DRAIN", "icon": "OP",
+		"desc": "The enemy drinks your operation points.",
+		"base": 3, "step": 2, "max": 20,
+	},
+	{
+		"id": "nightmare", "name": "NIGHTMARE", "icon": "NGT",
+		"desc": "The NIGHT self-damage base grows.",
+		"base": 4, "step": 3, "max": 25,
+	},
+	{
+		"id": "regrow", "name": "REGROWTH", "icon": "HP+",
+		"desc": "The enemy restores some of its own HP.",
+		"base": 3, "step": 2, "max": 20,
+	},
+	{
+		"id": "thorns", "name": "THORNS", "icon": "THN",
+		"desc": "The enemy's letters cut you as you spell them.",
+		"base": 4, "step": 3, "max": 25,
+	},
+]
+
 # ── Card cost & special ability settings ──
 # A card's DAMAGE NUMBER IS ALSO ITS COST: the printed damage value is the OP
 # price paid to activate that card's special ability (8-damage card = 8 OP,
@@ -207,6 +254,10 @@ var enemy_max_hp: int = ENEMY_BASE_HP  # Current enemy's max HP
 var enemies_defeated: int = 0          # Enemies defeated so far
 var stage: int = 1                     # Current stage (advances when an enemy is defeated)
 var enemy_name: String = ""            # Current enemy's name (random word from the dictionary)
+var enemy_shield: int = 0              # AEGIS: soaks damage before the enemy's HP
+var enemy_night_tax: int = 0           # NIGHTMARE: added to the NIGHT penalty base
+var hand_limit: int = HAND_SIZE        # HAND DOWN: how many cards the hand may hold
+var enemy_skills: Array = []           # ENEMY_SKILL_COUNT entries: {letter, id, name, ...}
 var total_damage: int = 0              # Total damage dealt to enemies (evaluation)
 var turn: int = 0
 var is_night: bool = false  # Phase: false = Day, true = Night
@@ -503,6 +554,10 @@ func reset_game() -> void:
 	pending_burn_index = -1
 	slot_in_use = [false, false, false]
 
+	# Every enemy-granted effect from the previous run is wiped before the first
+	# enemy is rolled, so a fresh game never inherits a shield or a shrunken hand.
+	_clear_enemy_skills()
+
 	# Build this game's deck: DECK_SIZE cards picked at random from the card pool (strictly no X or Q)
 	var pool: Array = []
 	for card_def in CARD_DEFS:
@@ -516,10 +571,11 @@ func reset_game() -> void:
 	# Roll this stage's enemy name and build the shared reels from its letters
 	# (shared cards are separate from the player's deck)
 	enemy_name = _roll_enemy_name()
+	_roll_enemy_skills()
 	_build_shared_slots()
 
-	# Deal 7 cards to hand from the player's deck
-	for _h in range(HAND_SIZE):
+	# Deal the opening hand, honouring any HAND DOWN already in force
+	for _h in range(hand_limit):
 		hand.append(_draw_card())
 
 ## Loads the word list and the Japanese glosses from res://word_dictionary.json
@@ -624,6 +680,226 @@ func _roll_enemy_name() -> String:
 		return String(FALLBACK_ENEMY_NAMES.pick_random())
 	return String(word_list.pick_random())
 
+# ─── Enemy skills ─────────────────────────────────────────────────────────────
+# An enemy is built out of the letters of its own name, and THREE of those
+# letters carry a skill. Use the letter in a word and the skill fires. The reel
+# is dealt from the same letters, so a dangerous letter is always visible
+# somewhere on the board.
+#
+# Nothing here outlives the enemy: _advance_stage() calls _clear_enemy_skills()
+# as soon as a stage is cleared, restoring the hand limit, dropping the enemy
+# shield and the night tax, and wiping the skill list for the incoming enemy.
+
+## The strength of a skill at the given stage (base + growth, capped).
+func _enemy_skill_value(def: Dictionary, at_stage: int) -> int:
+	var value: int = int(def.get("base", 0)) + int(def.get("step", 0)) * maxi(at_stage - 1, 0)
+	return mini(value, int(def.get("max", value)))
+
+
+## Binds ENEMY_SKILL_COUNT letters of the current name to ENEMY_SKILL_COUNT
+## distinct skills. The letters are shuffled so two enemies built from the same
+## word do not always play the same way.
+func _roll_enemy_skills() -> void:
+	enemy_skills.clear()
+	if ENEMY_SKILL_DEFS.is_empty():
+		return
+
+	var letters: Array = []
+	var seen: Dictionary = {}
+	for ch in enemy_name.to_upper():
+		if ALPHA.find(ch) < 0 or seen.has(ch):
+			continue
+		seen[ch] = true
+		letters.append(ch)
+	if letters.is_empty():
+		return
+
+	# A very short name can hold fewer distinct letters than we need skills, so
+	# cycle back through what we have rather than dropping a skill slot.
+	letters.shuffle()
+	var cursor: int = 0
+	while letters.size() < ENEMY_SKILL_COUNT:
+		letters.append(String(letters[cursor % seen.size()]))
+		cursor += 1
+
+	var defs: Array = ENEMY_SKILL_DEFS.duplicate()
+	defs.shuffle()
+	for i in range(ENEMY_SKILL_COUNT):
+		var def: Dictionary = defs[i % defs.size()]
+		var letter: String = String(letters[i])
+		enemy_skills.append({
+			"letter": letter,
+			"id": str(def.get("id", "")),
+			"name": str(def.get("name", "")),
+			"icon": str(def.get("icon", "?")),
+			"desc": str(def.get("desc", "")),
+			"value": _enemy_skill_value(def, stage),
+			"cooldown": 0,
+		})
+
+
+## Drops every effect the current enemy granted. Called when a stage is cleared
+## and by reset_game(). HP the player already lost is deliberately NOT restored:
+## that damage is recoverable through healing, and rewriting it would throw away
+## the player's real progress.
+func _clear_enemy_skills() -> void:
+	enemy_shield = 0
+	enemy_night_tax = 0
+	hand_limit = HAND_SIZE
+	enemy_skills.clear()
+
+
+## The skill bound to `letter`, or an empty dictionary when the enemy has no
+## skill on it. Wildcards ("?") never match — a wildcard is not the enemy's
+## letter, so it cannot wake its skill.
+func get_enemy_skill_for_letter(letter: String) -> Dictionary:
+	var want: String = letter.to_upper()
+	if want == "" or want == "?":
+		return {}
+	for skill in enemy_skills:
+		if str(skill.get("letter", "")) == want:
+			return skill
+	return {}
+
+
+## Every skill whose letter appears in `assignment`. Each one fires at most once
+## per submit, even if the word repeats the letter.
+func _triggered_enemy_skills(assignment: Array) -> Array:
+	var used: Dictionary = {}
+	for src in assignment:
+		used[str(src.get("card_letter", "")).to_upper()] = true
+	var triggered: Array = []
+	var seen: Dictionary = {}
+	for skill in enemy_skills:
+		var id: String = str(skill.get("id", ""))
+		if seen.has(id):
+			continue
+		if used.has(str(skill.get("letter", ""))):
+			seen[id] = true
+			triggered.append(skill)
+	return triggered
+
+
+## Dry run of _apply_enemy_skills(): what the enemy would do back, computed on
+## throwaway numbers. `shield`/`hp` are the player's pools AFTER the word's own
+## traits and self-damage, and `enemy_hp_pool` is the enemy's HP after the word
+## landed, so REGROWTH heals off the same number the real submit would.
+## When `fires` is false (the word kills the enemy) nothing happens at all.
+func _preview_enemy_skills(assignment: Array, shield: int, hp: int, enemy_hp_pool: int, fires: bool) -> Dictionary:
+	var out := {
+		"log": [], "player_damage": 0, "player_absorbed": 0,
+		"enemy_shield": 0, "enemy_heal": 0, "night_tax": 0,
+		"hand_limit": hand_limit, "shield_after": shield, "hp_after": hp,
+	}
+	if not fires:
+		return out
+
+	var shield_pool: int = shield
+	var hp_pool: int = hp
+	var enemy_pool: int = enemy_hp_pool
+	for skill in _triggered_enemy_skills(assignment):
+		var id: String = str(skill.get("id", ""))
+		var value: int = int(skill.get("value", 0))
+		var label: String = "%s [%s]" % [str(skill.get("name", "SKILL")), str(skill.get("letter", ""))]
+		match id:
+			"aegis":
+				out["enemy_shield"] = int(out["enemy_shield"]) + value
+				out["log"].append("%s — enemy raises %d shield." % [label, value])
+			"hand_down":
+				out["hand_limit"] = maxi(ENEMY_MIN_HAND_LIMIT, int(out["hand_limit"]) - value)
+				out["log"].append("%s — your hand now holds at most %d cards." % [label, int(out["hand_limit"])])
+			"drain":
+				var drained: int = mini(operation_points, value)
+				out["log"].append("%s — %d operation points drained." % [label, drained])
+			"nightmare":
+				out["night_tax"] = int(out["night_tax"]) + value
+				out["log"].append("%s — NIGHT damage base +%d." % [label, value])
+			"regrow":
+				var healed: int = mini(value, maxi(enemy_max_hp - enemy_pool, 0))
+				enemy_pool += healed
+				out["enemy_heal"] = int(out["enemy_heal"]) + healed
+				out["log"].append("%s — enemy repairs %d HP." % [label, healed])
+			"thorns":
+				var absorbed: int = mini(shield_pool, value)
+				shield_pool -= absorbed
+				var taken: int = value - absorbed
+				hp_pool = maxi(hp_pool - taken, 0)
+				out["player_absorbed"] = int(out["player_absorbed"]) + absorbed
+				out["player_damage"] = int(out["player_damage"]) + taken
+				out["log"].append("%s — you take %d damage%s." % [
+					label, taken, (" (shield blocked %d)" % absorbed) if absorbed > 0 else ""])
+	out["shield_after"] = shield_pool
+	out["hp_after"] = hp_pool
+	return out
+
+
+## Whether this enemy currently has the skill with that id.
+func _has_enemy_skill(id: String) -> bool:
+	for skill in enemy_skills:
+		if str(skill.get("id", "")) == id:
+			return true
+	return false
+
+
+## Whether the word spells the letter that carries `id`.
+func _skill_letter_used(assignment: Array, id: String) -> bool:
+	for skill in _triggered_enemy_skills(assignment):
+		if str(skill.get("id", "")) == id:
+			return true
+	return false
+
+
+## Applies every skill the word woke. Only called while the enemy is still
+## alive. Returns {log, player_damage, player_absorbed} so the UI can narrate
+## what just happened without recomputing anything.
+func _apply_enemy_skills(assignment: Array) -> Dictionary:
+	var log: Array = []
+	var player_damage: int = 0
+	var player_absorbed: int = 0
+	for skill in _triggered_enemy_skills(assignment):
+		var id: String = str(skill.get("id", ""))
+		var value: int = int(skill.get("value", 0))
+		var letter: String = str(skill.get("letter", ""))
+		var label: String = "%s [%s]" % [str(skill.get("name", "SKILL")), letter]
+		match id:
+			"aegis":
+				enemy_shield += value
+				log.append("%s — enemy raises %d shield (now %d)." % [label, value, enemy_shield])
+			"hand_down":
+				hand_limit = maxi(ENEMY_MIN_HAND_LIMIT, hand_limit - value)
+				_trim_hand_to_limit()
+				log.append("%s — your hand now holds at most %d cards." % [label, hand_limit])
+			"drain":
+				var drained: int = mini(operation_points, value)
+				operation_points -= drained
+				log.append("%s — %d operation points drained (%d left)." % [label, drained, operation_points])
+			"nightmare":
+				enemy_night_tax += value
+				log.append("%s — NIGHT damage base +%d (now %d)." % [label, value, enemy_night_tax])
+			"regrow":
+				var healed: int = mini(value, enemy_max_hp - enemy_hp)
+				enemy_hp += healed
+				log.append("%s — enemy repairs %d HP (now %d / %d)." % [label, healed, enemy_hp, enemy_max_hp])
+			"thorns":
+				var hit: Dictionary = _take_self_damage(value)
+				player_absorbed += int(hit.get("absorbed", 0))
+				player_damage += int(hit.get("taken", 0))
+				log.append("%s — you take %d damage%s." % [
+					label, int(hit.get("taken", 0)),
+					(" (shield blocked %d)" % int(hit.get("absorbed", 0))) if int(hit.get("absorbed", 0)) > 0 else ""
+				])
+	return {"log": log, "player_damage": player_damage, "player_absorbed": player_absorbed}
+
+
+## Sends any cards beyond the current hand limit to the graveyard. They are not
+## destroyed: the graveyard is shuffled back into the draw pile, so the deck can
+## never lose a card to HAND DOWN.
+func _trim_hand_to_limit() -> void:
+	while hand.size() > hand_limit:
+		var card: Variant = hand.pop_back()
+		if card != null:
+			graveyard.append(card)
+
 func _add_fallback_words() -> void:
 	# Common English words as fallback for web export
 	var fallback_words = [
@@ -663,7 +939,9 @@ func _reshuffle_graveyard() -> void:
 	graveyard.clear()
 
 func _refill_hand() -> void:
-	for i in range(hand.size()):
+	# The hand never grows past the current limit, so HAND DOWN keeps biting
+	# until the enemy that cast it is gone.
+	for i in range(mini(hand.size(), hand_limit)):
 		if hand[i] == null:
 			hand[i] = _draw_card()
 
@@ -874,10 +1152,15 @@ func get_next_slot_penalty_with_multiplier(rotating_slots: Array = []) -> Dictio
 		total += next_card["damage"]
 
 	var multiplier: int = calculate_penalty_color_multiplier(next_cards)
+	# NIGHTMARE thickens the night: the tax is added to the BASE, so the steep
+	# same-color multiplier still scales it. It is cleared with the enemy.
+	var taxed_base: int = total + enemy_night_tax
 	return {
-		"base_penalty": total,
+		"base_penalty": taxed_base,
+		"slot_penalty": total,
+		"night_tax": enemy_night_tax,
 		"multiplier": multiplier,
-		"final_penalty": total * multiplier,
+		"final_penalty": taxed_base * multiplier,
 		"next_cards": next_cards
 	}
 
@@ -1229,6 +1512,24 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 	var defeated_delta: int = enemies_defeated - defeated_before
 	stage_cleared_immune = defeated_delta > 0
 
+	# ── Enemy skills ───────────────────────────────────────────────────────────
+	# Spelling one of the enemy's own skill letters wakes that skill — but only
+	# if the enemy is still standing. A killing blow ends the fight first, so a
+	# fallen enemy never fires back, and _advance_stage() has already wiped
+	# everything it had granted.
+	var enemy_shield_before: int = enemy_shield
+	var enemy_hp_after_damage: int = enemy_hp
+	var hand_limit_before: int = hand_limit
+	var night_tax_before: int = enemy_night_tax
+	var enemy_skill_log: Array = []
+	var enemy_skill_damage: int = 0
+	var enemy_skill_absorbed: int = 0
+	if defeated_delta == 0:
+		var skill_result: Dictionary = _apply_enemy_skills(assignment)
+		enemy_skill_log = skill_result.get("log", [])
+		enemy_skill_damage = int(skill_result.get("player_damage", 0))
+		enemy_skill_absorbed = int(skill_result.get("player_absorbed", 0))
+
 	turn += 1
 	is_night = not is_night
 
@@ -1251,6 +1552,18 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 		"self_damage_absorbed": damage_result.get("absorbed", 0),
 		"self_damage_taken": damage_result.get("taken", 0),
 		"final_damage": final_damage,
+		"enemy_shield_before": enemy_shield_before,
+		"enemy_shield_absorbed": int(damage_result.get("enemy_shield_absorbed", 0)),
+		"enemy_shield_after": enemy_shield,
+		"enemy_hp_damage": int(damage_result.get("enemy_hp_damage", 0)),
+		"enemy_hp_after_damage": enemy_hp_after_damage,
+		"enemy_skill_log": enemy_skill_log,
+		"enemy_skill_damage": enemy_skill_damage,
+		"enemy_skill_absorbed": enemy_skill_absorbed,
+		"enemy_skill_heal": maxi(enemy_hp - enemy_hp_after_damage, 0),
+		"enemy_skill_night_tax": maxi(enemy_night_tax - night_tax_before, 0),
+		"hand_limit_before": hand_limit_before,
+		"hand_limit_after": hand_limit,
 		"enemy_hp_before": enemy_hp_before,
 		"enemy_hp_after": enemy_hp,
 		"enemy_max_hp_before": enemy_max_hp_before,
@@ -1280,18 +1593,24 @@ func spend_operation_points(amount: int) -> bool:
 	return true
 
 # ─── Damage resolution ───────────────────────────────────────────────────────
-# Positive damage hits the current enemy. When an enemy's HP reaches 0 the
-# stage is cleared (stronger enemy + fresh hand). Any excess damage is LOST —
-# it does NOT carry over to the next stage's enemy.
+# Positive damage hits the current enemy. The enemy's AEGIS shield soaks damage
+# before any HP is lost, and only what gets through lowers the HP. When the HP
+# reaches 0 the stage is cleared (stronger enemy + fresh hand) and EVERY effect
+# the fallen enemy granted is wiped. Any excess damage is LOST — it does NOT
+# carry over to the next stage's enemy.
 # Negative damage hits the player instead: the BLUE shield absorbs first, then
 # HP (never below 0). Returns {absorbed, taken}.
 func _apply_damage(amount: int) -> Dictionary:
 	if amount > 0:
 		total_damage += amount
-		enemy_hp -= amount
+		# AEGIS soaks the hit first; only the remainder reaches the enemy HP.
+		var soaked: int = mini(enemy_shield, amount)
+		enemy_shield -= soaked
+		var to_hp: int = amount - soaked
+		enemy_hp -= to_hp
 		if enemy_hp <= 0:
 			_advance_stage()
-		return {"absorbed": 0, "taken": 0}
+		return {"absorbed": 0, "taken": 0, "enemy_shield_absorbed": soaked, "enemy_hp_damage": to_hp}
 	elif amount < 0:
 		return _take_self_damage(-amount)
 	return {"absorbed": 0, "taken": 0}
@@ -1321,20 +1640,26 @@ func count_colors_in_assignment(assignment: Array) -> Dictionary:
 func _advance_stage() -> void:
 	enemies_defeated += 1
 	stage += 1
+	# The fallen enemy takes every one of its effects with it: the hand limit is
+	# restored, its shield and night tax are dropped and its skill letters are
+	# erased. Only the next enemy's name rebuilds the board from scratch.
+	_clear_enemy_skills()
 	enemy_max_hp += ENEMY_HP_GROWTH
 	enemy_hp = enemy_max_hp
 	enemy_name = _roll_enemy_name()
+	_roll_enemy_skills()
 	_reset_hand()
 	_build_shared_slots()
 
-# Discard the whole hand and draw a fresh hand from the deck.
+# Discard the whole hand and draw a fresh one, up to the current hand limit.
 func _reset_hand() -> void:
 	for i in range(hand.size()):
 		if hand[i] != null:
 			graveyard.append(hand[i])
 			hand[i] = null
-	while hand.size() < HAND_SIZE:
+	while hand.size() < hand_limit:
 		hand.append(null)
+	_trim_hand_to_limit()
 	_refill_hand()
 
 # Rebuild the shared slot reels (3x3) from the current enemy's name letters,
@@ -1434,6 +1759,23 @@ func get_enemy_hp() -> int:
 func get_max_enemy_hp() -> int:
 	return enemy_max_hp
 
+## The enemy's AEGIS shield. It soaks damage before the enemy loses HP and is
+## thrown away the moment that enemy dies.
+func get_enemy_shield() -> int:
+	return enemy_shield
+
+## How many cards the hand may currently hold (HAND DOWN shrinks this).
+func get_hand_limit() -> int:
+	return hand_limit
+
+## NIGHTMARE's flat addition to the NIGHT penalty base, before its multiplier.
+func get_enemy_night_tax() -> int:
+	return enemy_night_tax
+
+## Every skill bound to the current enemy: {letter, id, name, icon, desc, value}.
+func get_enemy_skills() -> Array:
+	return enemy_skills
+
 func get_stage() -> int:
 	return stage
 
@@ -1490,9 +1832,11 @@ func get_game_outcome() -> String:
 # mutating any state. It mirrors the real resolution order exactly:
 #   1. BLUE shield and GREEN heal from the word are granted first
 #   2. negative word damage hits the player (BLUE shield absorbs it)
-#   3. the turn counter advances and the phase flips
-#   4. if the new phase is NIGHT, the slot penalty lands (BLUE shield absorbs it)
-# Slots listed in `used_slots` roll in step 3, so step 4 reads their NEXT card
+#   3. the word damages the enemy — its AEGIS shield soaks the hit first
+#   4. if the enemy SURVIVES, every skill letter in the word fires back
+#   5. the turn counter advances and the phase flips
+#   6. if the new phase is NIGHT, the slot penalty lands (BLUE shield absorbs it)
+# Slots listed in `used_slots` roll in step 5, so step 6 reads their NEXT card
 # one position further along — see get_next_slot_penalty_with_multiplier().
 func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 	var base_damage: int = 0
@@ -1518,17 +1862,42 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 	shield_pool -= word_absorbed
 	hp_pool = maxi(hp_pool - (word_self_damage - word_absorbed), 0)
 
-	# 3) The turn advances and the phase flips
-	var next_is_night: bool = not is_night
+	# 3) The word hits the enemy, but AEGIS soaks the damage before its HP does
+	var enemy_shield_pool: int = enemy_shield
+	var enemy_shield_absorbed: int = mini(enemy_shield_pool, maxi(final_damage, 0))
+	enemy_shield_pool -= enemy_shield_absorbed
+	var enemy_hp_damage: int = maxi(final_damage, 0) - enemy_shield_absorbed
+	var enemy_hp_pool: int = maxi(enemy_hp - enemy_hp_damage, 0)
 
 	# Killing the enemy ends the fight, so this turn's NIGHT self-damage is
-	# nullified — the preview must show the same 0 the real submit will charge.
-	var defeats_enemy: bool = final_damage > 0 and final_damage >= enemy_hp
+	# nullified — the preview must show the same 0 the real submit will charge —
+	# and no enemy skill fires back.
+	var defeats_enemy: bool = final_damage > 0 and enemy_hp_pool <= 0
 
-	# 4) On the new NIGHT phase the slot penalty lands (used slots already rolled)
+	# 4) Surviving the word means every skill letter in it now fires back. This
+	# runs the SAME order as _apply_enemy_skills on throwaway numbers, so the
+	# forecast can never drift away from what a real submit does.
+	var skills: Dictionary = _preview_enemy_skills(assignment, shield_pool, hp_pool, enemy_hp_pool, not defeats_enemy)
+	var enemy_skill_log: Array = skills["log"]
+	var skill_damage: int = int(skills["player_damage"])
+	var skill_absorbed: int = int(skills["player_absorbed"])
+	var skill_heal: int = int(skills["enemy_heal"])
+	var skill_night_tax: int = int(skills["night_tax"])
+	var skill_shield: int = int(skills["enemy_shield"])
+	shield_pool = int(skills["shield_after"])
+	hp_pool = int(skills["hp_after"])
+	enemy_shield_pool += skill_shield
+	enemy_hp_pool += skill_heal
+
+	# 5) The turn advances and the phase flips
+	var next_is_night: bool = not is_night
+
+	# 6) On the new NIGHT phase the slot penalty lands (used slots already rolled)
 	var penalty: Dictionary = get_next_slot_penalty_with_multiplier(used_slots if next_is_night else [])
 	var penalty_immune: bool = night_penalty_immune or defeats_enemy
-	var night_penalty: int = (0 if penalty_immune else penalty["final_penalty"]) if next_is_night else 0
+	var night_base: int = int(penalty["base_penalty"]) + skill_night_tax
+	var night_multi: int = int(penalty["multiplier"])
+	var night_penalty: int = (0 if penalty_immune else night_base * night_multi) if next_is_night else 0
 	var night_absorbed: int = mini(shield_pool, night_penalty)
 	shield_pool -= night_absorbed
 	hp_pool = maxi(hp_pool - (night_penalty - night_absorbed), 0)
@@ -1551,10 +1920,22 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 		"night_next_cards": penalty["next_cards"],
 		"night_penalty_immune": penalty_immune,
 		"defeats_enemy": defeats_enemy,
-		"total_absorbed": word_absorbed + night_absorbed,
+		"total_absorbed": word_absorbed + skill_absorbed + night_absorbed,
 		"total_hp_lost": hp_lost,
 		"player_hp_after": hp_pool,
-		"lethal": hp_pool <= 0 and (player_hp + heal_amount) > 0
+		"lethal": hp_pool <= 0 and (player_hp + heal_amount) > 0,
+		# The enemy side, so the forecast can spell out what its skills will do.
+		"enemy_shield_before": enemy_shield,
+		"enemy_shield_absorbed": enemy_shield_absorbed,
+		"enemy_shield_after": enemy_shield_pool,
+		"enemy_hp_damage": enemy_hp_damage,
+		"enemy_hp_after": enemy_hp_pool,
+		"enemy_skills_fire": enemy_skill_log.size() > 0,
+		"enemy_skill_log": enemy_skill_log,
+		"enemy_skill_damage": skill_damage,
+		"enemy_skill_absorbed": skill_absorbed,
+		"enemy_skill_heal": skill_heal,
+		"enemy_skill_night_tax": skill_night_tax
 	}
 
 func get_turn() -> int:

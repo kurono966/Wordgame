@@ -16,6 +16,26 @@ Build valid English words using cards from your slots and hand. Each card has a 
 - **Stages**: Each stage has one enemy. Clearing a stage spawns a stronger enemy (+15 max HP) and **resets your cards**: all 7 hand cards are discarded and redrawn, and the shared slot reels are rebuilt from the new enemy's name (all three reels roll to the newly dealt cards).
 - **Rewards**: after every enemy defeat you pick **1 of 3** rewards before the next fight. Deck rewards are always in the pool while the deck size allows, so you can grow or slim your deck between stages.
 
+### Enemy Skills (3 letters per enemy)
+Every enemy is built out of the letters of its own name, and **three of those letters carry a skill**. Spell one of them in a submitted word and that skill fires back at you.
+
+- The skill letters are listed under the HP bars (`STAGE … | DANGER: [D]AEGIS [R]DRAIN [O]THORNS`), and any card carrying one is outlined in **orange with a ⚠ mark** — so a dangerous letter is visible on the board before you ever play it
+- **A killing blow lands first.** If your word defeats the enemy, no skill fires — the fight ends before the enemy can answer
+- **A `?` wildcard never triggers a skill.** A wildcard is not the enemy's letter, so it cannot give it up
+- Each skill fires at most once per submit, even if the word repeats the letter
+- Skills get stronger every stage, and are capped so a deep run stays playable
+
+| Skill | Effect |
+|---|---|
+| **AEGIS** | The enemy raises a shield that absorbs damage **before** its HP. Shown as `[ENEMY SHIELD n]` |
+| **HAND DOWN** | Your hand holds fewer cards (never below 3). Extra cards go to the graveyard, so nothing is destroyed |
+| **DRAIN** | The enemy drinks operation points (never below 0) |
+| **NIGHTMARE** | Adds a flat amount to the NIGHT self-damage **base**, so the same-color multiplier still scales it |
+| **REGROWTH** | The enemy repairs some of its own HP (never past its max) |
+| **THORNS** | The enemy's letters cut you. Your BLUE shield soaks it first |
+
+**Nothing survives a stage clear.** The moment an enemy dies, its shield, its night tax and its shrunken hand are all wiped and the hand is dealt back to full — the next enemy starts clean. The **only** thing that carries over is damage you have already taken, because that is HP you can heal back.
+
 ### Rewards (Enemy Defeat)
 | Reward | Effect |
 |---|---|
@@ -173,6 +193,7 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 - `base` = sum of the damage of every card placed in the word (the base total)
 - `RED multiplier` = 2 ^ (red cards - 1) → 1 red = x1, 2 red = x2, 3 red = x4, 4 red = x8
 - `final damage` = base x RED multiplier. Blue/green/yellow groups never multiply damage.
+- **AEGIS**: the enemy's shield soaks the hit first; only the remainder lowers its HP. Whatever the word used that letter still raises the shield afterwards
 - Excess damage beyond the enemy's remaining HP is wasted (never carried over).
 
 **BLUE shield (player)**
@@ -194,6 +215,7 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 
 **NIGHT self-damage**
 - `penalty` = (sum of the NEXT card damage of all 3 slots) x 10 ^ (same-color cards - 1) → 2 same color = x10, 3 = x100, 4 = x1000
+- NIGHTMARE adds its value to that base before the multiplier is applied
 - The BLUE shield absorbs it first, then HP
 - **The turn on which you defeat an enemy deals no damage**: the fight is over, so the NIGHT penalty of that turn is skipped (the submit preview shows `NIGHT 0 dmg (enemy defeated)`). This exemption applies to that turn only — the next turn is charged normally
 

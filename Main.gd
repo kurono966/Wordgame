@@ -52,6 +52,8 @@ var _low_time_played: bool = false
 @onready var enemy_hp_label        : Label          = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyHPLabel
 @onready var enemy_hp_bar          : ProgressBar    = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyHPBar
 @onready var stats_label           : Label          = $Scroll/Center/VBox/StatsLabel
+# Cached stats text without the enemy-skill "DANGER" suffix.
+var _stats_line: String = ""
 @onready var turn_label            : Label          = $Scroll/Center/VBox/HeaderBox/TurnLabel
 # Operation points (YELLOW trait) — dedicated gauge next to the two HP bars
 @onready var op_panel              : PanelContainer = $Scroll/Center/VBox/StatusBox/OPBox
@@ -168,6 +170,8 @@ const COLOR_YELLOW_BORDER:= Color("ffd35c")
 const COLOR_YELLOW_BG    := Color("443517")
 const COLOR_GOLD_BORDER  := Color("ffe08a")
 const COLOR_GOLD_BG      := Color("4b3212")
+# Warning orange, used for any card carrying one of the enemy's skill letters.
+const ENEMY_SKILL_COLOR  := Color("ff7a3d")
 
 # Phase Indicators
 const COLOR_DAY   := Color(1.0, 0.9, 0.6, 1.0)  # Warm yellow for day
@@ -510,11 +514,39 @@ func _build_formula_text() -> String:
 		"[NIGHT SELF-DAMAGE]  next-slot total x 10^(largest same-color group - 1)",
 		"  2 / 3 / 4 matching colors: x10 / x100 / x1000. BLUE shield applies first.",
 		"",
+		_build_enemy_skill_text(),
 		"[OTHER]  ?: 0 damage and matches any letter. Word order never changes.",
 		"  Enemy HP: stage 1 = %d, then +%d per stage. Excess damage is lost." % [enemy_base, enemy_growth],
 		"  %d turns clears the game; player HP 0 is defeat." % GameManager.MAX_TURNS
 	]
 	return "\n".join(lines)
+
+## The enemy-skills section of the FORMULAS panel: the three dangerous letters
+## of the current enemy, what each does, and what is running right now.
+func _build_enemy_skill_text() -> String:
+	var lines: Array = [
+		"[ENEMY SKILLS]  3 letters of this enemy's NAME are dangerous.",
+		"  Spell one of them in a word and that skill fires back at you.",
+		"  A KILLING blow lands first — a defeated enemy never fires back.",
+		"  ALL of these are wiped the instant the stage is cleared."
+	]
+	for skill: Dictionary in GameManager.get_enemy_skills():
+		lines.append("    [%s] %s (%d): %s" % [
+			str(skill.get("letter", "")), str(skill.get("name", "")),
+			int(skill.get("value", 0)), str(skill.get("desc", ""))])
+	var active: Array = []
+	if GameManager.get_enemy_shield() > 0:
+		active.append("enemy shield %d" % GameManager.get_enemy_shield())
+	if GameManager.get_enemy_night_tax() > 0:
+		active.append("night tax +%d" % GameManager.get_enemy_night_tax())
+	if GameManager.get_hand_limit() < GameManager.HAND_SIZE:
+		active.append("hand limit %d/%d" % [GameManager.get_hand_limit(), GameManager.HAND_SIZE])
+	if active.is_empty():
+		lines.append("  Nothing active yet — no skill letter has been used.")
+	else:
+		lines.append("  ACTIVE NOW: %s" % ", ".join(active))
+	return "\n".join(lines)
+
 
 func _build_last_calc_text() -> String:
 	var lines: Array = ["", "=== LAST WORD ==="]
@@ -562,6 +594,15 @@ func _build_last_calc_text() -> String:
 		lines.append("  NIGHT: %d damage  (shield blocked %d, you lost %d)" % [
 			last_penalty.get("requested_damage", 0), last_penalty.get("absorbed", 0),
 			last_penalty.get("applied_damage", 0)])
+
+	# Enemy skills: what the word woke, and what it cost / granted.
+	var skill_log: Array = last_result.get("enemy_skill_log", [])
+	for line: String in skill_log:
+		lines.append("      ! %s" % line)
+	var shield_absorbed: int = last_result.get("enemy_shield_absorbed", 0)
+	if shield_absorbed > 0:
+		lines.append("      enemy shield absorbed %d (only %d reached its HP)" % [
+			shield_absorbed, last_result.get("enemy_hp_damage", 0)])
 
 	return "\n".join(lines)
 
@@ -1079,6 +1120,16 @@ func _refresh_hand_and_deck() -> void:
 			if is_wildcard:
 				cv["letter"].add_theme_color_override("font_color", Color(1.0, 0.8, 0.2, 1.0))  # Gold
 
+			# The same warning-orange treatment the reels use, so a skill letter
+			# is obvious wherever it sits.
+			var hand_skill: Dictionary = GameManager.get_enemy_skill_for_letter(str(card["letter"]))
+			if not hand_skill.is_empty():
+				sb.border_color = ENEMY_SKILL_COLOR
+				panel.tooltip_text = "⚠ Spelling this letter wakes the enemy's %s.\n%s" % [
+					str(hand_skill.get("name", "")), str(hand_skill.get("desc", ""))]
+			else:
+				panel.tooltip_text = ""
+
 			if _is_card_in_workbench(card_data):
 				cv["sub"].text = "IN USE"
 				cv["letter"].add_theme_color_override("font_color", Color(0.5, 0.45, 0.25, 0.6))
@@ -1087,21 +1138,28 @@ func _refresh_hand_and_deck() -> void:
 				sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.4), 0.4)
 				_detach_drag_source(panel)
 			else:
+				var skill_tag: String = (" ⚠%s" % str(hand_skill.get("name", ""))) if not hand_skill.is_empty() else ""
 				if GameManager.has_special_ability(card):
 					var special_cost: int = GameManager.get_special_cost(card)
 					var affordable: bool = GameManager.get_operation_points() >= special_cost
 					var s_name: String = GameManager.get_special_name(card)
-					cv["sub"].text = "%d dmg ★ %d OP" % [card["damage"], special_cost]
-					panel.tooltip_text = "★ %s (%d OP): %s" % [s_name, special_cost, GameManager.get_special_desc(card)]
+					cv["sub"].text = "%d dmg ★ %d OP%s" % [card["damage"], special_cost, skill_tag]
+					# A special card can still sit on a skill letter, so the ★ rule
+					# and the ⚠ warning are both kept in the tooltip.
+					panel.tooltip_text = "★ %s (%d OP): %s" % [
+						s_name, special_cost, GameManager.get_special_desc(card)]
+					if not hand_skill.is_empty():
+						panel.tooltip_text += "\n\n⚠ Spelling this letter wakes the enemy's %s.\n%s" % [
+							str(hand_skill.get("name", "")), str(hand_skill.get("desc", ""))]
 					if affordable:
 						cv["sub"].add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
 					else:
 						# Too costly right now: dim it so the cost is still readable
 						cv["sub"].add_theme_color_override("font_color", Color(0.62, 0.55, 0.45, 0.9))
 				else:
-					panel.tooltip_text = ""
-					cv["sub"].text = "%d dmg" % card["damage"]
-					cv["sub"].add_theme_color_override("font_color", Color.WHITE)
+					cv["sub"].text = "%d dmg%s" % [card["damage"], skill_tag]
+					cv["sub"].add_theme_color_override(
+						"font_color", ENEMY_SKILL_COLOR if not hand_skill.is_empty() else Color.WHITE)
 				cv["letter"].add_theme_color_override("font_color", Color.WHITE)
 				_attach_drag_source(panel, card_data)
 		else:
@@ -1157,6 +1215,18 @@ func _setup_slot_card(cv: Dictionary, card: Dictionary, role: String, slot_idx: 
 		cv["letter"].add_theme_color_override("font_color", Color(1.0, 0.8, 0.2, 1.0))  # Gold
 		sb.border_color = Color(1.0, 0.8, 0.2, 1.0)
 
+	# A card carrying one of the enemy's skill letters gets a warning-orange
+	# border and a ⚠ mark, so a dangerous letter is visible on the board BEFORE
+	# it is ever played. Wildcards ("?") never carry a skill.
+	var enemy_skill: Dictionary = GameManager.get_enemy_skill_for_letter(l_text)
+	var has_skill: bool = not enemy_skill.is_empty()
+	var skill_mark: String = ("  ⚠ %s" % str(enemy_skill.get("name", ""))) if has_skill else ""
+	if has_skill:
+		panel.tooltip_text = "⚠ This letter wakes the enemy's %s.\n%s" % [
+			str(enemy_skill.get("name", "")), str(enemy_skill.get("desc", ""))]
+	else:
+		panel.tooltip_text = ""
+
 	if role == "active":
 		if _is_card_in_workbench(card_data):
 			cv["sub"].text = "IN USE"
@@ -1166,23 +1236,25 @@ func _setup_slot_card(cv: Dictionary, card: Dictionary, role: String, slot_idx: 
 			sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.4), 0.4)
 			_detach_drag_source(panel)
 		else:
-			cv["sub"].text = "★ ACTIVE (%ddmg)" % pts
+			cv["sub"].text = "★ ACTIVE (%ddmg)%s" % [pts, skill_mark]
 			cv["letter"].add_theme_color_override("font_color", Color.WHITE)
-			cv["sub"].add_theme_color_override("font_color", Color.WHITE)
+			cv["sub"].add_theme_color_override("font_color", ENEMY_SKILL_COLOR if has_skill else Color.WHITE)
+			if has_skill:
+				sb.border_color = ENEMY_SKILL_COLOR
 			_attach_drag_source(panel, card_data)
 	elif role == "next":
-		cv["sub"].text = "→ NEXT (%ddmg)" % pts
+		cv["sub"].text = "→ NEXT (%ddmg)%s" % [pts, skill_mark]
 		cv["letter"].add_theme_color_override("font_color", Color(0.8, 0.8, 0.8, 1.0))
-		cv["sub"].add_theme_color_override("font_color", Color(0.8, 0.8, 0.8, 1.0))
+		cv["sub"].add_theme_color_override("font_color", ENEMY_SKILL_COLOR if has_skill else Color(0.8, 0.8, 0.8, 1.0))
 		sb.bg_color = color_consts["bg"].lerp(Color(0, 0, 0, 0.3), 0.3)
-		sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.3), 0.3)
+		sb.border_color = ENEMY_SKILL_COLOR.darkened(0.25) if has_skill else color_consts["border"].lerp(Color(0, 0, 0, 0.3), 0.3)
 		_detach_drag_source(panel)
 	else:
-		cv["sub"].text = "%d dmg" % pts
+		cv["sub"].text = "%d dmg%s" % [pts, skill_mark]
 		cv["letter"].add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1.0))
-		cv["sub"].add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1.0))
+		cv["sub"].add_theme_color_override("font_color", ENEMY_SKILL_COLOR if has_skill else Color(0.6, 0.6, 0.6, 1.0))
 		sb.bg_color = color_consts["bg"].lerp(Color(0, 0, 0, 0.5), 0.5)
-		sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.5), 0.5)
+		sb.border_color = ENEMY_SKILL_COLOR.darkened(0.45) if has_skill else color_consts["border"].lerp(Color(0, 0, 0, 0.5), 0.5)
 		_detach_drag_source(panel)
 
 # ── Populate Slot Reels (All 3 Cards are Visible: Top, Center Active, Bottom) ─
@@ -1560,12 +1632,27 @@ func _preview_color(plan: Dictionary) -> Color:
 func _build_preview_text(plan: Dictionary, word: String) -> String:
 	var parts: Array = ["ON SUBMIT  '%s'  ->" % word.to_upper()]
 
-	# Enemy side
+	# Enemy side. The enemy's AEGIS shield eats the hit first, so both numbers are
+	# shown: what you swung, and what actually reached its HP.
 	var final_damage: int = int(plan.get("final_damage", 0))
+	var enemy_shield: int = int(plan.get("enemy_shield_absorbed", 0))
 	if final_damage > 0:
-		parts.append("ENEMY %d dmg" % final_damage)
+		if enemy_shield > 0:
+			parts.append("ENEMY %d dmg (shield ate %d, %d lands)" % [
+				final_damage, enemy_shield, int(plan.get("enemy_hp_damage", 0))])
+		else:
+			parts.append("ENEMY %d dmg" % final_damage)
 	elif final_damage < 0:
 		parts.append("YOUR WORD HITS YOU %d" % -final_damage)
+
+	# Enemy skills: spelling one of its dangerous letters makes it answer back.
+	if bool(plan.get("enemy_skills_fire", false)):
+		parts.append("ENEMY SKILLS: %s" % str(plan.get("enemy_skill_log", [])[0]))
+		var extra: Array = plan.get("enemy_skill_log", [])
+		for i in range(1, extra.size()):
+			parts.append(str(extra[i]))
+	elif bool(plan.get("defeats_enemy", false)):
+		parts.append("enemy dies first — no skill fires")
 
 	# Traits the word grants
 	if int(plan.get("shield_gained", 0)) > 0:
@@ -1725,12 +1812,13 @@ func _refresh_ui() -> void:
 	turn_label.text = "Turn: %d / %d  |  %s" % [GameManager.get_turn(), GameManager.MAX_TURNS, phase]
 	turn_label.add_theme_color_override("font_color", phase_color)
 
-	_refresh_hp_display()
+	# OP has its own gauge, so it is not repeated in the stats line. The enemy
+	# skill display appends its "DANGER" suffix to this same label, so the plain
+	# line is cached FIRST — _refresh_hp_display() writes the suffixed version.
+	_stats_line = _build_stats_line()
 
-	stats_label.text = "STAGE %d  |  TOTAL DAMAGE: %d  |  DEFEATED: %d" % [
-		GameManager.get_stage(), GameManager.get_total_damage(),
-		GameManager.get_enemies_defeated()
-	]
+	# _refresh_hp_display() rewrites stats_label, appending the "DANGER" suffix.
+	_refresh_hp_display()
 
 	# OP has its own gauge, so it is not repeated in the stats line
 	_refresh_op_display()
@@ -1761,12 +1849,73 @@ func _refresh_hp_display() -> void:
 	var e_max: int = GameManager.get_max_enemy_hp()
 	enemy_hp_bar.max_value = e_max
 	enemy_hp_bar.value = e_hp
-	enemy_hp_label.text = "STAGE %d  %s  HP: %d / %d" % [GameManager.get_stage(), GameManager.get_enemy_name().to_upper(), e_hp, e_max]
+	var e_text: String = "STAGE %d  %s  HP: %d / %d" % [
+		GameManager.get_stage(), GameManager.get_enemy_name().to_upper(), e_hp, e_max]
+	# AEGIS is shown right on the HP line so a player who wonders why a big word
+	# did nothing can see the shield eating it.
+	if GameManager.get_enemy_shield() > 0:
+		e_text += "  [ENEMY SHIELD %d]" % GameManager.get_enemy_shield()
+	enemy_hp_label.text = e_text
 	enemy_hp_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.85, 1.0))
+	_refresh_enemy_skill_display()
 
 	# Center the pivot so hit-shake animations scale from the middle
 	player_hp_label.pivot_offset = player_hp_label.size / 2.0
 	enemy_hp_label.pivot_offset = enemy_hp_label.size / 2.0
+
+
+# ── Enemy skills ─────────────────────────────────────────────────────────────
+# Appends the three dangerous letters of the current enemy to the stats line.
+# This is deliberately NOT a row of its own: the VBox already fills the 800px
+# window exactly, so any extra label would push the Workbench off screen. The
+# full rules live in the tooltip and the FORMULAS panel.
+func _refresh_enemy_skill_display() -> void:
+	var skills: Array = GameManager.get_enemy_skills()
+	if skills.is_empty():
+		stats_label.tooltip_text = ""
+		return
+
+	var parts: Array = []
+	var tips: Array = ["ENEMY SKILLS — 3 letters of this enemy's name are dangerous.",
+		"Spell one of them in a submitted word and that skill fires back at you.",
+		"A killing blow lands FIRST, so a defeated enemy never fires back.",
+		"Every one of these is wiped the moment the stage is cleared."]
+	for skill: Dictionary in skills:
+		var letter: String = str(skill.get("letter", ""))
+		var name_text: String = str(skill.get("name", "SKILL"))
+		parts.append("[%s]%s" % [letter, name_text])
+		tips.append("  [%s] %s (%d) — %s" % [
+			letter, name_text, int(skill.get("value", 0)), str(skill.get("desc", ""))])
+
+	# Live state of the persistent effects, so the board never lies about them.
+	var shield_now: int = GameManager.get_enemy_shield()
+	if shield_now > 0:
+		parts.append("shield %d" % shield_now)
+	if GameManager.get_enemy_night_tax() > 0:
+		parts.append("night +%d" % GameManager.get_enemy_night_tax())
+	if GameManager.get_hand_limit() < GameManager.HAND_SIZE:
+		parts.append("hand max %d" % GameManager.get_hand_limit())
+	if shield_now > 0 or GameManager.get_enemy_night_tax() > 0 or GameManager.get_hand_limit() < GameManager.HAND_SIZE:
+		tips.append("")
+		tips.append("ACTIVE RIGHT NOW:")
+		if shield_now > 0:
+			tips.append("  Enemy shield: %d (soaks damage before its HP, gone when it dies)" % shield_now)
+		if GameManager.get_enemy_night_tax() > 0:
+			tips.append("  NIGHT tax: +%d added to the night base before the multiplier" % GameManager.get_enemy_night_tax())
+		if GameManager.get_hand_limit() < GameManager.HAND_SIZE:
+			tips.append("  Hand limit: %d of %d cards" % [GameManager.get_hand_limit(), GameManager.HAND_SIZE])
+
+	stats_label.text = "%s  |  DANGER: %s" % [_stats_line, "  ".join(parts)]
+	stats_label.tooltip_text = "\n".join(tips)
+
+
+## The stats text without the danger suffix, kept so the skill display can be
+## rewritten in place instead of rebuilding (and losing) the counters.
+func _build_stats_line() -> String:
+	return "STAGE %d  |  TOTAL DAMAGE: %d  |  DEFEATED: %d" % [
+		GameManager.get_stage(), GameManager.get_total_damage(),
+		GameManager.get_enemies_defeated()
+	]
 
 # ── Operation points (OP) display ─────────────────────────────────────────────
 # Refreshes the whole gauge: amount, how many card moves it buys, the bar and
@@ -2002,14 +2151,29 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 	var total_taken: int = 0
 
 	# ── Step 1: Base word damage ──
+	# AEGIS soaks the hit before the enemy loses any HP, so the two on-screen
+	# chunks (base then RED bonus) are scaled down by whatever the shield ate.
+	# With no shield this is exactly 1.0 and nothing changes.
+	var enemy_shield_absorbed: int = result.get("enemy_shield_absorbed", 0)
+	var base_dmg_shown: int = word_damage
+	var red_dmg_shown: int = red_bonus
+	if final_damage > 0 and enemy_shield_absorbed > 0:
+		var hp_damage: int = maxi(final_damage - enemy_shield_absorbed, 0)
+		var scale_factor: float = float(hp_damage) / float(maxi(final_damage, 1))
+		base_dmg_shown = int(round(float(maxi(word_damage, 0)) * scale_factor))
+		red_dmg_shown = maxi(hp_damage - base_dmg_shown, 0)
+
 	if word_damage > 0:
-		total_dealt += word_damage
-		var target: int = maxi(disp_enemy_hp - word_damage, 0)
+		total_dealt += base_dmg_shown
+		var target: int = maxi(disp_enemy_hp - base_dmg_shown, 0)
 		_play_score_up_sound()
 		_animate_enemy_hit()
-		_show_step_message("OK %s !   Enemy takes %d damage" % [
+		var shield_note: String = (
+			"   ENEMY SHIELD absorbed %d first" % enemy_shield_absorbed) if enemy_shield_absorbed > 0 else ""
+		_show_step_message("OK %s !   Enemy HP -%d%s" % [
 			result["message"].replace("VALID: ", ""),
-			word_damage
+			base_dmg_shown,
+			shield_note
 		], Color(0.4, 1.0, 0.6, 1.0))
 		_animate_enemy_hp(stage_before, name_before, disp_enemy_hp, target, enemy_max_start, 0.5)
 		disp_enemy_hp = target
@@ -2037,15 +2201,36 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 	# Total enemy damage for the word = base x 2^(red cards - 1); the extra
 	# damage over the base word value is shown here as a single bonus.
 	if red_bonus > 0:
-		total_dealt += red_bonus
+		total_dealt += red_dmg_shown
 		var from_enemy_hp: int = disp_enemy_hp
-		var target: int = maxi(disp_enemy_hp - red_bonus, 0)
+		var target: int = maxi(disp_enemy_hp - red_dmg_shown, 0)
 		_play_score_up_sound()
 		_animate_enemy_hit()
-		_show_step_message("RED bonus x%s: +%d damage to enemy" % [String.num(multiplier, 2), red_bonus], Color(1.0, 0.5, 0.4, 1.0))
+		_show_step_message("RED bonus x%s: +%d damage to enemy" % [String.num(multiplier, 2), red_dmg_shown], Color(1.0, 0.5, 0.4, 1.0))
 		_animate_enemy_hp(stage_before, name_before, from_enemy_hp, target, enemy_max_start, 0.5)
 		disp_enemy_hp = target
 		await get_tree().create_timer(0.9).timeout
+
+	# ── Step 2b: Enemy skills ──
+	# Spelling one of the enemy's dangerous letters wakes its skill. The log was
+	# built by GameManager, so the UI never re-derives the numbers. An empty log
+	# on a killing blow is correct: the enemy died before it could answer.
+	var skill_log: Array = result.get("enemy_skill_log", [])
+	if not skill_log.is_empty():
+		_play_score_down_sound()
+		_animate_enemy_hit()
+		_animate_player_hit()
+		for i in range(skill_log.size()):
+			_show_step_message("ENEMY SKILL — %s" % str(skill_log[i]), ENEMY_SKILL_COLOR)
+			# REGROWTH pushes the enemy's HP back up while it is on screen.
+			var healed: int = result.get("enemy_skill_heal", 0)
+			if healed > 0 and i == skill_log.size() - 1:
+				_animate_enemy_hp(stage_before, name_before, disp_enemy_hp,
+					mini(disp_enemy_hp + healed, enemy_max_start), enemy_max_start, 0.5)
+				disp_enemy_hp = mini(disp_enemy_hp + healed, enemy_max_start)
+			await get_tree().create_timer(0.75).timeout
+		# THORNS may have cost the player HP; bring the bar in line with reality.
+		_refresh_ui()
 
 	# ── Step 3: BLUE shield, GREEN heal & YELLOW operation points ──
 	# All three traits scale off the base total with the same stacking multiplier
@@ -2084,7 +2269,20 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 	# ── Step 4: Stage clear (next stage starts, hand reset) ──
 	if result.get("enemies_defeated_delta", 0) > 0:
 		_play_score_up_sound()
-		_show_step_message("STAGE CLEAR! → STAGE %d — %s appears! Hand redrawn, reels rolled." % [GameManager.get_stage(), GameManager.get_enemy_name().to_upper()], Color(1.0, 0.85, 0.3, 1.0))
+		# Spell the cleanup out loud: everything the fallen enemy granted went
+		# with it. The "before" numbers come from the result, because the wipe
+		# already happened inside GameManager by the time we get here.
+		var wiped: Array = []
+		if int(result.get("enemy_shield_before", 0)) > 0:
+			wiped.append("its %d shield" % int(result.get("enemy_shield_before", 0)))
+		if int(result.get("enemy_skill_night_tax", 0)) > 0:
+			wiped.append("its +%d night tax" % int(result.get("enemy_skill_night_tax", 0)))
+		if int(result.get("hand_limit_before", GameManager.HAND_SIZE)) < GameManager.HAND_SIZE:
+			wiped.append("its hand limit of %d" % int(result.get("hand_limit_before", 0)))
+		var wipe_text: String = ("   — %s all gone with it." % ", ".join(wiped)) if not wiped.is_empty() else ""
+		_show_step_message("STAGE CLEAR! → STAGE %d — %s appears! Hand redrawn, reels rolled.%s" % [
+			GameManager.get_stage(), GameManager.get_enemy_name().to_upper(), wipe_text],
+			Color(1.0, 0.85, 0.3, 1.0))
 		await get_tree().create_timer(1.2).timeout
 
 	# ── Step 5: Night self-damage (negative damage hurts the player) ──

@@ -113,6 +113,15 @@ func _setup(gm: Node, night: bool, shield: int, hp: int) -> void:
 	gm.is_night = night
 	gm.shield = shield
 	gm.player_hp = hp
+	# This suite is about reel rotation and the night multiplier, so the enemy's
+	# random skill letters are cleared out: the words below spell A/T/S, and an
+	# enemy that happened to bind one of those to NIGHTMARE would legitimately
+	# change the numbers this file asserts. Enemy skills have their own suite
+	# (_enemy_skill_test.gd).
+	gm.enemy_skills = []
+	gm.enemy_shield = 0
+	gm.enemy_night_tax = 0
+	gm.hand_limit = gm.HAND_SIZE
 
 # Runs the preview, then actually performs the submit, and requires the HP the
 # player ends up with to match the preview exactly.
