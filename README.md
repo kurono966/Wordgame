@@ -14,6 +14,7 @@ Build valid English words using cards from your slots and hand. Each card has a 
 - **Shared cards**: the 3 slot reels are built from the letters of the current enemy's name (the 9 positions are shuffled randomly); any remaining cards are drawn at random from the shared card pool. Shared cards are separate from your 20-card deck — they never enter your deck or graveyard.
 - **Positive damage**: reduces the current enemy's HP. When an enemy's HP reaches 0 the stage is cleared and the next stage begins — any excess damage is wasted and does NOT carry over to the next enemy.
 - **Stages**: Each stage has one enemy. Clearing a stage spawns a stronger enemy (+15 max HP) and **resets your cards**: all 7 hand cards are discarded and redrawn, and the shared slot reels are rebuilt from the new enemy's name (all three reels roll to the newly dealt cards).
+- **Rewards**: after every enemy defeat you pick **1 of 3** rewards before the next fight. Deck rewards are always in the pool while the deck size allows, so you can grow or slim your deck between stages.
 - **Negative damage**: reduces your HP (never below 0). If your HP reaches 0, it's GAME OVER (DEFEAT).
 - **Result**: after 10 turns the game ends (COMPLETE) and you are evaluated by stage reached, total damage dealt and enemies defeated.
 

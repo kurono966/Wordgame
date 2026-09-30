@@ -31,6 +31,12 @@ var _low_time_played: bool = false
 @onready var piles_panel           : PanelContainer = $PilesDialog/DialogPanel
 @onready var piles_label           : Label          = $PilesDialog/DialogPanel/DialogVBox/PilesLabel
 @onready var piles_close_button    : Button         = $PilesDialog/DialogPanel/DialogVBox/DialogHeader/CloseButton
+# Reward choice (offered after every enemy defeat)
+@onready var reward_dialog         : Control        = $RewardDialog
+@onready var reward_panel          : PanelContainer = $RewardDialog/DialogPanel
+@onready var reward_title_label    : Label          = $RewardDialog/DialogPanel/DialogVBox/Title
+@onready var reward_subtitle_label : Label          = $RewardDialog/DialogPanel/DialogVBox/Subtitle
+@onready var reward_row            : HBoxContainer  = $RewardDialog/DialogPanel/DialogVBox/RewardRow
 @onready var message_label         : Label          = $Scroll/Center/VBox/MessageLabel
 @onready var preview_label         : Label          = $Scroll/Center/VBox/PreviewLabel
 @onready var meaning_label         : Label          = $Scroll/Center/VBox/MeaningLabel
@@ -124,6 +130,11 @@ const PREVIEW_COLOR_INVALID := Color(1.00, 0.55, 0.45, 1.0)
 const MEANING_COLOR_JP    := Color(1.00, 0.93, 0.70, 1.0)  # kanji / reading
 const MEANING_COLOR_DEF   := Color(0.80, 0.88, 0.98, 1.0)  # English definitions
 const MEANING_COLOR_LOAD  := Color(0.62, 0.68, 0.78, 1.0)  # "looking up..."
+
+# Reward-choice dialog colours
+const REWARD_COLOR_TITLE  := Color(1.00, 0.88, 0.45, 1.0)
+const REWARD_COLOR_ICON   := Color(0.70, 0.92, 1.00, 1.0)
+const REWARD_COLOR_DETAIL := Color(0.80, 0.85, 0.95, 1.0)
 const MEANING_COLOR_NONE  := Color(0.60, 0.64, 0.72, 1.0)  # not found / offline
 
 # Operation points (OP) — gold gauge shown beside the HP bars
@@ -186,6 +197,7 @@ func _ready() -> void:
 	_style_op_panel()
 	_style_formula_panel()
 	_style_piles_panel()
+	_style_reward_panel()
 	_refresh_formula_panel()
 	_refresh_ui()
 
@@ -1916,8 +1928,19 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 		_show_step_message(summary,
 			Color(0.4, 1.0, 0.6, 1.0) if total_dealt >= total_taken else Color(1.0, 0.4, 0.4, 1.0))
 
+	# ── Reward choice: offered after every enemy defeat ──
+	# Placed after the night damage so the player is not interrupted mid-hit,
+	# and skipped on a defeat or on the final turn (there would be no next fight).
+	var cleared_enemy: bool = result.get("enemies_defeated_delta", 0) > 0
+	var turn_limit_reached: bool = GameManager.get_turn() >= GameManager.MAX_TURNS
+	var player_defeated: bool = GameManager.is_game_over() and GameManager.get_game_outcome() == "DEFEAT"
+	if cleared_enemy and not turn_limit_reached and not player_defeated:
+		_show_step_message("Enemy defeated! Choose your reward.", Color(1.0, 0.88, 0.45, 1.0))
+		show_reward_choice()
+
 	# Defeat takes priority over the turn limit
 	if GameManager.is_game_over() and GameManager.get_game_outcome() == "DEFEAT":
+		reward_dialog.visible = false
 		_show_game_over()
 		return
 
@@ -1925,6 +1948,132 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 		GameManager.game_over = true
 		GameManager.game_outcome = "COMPLETE"
 		_show_game_over()
+		reward_dialog.visible = false
+
+# ── Reward choice (three options after every enemy defeat) ───────────────────
+# Buttons are built in code so the option count and wording always match the
+# rewards GameManager actually rolled.
+func _style_reward_panel() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.11, 0.13, 0.19, 1.0)
+	sb.border_color = Color(0.98, 0.80, 0.22, 0.95)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(14)
+	sb.shadow_color = Color(0.0, 0.0, 0.04, 0.72)
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2(0, 7)
+	sb.content_margin_left = 18.0
+	sb.content_margin_right = 18.0
+	sb.content_margin_top = 14.0
+	sb.content_margin_bottom = 14.0
+	reward_panel.add_theme_stylebox_override("panel", sb)
+	reward_title_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.45, 1.0))
+
+
+## Shows the reward dialog with the options GameManager rolled. Blocks until the
+## player picks one, then applies it and refreshes the UI.
+func show_reward_choice() -> void:
+	var options: Array = GameManager.roll_rewards()
+	if options.is_empty():
+		return
+	reward_subtitle_label.text = "Pick one.  Deck size: %d" % GameManager.get_deck_size()
+	for child in reward_row.get_children():
+		child.queue_free()
+
+	for i in range(options.size()):
+		var reward: Dictionary = options[i]
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(210, 200)
+		button.text = ""
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_style_reward_button(button)
+		# Clicking passes its own index, so the handler is bound per button.
+		button.pressed.connect(_on_reward_chosen.bind(i))
+		reward_row.add_child(button)
+		_style_reward_button_content(button, reward)
+
+	reward_dialog.visible = true
+	# Focus the first option so the dialog is keyboard-usable too.
+	if reward_row.get_child_count() > 0:
+		(reward_row.get_child(0) as Button).grab_focus()
+
+
+## Paints the title / body text inside a reward button. Godot 4 Buttons do not
+## render BBCode, so the label colours come from the theme, not markup.
+func _style_reward_button_content(button: Button, reward: Dictionary) -> void:
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.offset_left = 12.0
+	box.offset_top = 12.0
+	box.offset_right = -12.0
+	box.offset_bottom = -12.0
+	box.add_theme_constant_override("separation", 10)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(box)
+
+	var title := Label.new()
+	title.text = str(reward.get("title", "?"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_font_size_override("font_size", 19)
+	title.add_theme_color_override("font_color", REWARD_COLOR_TITLE)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(title)
+
+	var icon := Label.new()
+	icon.text = _reward_icon(str(reward.get("type", "")))
+	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon.add_theme_font_size_override("font_size", 30)
+	icon.add_theme_color_override("font_color", REWARD_COLOR_ICON)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(icon)
+
+	var detail := Label.new()
+	detail.text = str(reward.get("detail", ""))
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail.add_theme_font_size_override("font_size", 13)
+	detail.add_theme_color_override("font_color", REWARD_COLOR_DETAIL)
+	detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(detail)
+
+
+func _reward_icon(type: String) -> String:
+	match type:
+		"add_card":    return "+"
+		"remove_card": return "-"
+		"heal":        return "HP"
+		"shield":      return "SH"
+		"op":          return "OP"
+		"max_hp":      return "MAX"
+		"draw":        return "DR"
+	return "?"
+
+
+func _style_reward_button(button: Button) -> void:
+	var normal := _make_button_style(Color("2a2233"), Color("f0cf7e"))
+	var hover := _make_button_style(Color("3a2f47"), Color("ffe6a8"))
+	hover.shadow_size = 12
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", _make_button_style(Color("1f1a28"), Color("d8b45f")))
+	button.add_theme_stylebox_override("focus", hover)
+	button.add_theme_color_override("font_color", Color.WHITE)
+
+
+## Applies the chosen reward, closes the dialog and reports the result.
+func _on_reward_chosen(index: int) -> void:
+	var result: Dictionary = GameManager.choose_reward(index)
+	reward_dialog.visible = false
+	if not result.get("ok", false):
+		_refresh_ui()
+		return
+	_play_score_up_sound()
+	_refresh_ui()
+	_refresh_formula_panel()
+	_show_step_message("REWARD: %s" % str(result.get("message", "")), Color(1.0, 0.88, 0.45, 1.0))
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ── Game Over Screen ─────────────────────────────────────────────────────────

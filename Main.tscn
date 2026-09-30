@@ -276,6 +276,59 @@ bus = "Master"
 [node name="CardSwapSound" type="AudioStreamPlayer" parent="."]
 bus = "Master"
 
+[node name="RewardDialog" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dimmer" type="ColorRect" parent="RewardDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.03, 0.06, 0.82)
+
+[node name="DialogPanel" type="PanelContainer" parent="RewardDialog"]
+layout_mode = 1
+anchor_left = 0.16
+anchor_top = 0.2
+anchor_right = 0.84
+anchor_bottom = 0.8
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="DialogVBox" type="VBoxContainer" parent="RewardDialog/DialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="RewardDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "ENEMY DEFEATED - CHOOSE A REWARD"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="RewardDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "Pick one. Deck size: 20"
+horizontal_alignment = 1
+
+[node name="RewardRow" type="HBoxContainer" parent="RewardDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+alignment = 1
+
 [node name="FormulaDialog" type="Control" parent="."]
 visible = false
 layout_mode = 1

@@ -174,6 +174,35 @@ func _ready() -> void:
 	fails += _check(str(main.definition_label.text).strip_edges() == "",
 		"clearing the Workbench clears the definition line")
 
+	# Reward dialog: hidden by default, and it builds one button per option
+	fails += _check(main.reward_dialog != null, "reward dialog exists")
+	fails += _check(not main.reward_dialog.visible, "reward dialog starts hidden")
+	main.show_reward_choice()
+	await get_tree().process_frame
+	fails += _check(main.reward_dialog.visible, "show_reward_choice() opens the dialog")
+	var offered: Array = GameManager.get_reward_options()
+	fails += _check(main.reward_row.get_child_count() == offered.size(),
+		"one button per option (%d vs %d)" % [main.reward_row.get_child_count(), offered.size()])
+	fails += _check(main.reward_row.get_child_count() == 3, "exactly three buttons")
+	# Each button must be on screen and have a visible label
+	for i in range(main.reward_row.get_child_count()):
+		var btn: Button = main.reward_row.get_child(i) as Button
+		fails += _check(btn != null and btn.get_child_count() > 0,
+			"button %d has its content labels" % i)
+		fails += _check(btn.get_global_rect().size.y > 0.0,
+			"button %d has a real size (%.0fx%.0f)" % [i, btn.get_global_rect().size.x, btn.get_global_rect().size.y])
+	# Choosing must close the dialog and apply
+	var deck_before: int = GameManager.get_deck_size()
+	main._on_reward_chosen(0)
+	await get_tree().process_frame
+	fails += _check(not main.reward_dialog.visible, "choosing closes the dialog")
+	fails += _check(not GameManager.has_pending_reward(), "choosing clears the pending flag")
+	fails += _check(GameManager.rewards_taken == 1, "rewards_taken incremented via UI")
+	fails += _check(GameManager.get_deck_size() == deck_before or GameManager.rewards_taken == 1,
+		"deck size is consistent after the UI pick")
+	print("reward dialog shown with %d buttons, deck now %d" % [
+		main.reward_row.get_child_count(), GameManager.get_deck_size()])
+
 	# Clearing the workbench must return to the idle prompt
 	main.workbench_cards.clear()
 	main._refresh_ui()

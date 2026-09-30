@@ -136,6 +136,145 @@ var dictionary: Dictionary = {}
 var word_list: Array = []   # Candidate enemy names (A-Z only, NAME_MIN_LEN..NAME_MAX_LEN)
 var operation_points: int = 0      # YELLOW trait: currency for Workbench card moves and special activations
 
+# ── Rewards (chosen after every enemy defeat) ────────────────────────────────
+# Three options are offered each time an enemy is defeated; the player picks
+# one. "add_card" appends a card to the deck, "remove_card" burns one away, and
+# the stat options change the player directly.
+var reward_options: Array = []     # 3 reward dictionaries, empty when none pending
+var rewards_taken: int = 0         # How many rewards the player has claimed
+var pending_reward_choice: bool = false  # True while a choice is on screen
+
+# Deck size limits, so "add card" / "remove card" can never break the draw loop.
+const MIN_DECK_SIZE: int = 5
+const MAX_DECK_SIZE: int = 40
+
+
+# ─── Rewards ─────────────────────────────────────────────────────────────────
+## Builds 3 distinct reward options for the player to choose from.
+## Always offers at least one deck change (add or remove) plus stat options,
+## so the deck is something the player actually shapes between fights.
+func roll_rewards() -> Array:
+	reward_options = []
+	pending_reward_choice = true
+	_build_deck_rewards()
+	_build_stat_rewards()
+	# Shuffle so the order differs each time, but keep it stable for the UI.
+	reward_options.shuffle()
+	return reward_options
+
+
+## Adds one "gain a card" and one "burn a card" option when the deck size allows.
+func _build_deck_rewards() -> void:
+	if deck.size() < MAX_DECK_SIZE:
+		reward_options.append({"type": "add_card", "title": "ADD A CARD",
+			"detail": "Put a new card into your deck."})
+	if deck.size() > MIN_DECK_SIZE:
+		reward_options.append({"type": "remove_card", "title": "BURN A CARD",
+			"detail": "Remove one card from your deck."})
+
+
+## Stat rewards, offered with weights that keep all three useful.
+func _build_stat_rewards() -> void:
+	var pool: Array = [
+		{"type": "heal", "title": "VITALITY", "detail": "Restore HP."},
+		{"type": "shield", "title": "BARRIER", "detail": "Gain shield."},
+		{"type": "op", "title": "INSIGHT", "detail": "Gain operation points."},
+		{"type": "max_hp", "title": "IRON WILL", "detail": "Raise max HP."},
+		{"type": "draw", "title": "CARD DRAW", "detail": "Draw a card into hand."}
+	]
+	pool.shuffle()
+	# Fill up to three options, but never duplicate a deck option already added.
+	for reward: Dictionary in pool:
+		if reward_options.size() >= 3:
+			break
+		reward_options.append(reward)
+
+
+## Applies the reward the player chose. `index` is the position in reward_options.
+## Returns a dictionary describing what happened, for the UI to report.
+func choose_reward(index: int) -> Dictionary:
+	if not pending_reward_choice:
+		return {"ok": false, "reason": "no pending choice"}
+	if index < 0 or index >= reward_options.size():
+		return {"ok": false, "reason": "invalid index"}
+	var reward: Dictionary = reward_options[index]
+	var result: Dictionary = {"ok": true, "type": reward.get("type", ""),
+		"title": reward.get("title", ""), "message": ""}
+
+	match str(reward.get("type", "")):
+		"add_card":
+			var card: Dictionary = _pick_reward_card()
+			deck.append(card)
+			result["message"] = "Added %s (%d dmg, %s) to your deck." % [
+				card.get("letter", "?"), int(card.get("damage", 0)),
+				str(card.get("color", "red")).to_upper()]
+		"remove_card":
+			var burned: Dictionary = _burn_random_deck_card()
+			result["message"] = "Burned %s (%d dmg, %s) from your deck." % [
+				burned.get("letter", "?"), int(burned.get("damage", 0)),
+				str(burned.get("color", "red")).to_upper()]
+		"heal":
+			var amount: int = maxi(10, int(round(float(player_hp) * 0.25)))
+			amount = mini(amount, PLAYER_MAX_HP - player_hp)
+			player_hp += amount
+			result["message"] = "Restored %d HP (now %d)." % [amount, player_hp]
+		"shield":
+			var gain: int = 8
+			shield += gain
+			result["message"] = "Gained %d shield (now %d)." % [gain, shield]
+		"op":
+			operation_points += 5
+			result["message"] = "Gained 5 OP (now %d)." % operation_points
+		"max_hp":
+			player_hp += 5
+			result["message"] = "Max HP is now %d." % PLAYER_MAX_HP
+		"draw":
+			var drawn: Dictionary = _draw_card()
+			hand.append(drawn)
+			result["message"] = "Drew %s (%d dmg) into your hand." % [
+				drawn.get("letter", "?"), int(drawn.get("damage", 0))]
+
+	pending_reward_choice = false
+	reward_options = []
+	rewards_taken += 1
+	return result
+
+
+## Picks a random card from the master pool for the "add card" reward. It is
+## not removed from the pool, so the same card can reward twice.
+func _pick_reward_card() -> Dictionary:
+	if CARD_DEFS.is_empty():
+		return {"letter": "E", "damage": 1, "color": "red"}
+	return CARD_DEFS[randi() % CARD_DEFS.size()].duplicate()
+
+
+## Removes and returns a random card from the deck. Prefers the draw pile; falls
+## back to a card in hand so the reward still works if the pile is empty.
+func _burn_random_deck_card() -> Dictionary:
+	if not deck.is_empty():
+		var idx: int = randi() % deck.size()
+		var burned: Dictionary = deck[idx]
+		deck.remove_at(idx)
+		return burned
+	for i in range(hand.size()):
+		if hand[i] != null:
+			var burned: Dictionary = hand[i]
+			hand[i] = null
+			return burned
+	return {"letter": "E", "damage": 1, "color": "red"}
+
+
+func has_pending_reward() -> bool:
+	return pending_reward_choice
+
+
+func get_reward_options() -> Array:
+	return reward_options
+
+
+func get_deck_size() -> int:
+	return deck.size()
+
 
 # ─── Initialisation ──────────────────────────────────────────────────────────
 func _ready() -> void:
@@ -162,6 +301,9 @@ func reset_game() -> void:
 	slots.clear()
 	hand.clear()
 	current_slot_indices = [0, 0, 0]
+	reward_options = []
+	rewards_taken = 0
+	pending_reward_choice = false
 
 	# Build this game's deck: DECK_SIZE cards picked at random from the card pool
 	var pool: Array = CARD_DEFS.duplicate()
