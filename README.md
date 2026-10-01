@@ -48,7 +48,6 @@ Every enemy is built out of the letters of its own name, and **one of those lett
 | **BARRIER** (SH) | Gain 8 shield |
 | **INSIGHT** (OP) | Gain 5 operation points |
 | **IRON WILL** (MAX) | Max HP +5 (heals the same amount) |
-| **CARD DRAW** (DR) | Draw a card into hand |
 | **WILDCARDS** (???) | Add **3 wildcard (?) cards** to your deck |
 
 - **The card reward only ever hands over a ★ SPECIAL.** A plain letter card would be filler that plays no differently from the fixed 20 you already have, so the real choice is *which power to take* rather than whether the roll happened to be interesting. The card is rolled up front and shown face-up, so the one you are offered is the one you get

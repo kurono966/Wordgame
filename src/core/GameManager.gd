@@ -497,7 +497,6 @@ func _build_stat_rewards() -> void:
 		{"type": "shield", "title": "BARRIER", "detail": "Gain shield."},
 		{"type": "op", "title": "INSIGHT", "detail": "Gain operation points."},
 		{"type": "max_hp", "title": "IRON WILL", "detail": "Raise max HP."},
-		{"type": "draw", "title": "CARD DRAW", "detail": "Draw a card into hand."},
 		{"type": "wildcards", "title": "WILDCARDS",
 			"detail": "Add %d wildcard (?) cards to your deck. They deal 0 damage, but each stands in for any letter you need." % WILDCARD_REWARD_COUNT}
 	]
@@ -563,11 +562,6 @@ func choose_reward(index: int) -> Dictionary:
 			player_max_hp += MAX_HP_REWARD_GAIN
 			player_hp = mini(player_hp + MAX_HP_REWARD_GAIN, player_max_hp)
 			result["message"] = "Max HP is now %d (+%d)." % [player_max_hp, MAX_HP_REWARD_GAIN]
-		"draw":
-			var drawn: Dictionary = _draw_card()
-			hand.append(drawn)
-			result["message"] = "Drew %s (%d dmg) into your hand." % [
-				drawn.get("letter", "?"), int(drawn.get("damage", 0))]
 		"wildcards":
 			# Appended INSIDE the loop so the ceiling check sees the deck grow;
 			# collecting first and appending after would let all three through.
@@ -584,6 +578,11 @@ func choose_reward(index: int) -> Dictionary:
 			else:
 				result["message"] = "Added %d wildcard (?) card(s) to your deck (now %d cards)." % [
 					added.size(), deck.size()]
+		_:
+			# An unrecognised type must not consume the reward: the player keeps
+			# their three options instead of silently getting nothing.
+			return {"ok": false, "type": reward.get("type", ""),
+				"reason": "unknown reward type"}
 
 	# Reset shield when claiming a reward after defeating an enemy. A shield
 	# reward keeps its own value, otherwise it would cancel itself out.

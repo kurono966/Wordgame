@@ -2765,7 +2765,6 @@ func _reward_icon(type: String) -> String:
 		"shield":      return "SH"
 		"op":          return "OP"
 		"max_hp":      return "MAX"
-		"draw":        return "DR"
 		"wildcards":   return "???"
 	return "?"
 
