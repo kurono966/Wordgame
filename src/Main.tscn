@@ -1,0 +1,534 @@
+[gd_scene load_steps=2 format=3 uid="uid://wordgame_main"]
+
+[ext_resource type="Script" path="res://src/Main.gd" id="1_main"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 0
+
+[node name="Scroll" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Center" type="CenterContainer" parent="Scroll"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Scroll/Center"]
+custom_minimum_size = Vector2(960, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="HeaderBox" type="HBoxContainer" parent="Scroll/Center/VBox"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="Scroll/Center/VBox/HeaderBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "WORD FORGE   |   F11: FULLSCREEN"
+
+[node name="TurnLabel" type="Label" parent="Scroll/Center/VBox/HeaderBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Turn: 0 / 10"
+
+[node name="StatusBox" type="HBoxContainer" parent="Scroll/Center/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 32
+
+[node name="PlayerHPBox" type="VBoxContainer" parent="Scroll/Center/VBox/StatusBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="PlayerHPLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/PlayerHPBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "PLAYER HP: 50 / 50"
+
+[node name="PlayerHPBar" type="ProgressBar" parent="Scroll/Center/VBox/StatusBox/PlayerHPBox"]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+max_value = 50.0
+value = 50.0
+show_percentage = false
+
+[node name="EnemyHPBox" type="VBoxContainer" parent="Scroll/Center/VBox/StatusBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="EnemyHPLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/EnemyHPBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "STAGE 1  ENEMY HP: 30 / 30"
+
+[node name="EnemyHPBar" type="ProgressBar" parent="Scroll/Center/VBox/StatusBox/EnemyHPBox"]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+max_value = 30.0
+value = 30.0
+show_percentage = false
+
+[node name="OPBox" type="PanelContainer" parent="Scroll/Center/VBox/StatusBox"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="OPVBox" type="VBoxContainer" parent="Scroll/Center/VBox/StatusBox/OPBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="OPTitleLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "OP POINTS  (YELLOW)"
+horizontal_alignment = 1
+
+[node name="OPRow" type="HBoxContainer" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="OPValueLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "0 OP"
+vertical_alignment = 1
+
+[node name="OPMovesLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPRow"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 13
+text = "= 0 MOVES"
+vertical_alignment = 1
+
+[node name="OPBar" type="ProgressBar" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+max_value = 5.0
+value = 0.0
+show_percentage = false
+
+[node name="OPHintLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "1 OP = move a card one place"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="StatsLabel" type="Label" parent="Scroll/Center/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "STAGE 1  |  TOTAL DAMAGE: 0  |  DEFEATED: 0"
+
+[node name="SlotsSectionLabel" type="Label" parent="Scroll/Center/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.85, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "SHARED SLOTS (Click or Drag Active card to Workbench)"
+
+[node name="SlotContainer" type="HBoxContainer" parent="Scroll/Center/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="HandSectionLabel" type="Label" parent="Scroll/Center/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.85, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "PLAYER HAND (Click or Drag card to Workbench)"
+
+[node name="HandContainer" type="HBoxContainer" parent="Scroll/Center/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="DeckGraveLabel" type="Label" parent="Scroll/Center/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.7, 0.8, 1)
+theme_override_font_sizes/font_size = 13
+text = "Deck: 0 | Graveyard: []"
+
+[node name="WorkbenchSectionLabel" type="Label" parent="Scroll/Center/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.45, 1)
+theme_override_font_sizes/font_size = 14
+text = "WORKBENCH (Construct your word here - Click card to return)"
+
+[node name="WorkbenchPanel" type="PanelContainer" parent="Scroll/Center/VBox"]
+custom_minimum_size = Vector2(0, 82)
+layout_mode = 2
+
+[node name="WorkbenchContainer" type="HBoxContainer" parent="Scroll/Center/VBox/WorkbenchPanel"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="MeaningLabel" type="Label" parent="Scroll/Center/VBox"]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 15
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = false
+
+[node name="DefinitionLabel" type="Label" parent="Scroll/Center/VBox"]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 12
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = false
+
+[node name="PreviewLabel" type="Label" parent="Scroll/Center/VBox"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 14
+text = "Place cards to preview the damage you will take on SUBMIT"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = false
+
+[node name="ControlRow" type="HBoxContainer" parent="Scroll/Center/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="ClearButton" type="Button" parent="Scroll/Center/VBox/ControlRow"]
+custom_minimum_size = Vector2(110, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "CLEAR"
+
+[node name="SubmitButton" type="Button" parent="Scroll/Center/VBox/ControlRow"]
+custom_minimum_size = Vector2(160, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "SUBMIT WORD"
+
+[node name="FormulaButton" type="Button" parent="Scroll/Center/VBox/ControlRow"]
+custom_minimum_size = Vector2(130, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "FORMULAS"
+
+[node name="PilesButton" type="Button" parent="Scroll/Center/VBox/ControlRow"]
+custom_minimum_size = Vector2(130, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "CARD PILES"
+
+[node name="MessageLabel" type="Label" parent="Scroll/Center/VBox"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+
+[node name="ScoreUpSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
+[node name="ScoreDownSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
+[node name="CardPlaceSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
+[node name="CardDrawSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
+[node name="CardDiscardSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
+[node name="CardSwapSound" type="AudioStreamPlayer" parent="."]
+bus = "Master"
+
+[node name="RewardDialog" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dimmer" type="ColorRect" parent="RewardDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.03, 0.06, 0.82)
+
+[node name="DialogPanel" type="PanelContainer" parent="RewardDialog"]
+layout_mode = 1
+anchor_left = 0.16
+anchor_top = 0.2
+anchor_right = 0.84
+anchor_bottom = 0.8
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="DialogVBox" type="VBoxContainer" parent="RewardDialog/DialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="RewardDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "ENEMY DEFEATED - CHOOSE A REWARD"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="RewardDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "Pick one. Deck size: 20"
+horizontal_alignment = 1
+
+[node name="DeckButton" type="Button" parent="RewardDialog/DialogPanel/DialogVBox"]
+custom_minimum_size = Vector2(240, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 14
+text = "VIEW MY DECK  (D)"
+
+[node name="RewardRow" type="HBoxContainer" parent="RewardDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="BurnDialog" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dimmer" type="ColorRect" parent="BurnDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.03, 0.06, 0.88)
+
+[node name="DialogPanel" type="PanelContainer" parent="BurnDialog"]
+layout_mode = 1
+anchor_left = 0.08
+anchor_top = 0.14
+anchor_right = 0.92
+anchor_bottom = 0.86
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="DialogVBox" type="VBoxContainer" parent="BurnDialog/DialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="BurnDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "BURN A CARD - CHOOSE ONE TO REMOVE"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="BurnDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "Click a card to remove it from your deck."
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="BurnDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="BurnGrid" type="GridContainer" parent="BurnDialog/DialogPanel/DialogVBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 10
+
+[node name="ButtonRow" type="HBoxContainer" parent="BurnDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="CancelButton" type="Button" parent="BurnDialog/DialogPanel/DialogVBox/ButtonRow"]
+custom_minimum_size = Vector2(180, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "BACK TO REWARDS"
+
+[node name="FormulaDialog" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dimmer" type="ColorRect" parent="FormulaDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.03, 0.06, 0.78)
+
+[node name="DialogPanel" type="PanelContainer" parent="FormulaDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.12
+anchor_top = 0.035
+anchor_right = 0.88
+anchor_bottom = 0.965
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="DialogVBox" type="VBoxContainer" parent="FormulaDialog/DialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DialogHeader" type="HBoxContainer" parent="FormulaDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="FormulaDialog/DialogPanel/DialogVBox/DialogHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.88, 0.45, 1)
+theme_override_font_sizes/font_size = 20
+text = "CALCULATIONS"
+
+[node name="CloseButton" type="Button" parent="FormulaDialog/DialogPanel/DialogVBox/DialogHeader"]
+custom_minimum_size = Vector2(105, 34)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "CLOSE  (Esc)"
+
+[node name="FormulaLabel" type="Label" parent="FormulaDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.82, 0.88, 0.98, 1)
+theme_override_font_sizes/font_size = 13
+vertical_alignment = 1
+text = "CALCULATION FORMULAS"
+
+[node name="PilesDialog" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dimmer" type="ColorRect" parent="PilesDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.03, 0.06, 0.78)
+
+[node name="DialogPanel" type="PanelContainer" parent="PilesDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.19
+anchor_top = 0.07
+anchor_right = 0.81
+anchor_bottom = 0.93
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="DialogVBox" type="VBoxContainer" parent="PilesDialog/DialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DialogHeader" type="HBoxContainer" parent="PilesDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PilesDialog/DialogPanel/DialogVBox/DialogHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.55, 0.82, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "DECK & DRAW PILE"
+
+[node name="CloseButton" type="Button" parent="PilesDialog/DialogPanel/DialogVBox/DialogHeader"]
+custom_minimum_size = Vector2(105, 34)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "CLOSE  (Esc)"
+
+[node name="Subtitle" type="Label" parent="PilesDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="PilesDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="PilesBody" type="VBoxContainer" parent="PilesDialog/DialogPanel/DialogVBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12

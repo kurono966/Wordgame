@@ -23,7 +23,7 @@ Every enemy is built out of the letters of its own name, and **one of those lett
 - It fires **only at night**. A day turn never triggers it
 - The card is listed under the HP bars (`STAGE … | DANGER: [B]AEGIS — slot 2 BOTTOM`, or `— safe`), and it is outlined in **orange with a ⚠ mark** while it is in the firing line, so you can always see whether tonight is dangerous
 - **There is only one such card**, so the threat is always in exactly one known place. The other eight cards are safe
-- **Getting it out of the bottom row is the player's job.** Press that reel's **SPIN button (1 OP)**, or submit a word that uses that reel, and the reel rolls the card away. Do it before night falls
+- **Getting it out of the bottom row is the player's job.** Press that reel's **SPIN button** (1 OP for the first spin of a turn, then 10 OP, then 100 OP — three spins per turn), or submit a word that uses that reel, and the reel rolls the card away. Do it before night falls
 - **Your Deck**: Every game starts with the **same fixed 20-card deck** — five per colour, so the opening is always the same balanced spread. These are PLAYER cards: whatever letter the enemy binds its skill to, the skill card is a different card on the shared reels, so the deck is never affected. Note that **Q and X cannot be dealt as cards at all** (they are reward-only), so they are never chosen as the skill letter
 - **A killing blow lands first.** If your word defeats the enemy, no skill fires — the fight ends before the enemy can answer
 - **A `?` wildcard can never BE the skill card.** A wildcard is not the enemy's letter
@@ -181,7 +181,8 @@ Cards of each color grant a trait when used in a valid word (shared slot cards c
 - **GREEN — Heal**: HP healed scales off the base total: `base x 2^(green - 1)` (up to your max HP).
 - **YELLOW — Operation points (OP)**: OP gained scales off the base total: `base x 2^(yellow - 1)` (1 yellow = x1, 2 = x2, 3 = x4, 4 = x8). OP is a currency, not a score: it is never spent by damage and never resets, and **1 OP moves one Workbench card one place left or right** (costs no turn).
 - **★ SPECIAL (cards with 8+ damage)**: activated by long-pressing or right-clicking the card in hand. It costs **the card's own damage value in OP** (an 8-damage card costs 8 OP, a 10-damage card costs 10 OP), then discards that card and every same-color card in hand and redraws (no turn used). With too few OP the activation is refused.
-- **⟳ SPIN a shared reel**: each of the three shared reels has its own **SPIN 1 OP** button underneath it. Pressing it advances **that one reel by a single step**, so the card showing as `→ NEXT` becomes the new `★ ACTIVE` card, and the reel scrolls with the same animation used at end of turn. The other two reels are left alone, so you can nudge a bad reel without giving up a good one. The OP are only spent when the spin actually happens.
+- **⟳ SPIN a shared reel**: each of the three shared reels has its own **SPIN** button underneath it. Pressing it advances **that one reel by a single step**, so the card showing as `→ NEXT` becomes the new `★ ACTIVE` card, and the reel scrolls with the same animation used at end of turn. The other two reels are left alone, so you can nudge a bad reel without giving up a good one. The OP are only spent when the spin actually happens.
+- **Spinning is capped at 3 per turn, and the price climbs: 1 OP, then 10 OP, then 100 OP.** The button re-reads the price on every refresh and reads `NO SPINS` once the turn's allowance is gone. The reels are the player's only lever over which letters turn up, so the third spin costs far more than a normal turn earns — it is a real decision, not a routine action.
   - A reel whose ACTIVE card is **already on your Workbench cannot be spun** — that would silently change the word you are building. Clear the card first (or the button stays greyed out with the reason in its tooltip).
   - Spinning costs no turn, and a full three-card cycle returns the reel to where it started — there is no way to shuffle for free.
   - OP comes from YELLOW word cards and the **INSIGHT** reward, so spending it on a spin is a real trade-off against using **SPECIAL**.
@@ -262,6 +263,32 @@ Press the **FORMULAS** button in the game to open the formula panel — it lists
 - **SUBMIT WORD**: Submit your word for scoring
 - **FORMULAS**: Show/hide the calculation formulas and the breakdown of your last word
 - **OP gauge** (gold panel right of the HP bars): always shows the OP you own, how many card moves that buys ("= N MOVES"), and a bar; it pops and floats "+N OP" when you gain OP and "-N OP" when a special is paid for. Hover it for the full rule.
+
+## Project Layout
+
+```
+src/            game code
+  Main.gd/.tscn   the scene and all of its UI wiring
+  core/           GameManager.gd (rules, autoload), JishoClient.gd (autoload)
+  ui/             DraggableCard.gd, WorkbenchDropZone.gd
+data/           word_dictionary.json (runtime), dictionary.txt (fallback), head2000.json
+tests/          every test; run a .tscn headless, see below
+  fixtures/       canned Jisho API responses
+tools/          build_word_json.py, deck_simulation.py (offline helpers)
+fonts/          the bundled Japanese font
+```
+
+Run a test scene headless:
+
+```
+godot --headless --path . res://tests/_spin_test.tscn
+```
+
+Two older checks are `SceneTree` scripts rather than scenes, so they take `--script`:
+
+```
+godot --headless --path . --script res://tests/_special_cost_test.gd
+```
 
 ## Technical Details
 - Built with Godot Engine

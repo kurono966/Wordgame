@@ -1,0 +1,17 @@
+﻿# Godot's import/editor cache -- regenerated on every open, never committed.
+.godot/
+
+# Editor + OS noise
+*.tmp
+Thumbs.db
+.DS_Store
+
+
+# Output of tools/deck_simulation.py
+tools/optimized_deck.txt
+
+
+# Python bytecode
+__pycache__/
+*.pyc
+
