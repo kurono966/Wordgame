@@ -629,7 +629,8 @@ func _build_enemy_skill_text() -> String:
 		"[ENEMY SKILL]  ONE card on the reels carries the enemy's skill.",
 		"  It fires at NIGHT while that card sits in the BOTTOM row of a reel.",
 		"  Spelling the letter does nothing — its POSITION is the trigger.",
-		"  SPIN that reel (1 OP) or use it in a word to roll the card clear.",
+		"  SPIN that reel (OP, and the price rises each spin) or use it in a",
+		"  word to roll the card clear. Max 3 spins per turn (1 / 10 / 100 OP).",
 		"  A stage clear lands first — a defeated enemy never fires back.",
 		"  ALL of this is wiped the instant the stage is cleared."
 	]
@@ -942,7 +943,7 @@ func _style_op_panel() -> void:
 	op_bar.add_theme_stylebox_override("background", bar_bg)
 
 	op_title_label.add_theme_color_override("font_color", OP_COLOR_SUB)
-	var info: String = "OPERATION POINTS (OP)\nEarned by submitting a word that uses YELLOW cards:\n    OP gained = base damage x 2^(yellow cards - 1)\nOP is never spent by taking damage and never resets.\n\nOP Uses:\n    1 OP = move one Workbench card one place left / right (uses no turn)\n    1 OP = spin one shared reel (SPIN button)\n    ★ SPECIAL = activate card's unique power (costs OP specified on card)\nThe bar fills up to %d moves." % OP_BAR_CAP
+	var info: String = "OPERATION POINTS (OP)\nEarned by submitting a word that uses YELLOW cards:\n    OP gained = base damage x 2^(yellow cards - 1)\nOP is never spent by taking damage and never resets.\n\nOP Uses:\n    1 OP = move one Workbench card one place left / right (uses no turn)\n    SPIN one shared reel (SPIN button): 1 OP, then 10 OP, then 100 OP\n    Max 3 spins per turn; the budget refreshes every turn\n    ★ SPECIAL = activate card's unique power (costs OP specified on card)\nThe bar fills up to %d moves." % OP_BAR_CAP
 	op_panel.tooltip_text = info
 	op_bar.tooltip_text = info
 	for node: Label in [op_title_label, op_value_label, op_moves_label, op_hint_label]:
@@ -1216,8 +1217,9 @@ func _build_slot_reels() -> void:
 		# SPIN button: advances THIS reel by one step for OP
 		var spin_btn := Button.new()
 		spin_btn.custom_minimum_size = Vector2(SLOT_CARD_W, 20)
-		spin_btn.text = "SPIN %d OP" % GameManager.SPIN_COST
-		spin_btn.tooltip_text = "Advance this reel one step for %d OP." % GameManager.SPIN_COST
+		var caption: Array = _spin_button_caption()
+		spin_btn.text = str(caption[0])
+		spin_btn.tooltip_text = str(caption[1])
 		spin_btn.add_theme_font_size_override("font_size", 11)
 		_style_spin_button(spin_btn)
 		spin_btn.pressed.connect(_on_spin_pressed.bind(s))
@@ -1494,11 +1496,26 @@ func _refresh_spin_buttons() -> void:
 			continue
 		var check: Dictionary = GameManager.can_spin_slot(s)
 		btn.disabled = not check.get("ok", false)
+		var caption: Array = _spin_button_caption()
+		btn.text = str(caption[0])
 		if check.get("ok", false):
-			btn.text = "SPIN %d OP" % GameManager.SPIN_COST
-			btn.tooltip_text = "Advance this reel one step for %d OP." % GameManager.SPIN_COST
+			btn.tooltip_text = str(caption[1])
 		else:
 			btn.tooltip_text = "Cannot spin: %s" % str(check.get("reason", ""))
+
+
+## Caption + tooltip for a SPIN button. The price escalates each spin (1 / 10 /
+## 100 OP) and the button says so, and once the turn's three spins are gone it
+## reads NO SPINS rather than a price the player cannot pay.
+func _spin_button_caption() -> Array:
+	var cost: int = GameManager.get_next_spin_cost()
+	if cost < 0:
+		return ["NO SPINS",
+			"All %d spins for this turn are used." % GameManager.MAX_SPINS_PER_TURN]
+	var which: int = GameManager.spins_this_turn + 1
+	return ["SPIN %d OP" % cost,
+		"Advance this reel one step for %d OP (spin %d of %d this turn)." % [
+			cost, which, GameManager.MAX_SPINS_PER_TURN]]
 
 
 func _style_spin_button(btn: Button) -> void:
@@ -2077,7 +2094,8 @@ func _refresh_enemy_skill_display() -> void:
 		"",
 		"IT FIRES AT NIGHT while that card sits in the BOTTOM row of a reel.",
 		"Spelling the letter does nothing — its POSITION is the trigger.",
-		"Use the SPIN buttons (1 OP each) or submit a word that uses that reel",
+		"Use the SPIN buttons (3 per turn: 1 OP, then 10 OP, then 100 OP) or",
+		"submit a word that uses that reel",
 		"to roll the card out of the bottom row before night falls.",
 		"A stage clear ends the fight, so a defeated enemy never fires.",
 		"Every one of these is wiped the moment the stage is cleared.",

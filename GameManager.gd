@@ -619,6 +619,7 @@ func reset_game() -> void:
 	pending_burn_index = -1
 	slot_in_use = [false, false, false]
 	hand_redraw_pending = false
+	spins_this_turn = 0
 
 	# Every enemy-granted effect from the previous run is wiped before the first
 	# enemy is rolled, so a fresh game never inherits a shield or a shrunken hand.
@@ -1276,14 +1277,35 @@ func rotate_slots(used_slots: Array) -> void:
 
 
 # ─── OP ability: spin a shared reel ──────────────────────────────────────────
-# SPIN_COST OP advances ONE shared reel by one step, so the card that was showing
+# Spinning advances ONE shared reel by one step, so the card that was showing
 # as NEXT becomes ACTIVE. Each reel is spun independently, so a player can nudge
 # one bad reel and leave the others alone.
-const SPIN_COST: int = 1
+#
+# Spinning is limited to MAX_SPINS_PER_TURN per turn, and each successive spin
+# costs more than the last (SPIN_COSTS). The reels are the player's only lever
+# over which letters turn up, so an unpriced spin would trivialise the board;
+# the third one costs 100 OP, which is far beyond a normal turn's earnings.
+const SPIN_COSTS: Array[int] = [1, 10, 100]
+const MAX_SPINS_PER_TURN: int = 3
+
+# How many of this turn's spins have been spent. Reset when the turn advances.
+var spins_this_turn: int = 0
 
 # Which reels currently have their ACTIVE card on the Workbench. The UI owns the
 # Workbench, so it reports this back here.
 var slot_in_use: Array = []
+
+
+## How many spins are still available this turn.
+func spins_remaining() -> int:
+	return maxi(MAX_SPINS_PER_TURN - spins_this_turn, 0)
+
+
+## The price of the NEXT spin this turn, or -1 once all three are spent.
+func get_next_spin_cost() -> int:
+	if spins_this_turn >= MAX_SPINS_PER_TURN:
+		return -1
+	return SPIN_COSTS[spins_this_turn]
 
 
 ## What spinning reel `slot_idx` right now would do, without doing it.
@@ -1294,13 +1316,16 @@ func can_spin_slot(slot_idx: int) -> Dictionary:
 		return {"ok": false, "reason": "No such reel"}
 	if slot_idx >= current_slot_indices.size():
 		return {"ok": false, "reason": "Reel is not ready"}
-	if operation_points < SPIN_COST:
-		return {"ok": false, "reason": "Not enough OP"}
+	if spins_remaining() <= 0:
+		return {"ok": false, "reason": "No spins left this turn"}
 	# Spinning a reel whose ACTIVE card is already part of the word being built
 	# would silently change the word, so it is refused. The player must remove
 	# the card from the Workbench first.
 	if is_slot_active_in_use(slot_idx):
 		return {"ok": false, "reason": "That card is in your word"}
+	var cost: int = get_next_spin_cost()
+	if operation_points < cost:
+		return {"ok": false, "reason": "Not enough OP (needs %d)" % cost}
 	return {"ok": true, "reason": ""}
 
 
@@ -1319,13 +1344,14 @@ func is_slot_active_in_use(slot_idx: int) -> bool:
 
 ## Spends OP to advance one reel by a single step. Returns what happened so the
 ## UI can report it. The OP are only spent when the spin actually happens, so a
-## refused spin never costs anything.
+## refused spin never costs anything and never uses up one of the turn's three.
 func spin_slot(slot_idx: int) -> Dictionary:
 	var check: Dictionary = can_spin_slot(slot_idx)
 	if not check.get("ok", false):
 		return {"ok": false, "reason": check.get("reason", "Cannot spin")}
 
-	var spend: Dictionary = try_spend_operation_points(SPIN_COST)
+	var cost: int = get_next_spin_cost()
+	var spend: Dictionary = try_spend_operation_points(cost)
 	if not spend.get("valid", false):
 		return {"ok": false, "reason": spend.get("reason", "Not enough OP")}
 
@@ -1334,17 +1360,23 @@ func spin_slot(slot_idx: int) -> Dictionary:
 	var next_i: int = (cur_i + 1) % s_cards.size()
 	current_slot_indices[slot_idx] = next_i
 
+	# Only a spin that actually rotated a reel burns one of the turn's spins.
+	spins_this_turn += 1
+
 	var shown: Dictionary = s_cards[next_i]
 	return {
 		"ok": true,
 		"slot": slot_idx,
 		"card": shown,
+		"cost": cost,
+		"spins_remaining": spins_remaining(),
 		"remaining": spend.get("remaining", operation_points),
-		"message": "Spun reel %d for %d OP — now showing %s (%d dmg, %s). %d OP left." % [
-			slot_idx + 1, SPIN_COST, shown.get("letter", "?"),
+		"message": "Spun reel %d for %d OP — now showing %s (%d dmg, %s). %d OP left. %d spin(s) left this turn." % [
+			slot_idx + 1, cost, shown.get("letter", "?"),
 			int(shown.get("damage", 0)),
 			str(shown.get("color", "red")).to_upper(),
-			int(spend.get("remaining", operation_points))]
+			int(spend.get("remaining", operation_points)),
+			spins_remaining()]
 	}
 
 # Calculate the word-damage color multiplier. RED is exceptional:
@@ -1627,6 +1659,7 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 	var enemy_skill_absorbed: int = 0
 
 	turn += 1
+	spins_this_turn = 0  # The next turn gets a fresh set of three spins.
 	is_night = not is_night
 
 	return {
