@@ -637,6 +637,13 @@ func reset_game() -> void:
 	for card_def in STARTING_DECK:
 		deck.append(card_def.duplicate())
 
+	# The SET is fixed, but the ORDER is not: the deck is shuffled before the
+	# opening hand is dealt. Drawing pops from the back of the deck, so without
+	# this the last seven cards of STARTING_DECK were the same opening hand every
+	# single game. Shuffling here, and again in _reshuffle_graveyard() whenever the
+	# spent pile is recycled, keeps every draw random.
+	deck.shuffle()
+
 	_build_shared_slots()
 
 	# Deal the opening hand, honouring any HAND DOWN already in force
