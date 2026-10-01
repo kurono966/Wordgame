@@ -1,11 +1,15 @@
 63f7b34db8d8cdea90c76aacccf841ec
-::res://::1790875435
+::res://::1790879883
 _board_qol_test.gd::GDScript::8210560718721148909::1790867226::0::1::::<>Node<><>0<>0<><>::
 _board_qol_test.tscn::PackedScene::-1::1790866938::0::1::::<><><>0<>0<><>::res://_board_qol_test.gd
+_burn_reward_test.gd::GDScript::5541142293702494651::1790877599::0::1::::<>Node<><>0<>0<><>::
+_burn_reward_test.tscn::PackedScene::-1::1790877486::0::1::::<><><>0<>0<><>::res://_burn_reward_test.gd
 _card_gesture_test.gd::GDScript::296228350939103068::1790870304::0::1::::<>Node<><>0<>0<><>::
 _card_gesture_test.tscn::PackedScene::-1::1790870310::0::1::::<><><>0<>0<><>::res://_card_gesture_test.gd
 _cur1.json::JSON::-1::1790771584::0::1::::<><><>0<>0<><>::
 _current_diff.txt::TextFile::-1::1790300501::0::1::::<><><>0<>0<><>::
+_deck_shuffle_test.gd::GDScript::3489728162580349838::1790878794::0::1::::<>Node<><>0<>0<><>::
+_deck_shuffle_test.tscn::PackedScene::-1::1790878801::0::1::::<><><>0<>0<><>::res://_deck_shuffle_test.gd
 _defeat_immunity_test.gd::GDScript::5058384023948926709::1790741217::0::1::::<>Node<><>0<>0<><>::
 _defeat_immunity_test.tscn::PackedScene::-1::1790741219::0::1::::<><><>0<>0<><>::res://_defeat_immunity_test.gd
 _e.txt::TextFile::-1::1790745144::0::1::::<><><>0<>0<><>::
@@ -35,7 +39,7 @@ _special_ui_test.gd::GDScript::5063707440283786305::1790734263::0::1::::<>Node<>
 _special_ui_test.tscn::PackedScene::-1::1790734257::0::1::::<><><>0<>0<><>::res://_special_ui_test.gd
 _special_visual_test.gd::GDScript::6611934869888548801::1790739062::0::1::::<>Node<><>0<>0<><>::
 _special_visual_test.tscn::PackedScene::-1::1790739064::0::1::::<><><>0<>0<><>::res://_special_visual_test.gd
-_spin_test.gd::GDScript::76555249912208011::1790732277::0::1::::<>Node<><>0<>0<><>::
+_spin_test.gd::GDScript::76555249912208011::1790879535::0::1::::<>Node<><>0<>0<><>::
 _spin_test.tscn::PackedScene::-1::1790732252::0::1::::<><><>0<>0<><>::res://_spin_test.gd
 _word_dict_test.gd::GDScript::354352427877748748::1790771879::0::1::::<>Node<><>0<>0<><>::
 _word_dict_test.tscn::PackedScene::-1::1790744851::0::1::::<><><>0<>0<><>::res://_word_dict_test.gd
@@ -45,8 +49,8 @@ dictionary.backup.txt::TextFile::-1::1790711072::0::1::::<><><>0<>0<><>::
 dictionary.stage1.txt::TextFile::-1::1790711284::0::1::::<><><>0<>0<><>::
 dictionary.txt::TextFile::-1::1790711284::0::1::::<><><>0<>0<><>::
 DraggableCard.gd::GDScript::5385929628676114189::1790870265::0::1::::<>PanelContainer<><>0<>0<><>::
-export_presets.cfg::TextFile::-1::1790771770::0::1::::<><><>0<>0<><>::
-GameManager.gd::GDScript::2749055658940758899::1790874839::0::1::::<>Node<><>0<>0<><>::
+export_presets.cfg::TextFile::-1::1790876747::0::1::::<><><>0<>0<><>::
+GameManager.gd::GDScript::2749055658940758899::1790879346::0::1::::<>Node<><>0<>0<><>::
 JishoClient.gd::GDScript::3835702360666820246::1790710487::0::1::::<>Node<><>0<>0<><>::
 jisho_egg.json::JSON::-1::1790710313::0::1::::<><><>0<>0<><>::
 jisho_eggs.json::JSON::-1::1790710314::0::1::::<><><>0<>0<><>::
@@ -54,7 +58,7 @@ jisho_empty.json::JSON::-1::1790707056::0::1::::<><><>0<>0<><>::
 jisho_five.json::JSON::-1::1790708881::0::1::::<><><>0<>0<><>::
 jisho_goat.json::JSON::-1::1790708881::0::1::::<><><>0<>0<><>::
 jisho_knowledge.json::JSON::-1::1790708882::0::1::::<><><>0<>0<><>::
-Main.gd::GDScript::5391064440613365603::1790874870::0::1::::<>Control<><>0<>0<><>::
+Main.gd::GDScript::5391064440613365603::1790879411::0::1::::<>Control<><>0<>0<><>::
 Main.tscn::PackedScene::-1::1790866593::0::1::::<><><>0<>0<><>::res://Main.gd
 optimized_deck.txt::TextFile::-1::1790156321::0::1::::<><><>0<>0<><>::
 README.md::TextFile::-1::1790875191::0::1::::<><><>0<>0<><>::
