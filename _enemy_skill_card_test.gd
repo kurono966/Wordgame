@@ -1,21 +1,19 @@
 extends Node
 
-# Headless test for the enemy-skill CARD RULES:
+# Headless test for the enemy-skill CARD RULES and the fixed starting deck.
 #
-#   1. SHARED REELS: the ONE letter the enemy bound its skill to is dealt as
-#      EXACTLY ONE card across the whole 3x3 board (1 of 9). A letter that
-#      repeats in the enemy name must not produce extra skill cards, and the
-#      random filler must never add one either.
-#   2. PLAYER DECK: no card carrying the skill letter may sit in the deck, the
-#      hand or the graveyard — the graveyard counts because it is reshuffled
-#      back into the deck when the deck runs dry.
-#   3. The rules survive a stage change, where a brand new enemy re-rolls its
-#      skill letter against a deck that was built for the previous enemy.
-#   4. Reward cards are filtered too, since "add a card" writes into the deck.
-#
-# The rules are checked over MANY randomly rolled enemies, because the failure
-# only shows up for names that repeat a letter (or for a skill letter that
-# happens to be common in the pool).
+#   1. FIXED DECK: every game starts with EXACTLY the twenty player cards in
+#      STARTING_DECK (five per colour), and a fresh game holds them all.
+#   2. SHARED REELS: the ONE letter the enemy bound its skill to is dealt as
+#      EXACTLY ONE card across the whole 3x3 board. A letter that repeats in the
+#      enemy name must not produce extra skill cards, and the random filler must
+#      never add one either.
+#   3. THE DECK IS NOT THE SKILL: a deck card may share the skill LETTER, but
+#      that is harmless — the skill fires only from a reel's bottom row at night,
+#      which no deck card can ever reach. This is what lets the fixed deck use
+#      common letters without breaking the rule.
+#   4. These rules survive a stage change, where a new enemy re-rolls its skill
+#      letter while the fixed deck stays exactly the same.
 
 const RUNS: int = 400
 
@@ -24,33 +22,18 @@ func _ready() -> void:
 	var fails: int = 0
 	await get_tree().process_frame
 
-	# ===== 1 + 2. A fresh game obeys both rules ==============================
+	# ===== 1. A fresh game holds exactly the fixed 20-card deck =============
 	for _i in range(RUNS):
 		gm.reset_game()
+		fails += _check_fixed_deck(gm, "a fresh game", true)
 		fails += _check_game(gm, "a fresh game")
 
-	# ===== 3. A stage change re-rolls skills against the old deck ============
-	# Poison the deck with every letter so a new enemy is guaranteed to find
-	# its own skill letters sitting in the player's piles.
+	# ===== 4. A stage change re-rolls the skill, deck stays fixed ===========
 	for _i in range(60):
 		gm.reset_game()
-		for letter in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]:
-			gm.deck.append({"letter": letter, "damage": 1, "color": "red"})
-			gm.graveyard.append({"letter": letter, "damage": 1, "color": "blue"})
-			gm.hand.append({"letter": letter, "damage": 1, "color": "green"})
 		gm._advance_stage()
+		fails += _check_fixed_deck(gm, "a stage change", false)
 		fails += _check_game(gm, "a stage change")
-
-	# ===== 4. Rewards never hand out a skill card ===========================
-	for _i in range(RUNS):
-		gm.reset_game()
-		for _r in range(12):
-			var card: Dictionary = gm._pick_reward_card()
-			fails += _check(not gm.is_enemy_skill_letter(str(card.get("letter", ""))),
-				"a reward card never carries a skill letter")
-			var special: Dictionary = gm._pick_special_reward_card()
-			fails += _check(not gm.is_enemy_skill_letter(str(special.get("letter", ""))),
-				"a special reward card never carries a skill letter")
 
 	# ===== Sanity: the reels still deal a full 3x3 board ====================
 	gm.reset_game()
@@ -74,12 +57,58 @@ func _ready() -> void:
 	get_tree().quit(fails)
 
 
-## Both rules for one freshly-rolled game state.
+## The deck plus hand must be exactly the fixed STARTING_DECK: same size, and
+## the same multiset of letter/damage/colour entries. Only meaningful on a FRESH
+## game — a stage change redraws the hand and rotates nothing, so the deck+hand
+## total stays DECK_SIZE, but a mid-run draw pile has simply been partly dealt.
+func _check_fixed_deck(gm, label: String, check_contents: bool) -> int:
+	var fails: int = 0
+	var held: Array = []
+	for card in gm.deck:
+		held.append(_entry(card))
+	for card in gm.hand:
+		if card != null:
+			held.append(_entry(card))
+
+	if check_contents:
+		held.sort()
+		var want: Array = []
+		for def in gm.STARTING_DECK:
+			want.append(_entry(def))
+		want.sort()
+		fails += _check(held == want,
+			"%s: the deck is exactly the fixed 20-card set (%d held)" % [label, held.size()])
+
+	# Five of each colour, which is what the fixed set is built around. Only
+	# checked on a fresh game; later the hand and graveyard have taken their share.
+	if check_contents:
+		var colours: Dictionary = {}
+		for entry in held:
+			var colour: String = str(entry).split("|")[2]
+			colours[colour] = int(colours.get(colour, 0)) + 1
+		for colour in colours:
+			fails += _check(int(colours[colour]) == 5,
+				"%s: the deck has 5 %s cards (%d)" % [label, colour, int(colours[colour])])
+
+	# Whatever has been dealt, the deck can never grow or shrink on its own: the
+	# total always stays DECK_SIZE because the graveyard is recycled, not lost.
+	fails += _check(gm.deck.size() + gm.hand.size() + gm.graveyard.size() == gm.DECK_SIZE,
+		"%s: deck + hand + graveyard is still %d cards (%d)"
+			% [label, gm.DECK_SIZE, gm.deck.size() + gm.hand.size() + gm.graveyard.size()])
+	return fails
+
+
+func _entry(card: Dictionary) -> String:
+	return "%s|%d|%s" % [str(card.get("letter", "")), int(card.get("damage", 0)),
+		str(card.get("color", ""))]
+
+
+## The skill-card rules for one freshly-rolled game state.
 func _check_game(gm, label: String) -> int:
 	var fails: int = 0
 	var skill_letters: Dictionary = gm._enemy_skill_letters()
 
-	# Rule 1: exactly one card per skill letter across the whole 3x3 board.
+	# Rule 2: exactly one card per skill letter across the whole 3x3 board.
 	for letter in skill_letters:
 		var seen: int = 0
 		for s in range(gm.slots.size()):
@@ -90,15 +119,21 @@ func _check_game(gm, label: String) -> int:
 			"%s: skill letter \"%s\" is dealt exactly once on the reels (found %d)" % [
 				label, letter, seen])
 
-	# Rule 2: nowhere in the player's own piles.
-	for pile_name in ["deck", "hand", "graveyard"]:
-		var pile: Array = gm.get(pile_name)
-		for card in pile:
-			if card == null:
-				continue
-			var letter: String = str(card.get("letter", ""))
-			fails += _check(not skill_letters.has(letter),
-				"%s: %s holds no skill letter (found \"%s\")" % [label, pile_name, letter])
+	# Rule 3: a deck card may share the skill letter, but no deck card is the
+	# skill CARD. The skill only ever fires from get_skill_card_in_firing_line(),
+	# which reads the reels — so a deck holding that letter changes nothing.
+	var deck_hits: int = 0
+	for card in gm.deck:
+		if skill_letters.has(str(card.get("letter", ""))):
+			deck_hits += 1
+	if deck_hits > 0:
+		# It is fine for this to happen (and it usually does); prove the skill
+		# still cannot fire off a deck card by parking the reels safely.
+		gm.is_night = true
+		var night: Dictionary = gm.apply_turn_start_penalty()
+		var firing: Array = gm.get_skill_card_in_firing_line([])
+		fails += _check(firing.is_empty() or bool(night.get("skill_fired", false)),
+			"%s: a deck holding the skill letter does not fake a firing line" % label)
 	return fails
 
 

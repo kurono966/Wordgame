@@ -1301,15 +1301,10 @@ func _refresh_hand_and_deck() -> void:
 			if is_wildcard:
 				cv["letter"].add_theme_color_override("font_color", Color(1.0, 0.8, 0.2, 1.0))  # Gold
 
-			# The same warning-orange treatment the reels use, so a skill letter
-			# is obvious wherever it sits.
-			var hand_skill: Dictionary = GameManager.get_enemy_skill_for_letter(str(card["letter"]))
-			if not hand_skill.is_empty():
-				sb.border_color = ENEMY_SKILL_COLOR
-				panel.tooltip_text = "⚠ Spelling this letter wakes the enemy's %s.\n%s" % [
-					str(hand_skill.get("name", "")), str(hand_skill.get("desc", ""))]
-			else:
-				panel.tooltip_text = ""
+			# Player cards are never the skill card: the skill lives on ONE shared
+			# reel card and fires only from a bottom row at night. Spelling a letter
+			# here does nothing, so no ⚠ mark belongs on a hand card.
+			panel.tooltip_text = ""
 
 			if _is_card_in_workbench(card_data):
 				cv["sub"].text = "IN USE"
@@ -1319,28 +1314,21 @@ func _refresh_hand_and_deck() -> void:
 				sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.4), 0.4)
 				_detach_drag_source(panel)
 			else:
-				var skill_tag: String = (" ⚠%s" % str(hand_skill.get("name", ""))) if not hand_skill.is_empty() else ""
 				if GameManager.has_special_ability(card):
 					var special_cost: int = GameManager.get_special_cost(card)
 					var affordable: bool = GameManager.get_operation_points() >= special_cost
 					var s_name: String = GameManager.get_special_name(card)
-					cv["sub"].text = "%d dmg ★ %d OP%s" % [card["damage"], special_cost, skill_tag]
-					# A special card can still sit on a skill letter, so the ★ rule
-					# and the ⚠ warning are both kept in the tooltip.
+					cv["sub"].text = "%d dmg ★ %d OP" % [card["damage"], special_cost]
 					panel.tooltip_text = "★ %s (%d OP): %s" % [
 						s_name, special_cost, GameManager.get_special_desc(card)]
-					if not hand_skill.is_empty():
-						panel.tooltip_text += "\n\n⚠ Spelling this letter wakes the enemy's %s.\n%s" % [
-							str(hand_skill.get("name", "")), str(hand_skill.get("desc", ""))]
 					if affordable:
 						cv["sub"].add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
 					else:
 						# Too costly right now: dim it so the cost is still readable
 						cv["sub"].add_theme_color_override("font_color", Color(0.62, 0.55, 0.45, 0.9))
 				else:
-					cv["sub"].text = "%d dmg%s" % [card["damage"], skill_tag]
-					cv["sub"].add_theme_color_override(
-						"font_color", ENEMY_SKILL_COLOR if not hand_skill.is_empty() else Color.WHITE)
+					cv["sub"].text = "%d dmg" % card["damage"]
+					cv["sub"].add_theme_color_override("font_color", Color.WHITE)
 				cv["letter"].add_theme_color_override("font_color", Color.WHITE)
 				_attach_drag_source(panel, card_data)
 		else:

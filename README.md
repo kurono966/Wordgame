@@ -24,7 +24,7 @@ Every enemy is built out of the letters of its own name, and **one of those lett
 - The card is listed under the HP bars (`STAGE … | DANGER: [B]AEGIS — slot 2 BOTTOM`, or `— safe`), and it is outlined in **orange with a ⚠ mark** while it is in the firing line, so you can always see whether tonight is dangerous
 - **There is only one such card**, so the threat is always in exactly one known place. The other eight cards are safe
 - **Getting it out of the bottom row is the player's job.** Press that reel's **SPIN button (1 OP)**, or submit a word that uses that reel, and the reel rolls the card away. Do it before night falls
-- **No card carrying the skill letter ever enters your deck** — not the draw pile, not your hand, not the graveyard (reward cards skip it too). Note that **Q and X cannot be dealt as cards at all** (they are reward-only), so they are never chosen as the skill letter
+- **Your Deck**: Every game starts with the **same fixed 20-card deck** — five per colour, so the opening is always the same balanced spread. These are PLAYER cards: whatever letter the enemy binds its skill to, the skill card is a different card on the shared reels, so the deck is never affected. Note that **Q and X cannot be dealt as cards at all** (they are reward-only), so they are never chosen as the skill letter
 - **A killing blow lands first.** If your word defeats the enemy, no skill fires — the fight ends before the enemy can answer
 - **A `?` wildcard can never BE the skill card.** A wildcard is not the enemy's letter
 - Skills get stronger every stage, and are capped so a deep run stays playable
@@ -65,7 +65,7 @@ Every enemy is built out of the letters of its own name, and **one of those lett
 ### Basic Setup
 - **3 Slot Reels**: Each slot contains 3 cards that can be rotated
 - **7 Hand Cards**: Cards you can use to fill in letters
-- **Card Pool & Deck**: The pool holds 99 card types; each game builds a 20-card deck chosen at random from the pool. When the draw pile runs out, the graveyard is shuffled back into the deck.
+- **Card Pool & Deck**: The pool holds 99 card types; each game starts from a **fixed 20-card deck** (see above) rather than a random draw. When the draw pile runs out, the graveyard is shuffled back into the deck.
 - **Player HP**: 50 / **Enemy HP**: 30 for stage 1 (grows +15 per stage)
 - **Stages**: Defeat the enemy to advance to the next stage; your hand and the shared slot reels are fully reset on each stage change
 - **10 Turns**: Game ends after 10 turns
@@ -79,6 +79,18 @@ Every enemy is built out of the letters of its own name, and **one of those lett
 4. Used slots rotate to the next card
 5. Used hand cards are discarded and replaced from the deck
 6. Defeat the enemy (reduce its HP to 0) to clear the stage — the next stage starts, your hand is redrawn and all three shared reels roll to the new enemy's cards
+
+### Your fixed 20-card deck
+Every game starts with **exactly these twenty cards**, five per colour. They are **player cards**: whatever letter the enemy binds its skill to, the skill card is a *different* card on the shared reels, so your deck is never touched by it.
+
+| Colour | Role | Cards |
+|---|---|---|
+| 🔴 **RED** | damage multiplier | A / T / E / M / S |
+| 🔵 **BLUE** | shield | E / N / L / P / I |
+| 🟢 **GREEN** | heal | A / R / D / G / O |
+| 🟡 **YELLOW** | operation points | T / C / B / Y / E |
+
+Rewards still add and burn cards from here on, so the deck is a starting point rather than a straitjacket.
 
 ### Inspecting your deck
 - **CARD PILES** (bottom button) opens the deck viewer at any time during a fight

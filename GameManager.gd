@@ -83,6 +83,42 @@ const ENEMY_SKILL_DEFS: Array = [
 	},
 ]
 
+# ── STARTING DECK (fixed, 20 player cards) ───────────────────────────────────
+# Every game begins with EXACTLY these twenty cards, five per colour. They are
+# PLAYER cards: whatever letter the enemy binds its skill to, none of these is
+# the skill card. The skill is one specific card on the shared reels and fires
+# only from a bottom row at night — a deck card can never reach that trigger, so
+# the deck is free to use the same letters without breaking the rule.
+# Damage matches CARD_DEFS for that letter, so these behave exactly as the pool
+# versions always have.
+const STARTING_DECK: Array = [
+	# 攻撃 RED (damage multiplier)
+	{"letter": "A", "damage": 1, "color": "red"},
+	{"letter": "T", "damage": 1, "color": "red"},
+	{"letter": "E", "damage": 1, "color": "red"},
+	{"letter": "M", "damage": 3, "color": "red"},
+	{"letter": "S", "damage": 1, "color": "red"},
+	# 防御 BLUE (shield)
+	{"letter": "E", "damage": 1, "color": "blue"},
+	{"letter": "N", "damage": 1, "color": "blue"},
+	{"letter": "L", "damage": 1, "color": "blue"},
+	{"letter": "P", "damage": 3, "color": "blue"},
+	{"letter": "I", "damage": 1, "color": "blue"},
+	# 回復 GREEN (heal)
+	{"letter": "A", "damage": 1, "color": "green"},
+	{"letter": "R", "damage": 1, "color": "green"},
+	{"letter": "D", "damage": 2, "color": "green"},
+	{"letter": "G", "damage": 2, "color": "green"},
+	{"letter": "O", "damage": 1, "color": "green"},
+	# 特殊 YELLOW (operation points)
+	{"letter": "T", "damage": 1, "color": "yellow"},
+	{"letter": "C", "damage": 3, "color": "yellow"},
+	{"letter": "B", "damage": 3, "color": "yellow"},
+	{"letter": "Y", "damage": 4, "color": "yellow"},
+	{"letter": "E", "damage": 1, "color": "yellow"},
+]
+
+
 # ── Card cost & special ability settings ──
 # A card's DAMAGE NUMBER IS ALSO ITS COST: the printed damage value is the OP
 # price paid to activate that card's special ability (8-damage card = 8 OP,
@@ -404,38 +440,23 @@ func is_burning() -> bool:
 	return pending_burn_index >= 0
 
 
-## Picks a random card from SPECIAL_CARD_DEFS, skipping any whose letter this
-## enemy bound a skill to: a reward is added straight to the player's deck, and
-## a skill letter must never live there. Falls back to the normal pool when
-## every special is banned (or on a re-roll from choose_reward).
+## Picks a random card from SPECIAL_CARD_DEFS. Rewards go straight into the
+## player's deck, which is made of PLAYER cards — the skill card only ever exists
+## on the shared reels, so any letter is safe to offer here.
 func _pick_special_reward_card() -> Dictionary:
 	if SPECIAL_CARD_DEFS.is_empty():
 		return _pick_reward_card()
-	var allowed: Array = []
-	for def in SPECIAL_CARD_DEFS:
-		if not is_enemy_skill_letter(str(def.get("letter", ""))):
-			allowed.append(def)
-	if allowed.is_empty():
-		return _pick_reward_card()
-	return allowed[randi() % allowed.size()].duplicate()
+	return SPECIAL_CARD_DEFS[randi() % SPECIAL_CARD_DEFS.size()].duplicate()
 
 
 ## Picks a random card for the reward. 70% chance to offer a SPECIAL card,
 ## ensuring specials appear reliably through victory rewards.
-## Letters this enemy bound a skill to are excluded, because the card is added
-## directly to the player's deck and must not carry a skill.
 func _pick_reward_card() -> Dictionary:
 	if not SPECIAL_CARD_DEFS.is_empty() and randf() < 0.7:
 		return _pick_special_reward_card()
 	if CARD_DEFS.is_empty():
 		return {"letter": "E", "damage": 1, "color": "red"}
-	var allowed: Array = []
-	for def in CARD_DEFS:
-		if not is_enemy_skill_letter(str(def.get("letter", ""))):
-			allowed.append(def)
-	if allowed.is_empty():
-		return {"letter": "E", "damage": 1, "color": "red"}
-	return allowed[randi() % allowed.size()].duplicate()
+	return CARD_DEFS[randi() % CARD_DEFS.size()].duplicate()
 
 
 ## Stat rewards, offered with weights that keep all three useful.
@@ -577,23 +598,18 @@ func reset_game() -> void:
 	# enemy is rolled, so a fresh game never inherits a shield or a shrunken hand.
 	_clear_enemy_skills()
 
-	# Roll this stage's enemy FIRST: its skill letters decide which cards are
-	# banned from the deck, and its name's letters fill the shared reels.
+	# Roll this stage's enemy: its name's letters fill the shared reels, and one
+	# of them becomes the single skill card dealt to them.
 	# (shared cards are separate from the player's deck)
 	enemy_name = _roll_enemy_name()
 	_roll_enemy_skills()
 
-	# Build this game's deck: DECK_SIZE cards picked at random from the card pool
-	# (strictly no X or Q, and never a letter this enemy bound a skill to — a
-	# skill letter lives on exactly ONE shared reel card and nowhere else).
-	var pool: Array = []
-	for card_def in CARD_DEFS:
-		var letter: String = str(card_def.get("letter", "")).to_upper()
-		if letter != "X" and letter != "Q" and not is_enemy_skill_letter(letter):
-			pool.append(card_def.duplicate())
-	pool.shuffle()
-	for i in range(mini(DECK_SIZE, pool.size())):
-		deck.append(pool[i].duplicate())
+	# The deck is the fixed 20-card player set. These are PLAYER cards, never the
+	# skill card: the skill lives on exactly one shared reel card and only fires
+	# from a bottom row at night, which no deck card can ever do. So the deck may
+	# safely contain the skill letter without weakening the rule.
+	for card_def in STARTING_DECK:
+		deck.append(card_def.duplicate())
 
 	_build_shared_slots()
 
@@ -1695,9 +1711,6 @@ func _advance_stage() -> void:
 	enemy_hp = enemy_max_hp
 	enemy_name = _roll_enemy_name()
 	_roll_enemy_skills()
-	# The deck outlives the fight, so the new enemy's skill letters have to be
-	# pulled back out of it before the hand is redrawn.
-	_purge_enemy_skill_cards()
 	_reset_hand()
 	_build_shared_slots()
 
@@ -1785,42 +1798,6 @@ func _build_shared_slots() -> void:
 			pos += 1
 		slots.append(slot_cards)
 		current_slot_indices.append(0)
-
-## Strips every card carrying one of the current enemy's skill letters out of the
-## player's own piles: deck, hand and graveyard. The graveyard is included
-## because it is reshuffled back into the deck whenever the deck runs dry, so a
-## skill letter left there would quietly return to the draw pile.
-## The shared reels are left alone — that is where a skill letter belongs.
-## Burned cards are the exception: a card the player already destroyed is gone
-## for good and never comes back, so there is nothing to purge.
-func _purge_enemy_skill_cards() -> void:
-	if enemy_skills.is_empty():
-		return
-
-	deck = _drop_skill_cards(deck)
-	graveyard = _drop_skill_cards(graveyard)
-
-	# Hand slots hold a fixed size, so a removed card becomes an empty slot that
-	# _refill_hand() (called by _reset_hand) draws a replacement for.
-	var kept_hand: Array = []
-	for card: Variant in hand:
-		if card == null:
-			kept_hand.append(null)
-		elif not is_enemy_skill_letter(str(card.get("letter", ""))):
-			kept_hand.append(card)
-	hand = kept_hand
-
-
-## Returns `cards` without any entry whose letter is one of the enemy's skills.
-func _drop_skill_cards(cards: Array) -> Array:
-	var kept: Array = []
-	for card: Variant in cards:
-		if card == null:
-			kept.append(null)
-		elif not is_enemy_skill_letter(str(card.get("letter", ""))):
-			kept.append(card)
-	return kept
-
 
 # Pick a random pool entry with the given letter (any color), or -1 if none.
 func _find_random_letter_index(pool: Array, letter: String) -> int:
