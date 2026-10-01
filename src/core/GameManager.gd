@@ -644,6 +644,7 @@ func reset_game() -> void:
 	slot_in_use = [false, false, false]
 	hand_redraw_pending = false
 	spins_this_turn = 0
+	workbench_empty = true  # a fresh game starts with a clear Workbench
 
 	# Every enemy-granted effect from the previous run is wiped before the first
 	# enemy is rolled, so a fresh game never inherits a shield or a shrunken hand.
@@ -1126,7 +1127,37 @@ func get_special_cost_deficit(card: Variant) -> int:
 	return maxi(get_special_cost(card) - operation_points, 0)
 
 func can_use_special_ability(card: Variant) -> bool:
-	return has_special_ability(card) and operation_points >= get_special_cost(card)
+	if not has_special_ability(card) or operation_points < get_special_cost(card):
+		return false
+	# Any other restriction (today: DISCARD & DRAW needs a clear Workbench) is
+	# asked of the same helper use_special_ability() refuses with, so the UI can
+	# never dim a card that the game would still accept, or the reverse.
+	return special_ability_blocker(card).is_empty()
+
+
+## True for the abilities that may only be used with nothing on the Workbench.
+## DISCARD & DRAW bins a RANDOM card the player never chose, so bailing out
+## mid-word would silently wreck a build for no gain. It is refused before any OP
+## is spent, and the UI reports it the same way it reports an OP shortage.
+func _needs_empty_workbench_card(card: Variant) -> bool:
+	return str(card.get("special_id", "")) == "discard_draw"
+
+
+## Why `card` cannot be activated right now, or "" when it can. Lets the UI
+## explain a refusal without re-implementing the rules, and keeps the Workbench
+## requirement in one place.
+func special_ability_blocker(card: Variant) -> String:
+	if not has_special_ability(card):
+		return ""
+	if _needs_empty_workbench_card(card) and not workbench_empty:
+		return "Clear the Workbench first — %s bins a card at random" % get_special_name(card)
+	return ""
+
+
+## Reports whether the Workbench is currently clear. The UI owns the Workbench,
+## so it pushes the state here, the same way it pushes slot_in_use.
+func set_workbench_empty(is_empty: bool) -> void:
+	workbench_empty = is_empty
 
 # ─── Special abilities ────────────────────────────────────────────────────────
 # Cards with special_id have unique active abilities.
@@ -1160,6 +1191,19 @@ func use_special_ability(hand_index: int) -> Dictionary:
 		result["reason"] = "No special ability"
 		return result
 
+	var s_id: String = str(special_card.get("special_id", ""))
+
+	# DISCARD & DRAW throws away a card the player never chose. It is only allowed
+	# with a clear Workbench, so bailing out cannot silently wreck a word in
+	# progress. Refused BEFORE any OP is spent, exactly like a shortage.
+	var blocked: String = special_ability_blocker(special_card)
+	if not blocked.is_empty():
+		result["special_id"] = s_id
+		result["special_name"] = get_special_name(special_card)
+		result["cost"] = get_special_cost(special_card)
+		result["reason"] = blocked
+		return result
+
 	var cost: int = get_special_cost(special_card)
 	result["cost"] = cost
 	if operation_points < cost:
@@ -1169,7 +1213,6 @@ func use_special_ability(hand_index: int) -> Dictionary:
 	result["operation_points_spent"] = cost
 	result["operation_points_after"] = operation_points
 
-	var s_id: String = str(special_card.get("special_id", ""))
 	var s_name: String = get_special_name(special_card)
 	result["special_id"] = s_id
 	result["special_name"] = s_name
@@ -1342,6 +1385,11 @@ const MAX_SPINS_PER_TURN: int = 3
 
 # How many of this turn's spins have been spent. Reset when the turn advances.
 var spins_this_turn: int = 0
+
+# Whether the Workbench is clear. The UI owns the Workbench and pushes this here
+# via set_workbench_empty(), the same way it pushes slot_in_use. Defaults to a
+# clear board, which is what a headless caller always means.
+var workbench_empty: bool = true
 
 # Which reels currently have their ACTIVE card on the Workbench. The UI owns the
 # Workbench, so it reports this back here.

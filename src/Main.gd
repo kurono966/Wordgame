@@ -1619,6 +1619,14 @@ func _on_card_special_used(card_data: Dictionary) -> void:
 		message_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3, 1.0))
 		return
 
+	# DISCARD & DRAW bins a card at random, so it needs a clear Workbench. Asked
+	# BEFORE anything else happens, so the player is told why instead of watching
+	# the activation stutter and fail.
+	var blocked: String = GameManager.special_ability_blocker(card)
+	if not blocked.is_empty():
+		_show_step_message(blocked + ".", Color(1.0, 0.8, 0.3, 1.0))
+		return
+
 	# Refuse before touching any card when the player cannot afford it.
 	var cost: int = GameManager.get_special_cost(card)
 	if GameManager.get_operation_points() < cost:
@@ -1958,6 +1966,10 @@ func remove_card_from_workbench_at(idx: int) -> void:
 	_refresh_submit_preview()
 
 func _refresh_workbench_ui() -> void:
+	# Synced FIRST: the function returns early when the Workbench is empty, so
+	# putting this lower would never report the one state that matters most.
+	GameManager.set_workbench_empty(workbench_cards.is_empty())
+
 	# Remember whether a drop is in progress: this rebuilds every child, which
 	# would otherwise destroy the caret mid-drag.
 	var caret_was_shown: bool = _workbench_caret != null and _workbench_caret.visible
