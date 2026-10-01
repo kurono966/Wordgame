@@ -1025,6 +1025,31 @@ func _add_fallback_words() -> void:
 	print("Fallback dictionary loaded with ", dictionary.size(), " words")
 
 # ─── Card draw & recycle ─────────────────────────────────────────────────────
+## True for a card an ability CONJURED out of nothing rather than drawing from
+## the deck: ROYAL SUMMON's 'U', JACK IN THE BOX's wildcard and VOWEL SHIFT's
+## vowel. These were never part of the deck, so recycling them into it would
+## hand the player permanent cards for one ability activation.
+func is_ephemeral_card(card: Variant) -> bool:
+	if typeof(card) != TYPE_DICTIONARY:
+		return false
+	return bool(card.get("ephemeral", false))
+
+
+## Takes a hand card out of play. An ability-made card is DESTROYED; every
+## other card goes to the graveyard, to be shuffled back when the pile runs dry.
+## Every hand card leaves the game through here, so a conjured card can never
+## leak into the deck from one of the other exit routes.
+func _discard_hand_card(index: int) -> void:
+	if index < 0 or index >= hand.size():
+		return
+	var card: Variant = hand[index]
+	hand[index] = null
+	if card == null:
+		return
+	if is_ephemeral_card(card):
+		return  # destroyed, not recycled: it was never in the deck
+	graveyard.append(card)
+
 # Draws the top card of the deck. When the deck runs out, the graveyard is
 # moved back into the deck and shuffled (deck & graveyard only ever hold this
 # game's DECK_SIZE cards — never the full CARD_DEFS pool).
@@ -1133,9 +1158,11 @@ func use_special_ability(hand_index: int) -> Dictionary:
 
 	match s_id:
 		"royal_summon":
-			# Q goes to graveyard, add a 'U' (1 dmg, red) card to hand in its place
-			hand[hand_index] = {"letter": "U", "damage": 1, "color": "red"}
-			result["message"] = "ROYAL SUMMON! Q was sent to graveyard, added 'U' (1 dmg, red) to hand."
+			# Q goes to graveyard, add a 'U' (1 dmg, red) card to hand in its place.
+			# ephemeral: it was conjured, not drawn, so it is destroyed on use
+			# instead of being recycled back into the deck.
+			hand[hand_index] = {"letter": "U", "damage": 1, "color": "red", "ephemeral": true}
+			result["message"] = "ROYAL SUMMON! Q was sent to graveyard, added 'U' (1 dmg, red) to hand. It vanishes once used."
 
 		"zero_gravity":
 			# Z goes to graveyard, gain 10 shield and nullify night penalty this turn
@@ -1152,8 +1179,9 @@ func use_special_ability(hand_index: int) -> Dictionary:
 
 		"jack_in_the_box":
 			# J goes to graveyard, leaves a wildcard (?) in hand in its place
-			hand[hand_index] = {"letter": "?", "damage": 8, "color": "green", "is_wildcard": true}
-			result["message"] = "JACK IN THE BOX! J was sent to graveyard, left a wildcard (?) in hand!"
+			hand[hand_index] = {"letter": "?", "damage": 8, "color": "green",
+				"is_wildcard": true, "ephemeral": true}
+			result["message"] = "JACK IN THE BOX! J was sent to graveyard, left a wildcard (?) in hand. It vanishes once used."
 
 		"spark":
 			# E goes to graveyard, deal 4 direct damage to the enemy
@@ -1187,9 +1215,9 @@ func use_special_ability(hand_index: int) -> Dictionary:
 					other_indices.append(i)
 			if other_indices.size() > 0:
 				other_indices.shuffle()
-				var discard_idx: int = other_indices[0]
-				graveyard.append(hand[discard_idx])
-				hand[discard_idx] = null
+				# Goes through the shared exit, so an ability-made card discarded
+				# here is destroyed rather than recycled into the deck.
+				_discard_hand_card(other_indices[0])
 			_refill_hand()
 			result["message"] = "DISCARD & DRAW! D + 1 card sent to graveyard, drew 2 new cards."
 
@@ -1198,8 +1226,8 @@ func use_special_ability(hand_index: int) -> Dictionary:
 			var vowels: Array = ["A", "E", "I", "U"]
 			vowels.shuffle()
 			var new_l: String = vowels[0]
-			hand[hand_index] = {"letter": new_l, "damage": 1, "color": "green"}
-			result["message"] = "VOWEL SHIFT! O was sent to graveyard, generated '%s' in hand." % new_l
+			hand[hand_index] = {"letter": new_l, "damage": 1, "color": "green", "ephemeral": true}
+			result["message"] = "VOWEL SHIFT! O was sent to graveyard, generated '%s' in hand. It vanishes once used." % new_l
 
 		_:
 			# Fallback
@@ -1651,8 +1679,7 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 	var final_damage: int = group_damage
 
 	for hi in used_hand_indices:
-		graveyard.append(hand[hi])
-		hand[hi] = null
+		_discard_hand_card(hi)
 	_refill_hand()
 	rotate_slots(used_slot_indices)
 
@@ -1845,9 +1872,7 @@ func flush_pending_hand_redraw() -> void:
 # Discard the whole hand and draw a fresh one, up to the current hand limit.
 func _reset_hand() -> void:
 	for i in range(hand.size()):
-		if hand[i] != null:
-			graveyard.append(hand[i])
-			hand[i] = null
+		_discard_hand_card(i)
 	while hand.size() < hand_limit:
 		hand.append(null)
 	_trim_hand_to_limit()
