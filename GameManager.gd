@@ -114,7 +114,7 @@ const STARTING_DECK: Array = [
 	{"letter": "T", "damage": 1, "color": "yellow"},
 	{"letter": "C", "damage": 3, "color": "yellow"},
 	{"letter": "B", "damage": 3, "color": "yellow"},
-	{"letter": "Y", "damage": 4, "color": "yellow"},
+	{"letter": "?", "damage": 0, "color": "yellow"},
 	{"letter": "E", "damage": 1, "color": "yellow"},
 ]
 
