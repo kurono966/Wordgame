@@ -1529,6 +1529,42 @@ func _assign_hand_cards(chars: Array, slot_map: Dictionary, char_idx: int, used_
 			_assign_hand_cards(chars, slot_map, char_idx + 1, used_hand_indices, results)
 			used_hand_indices.pop_back()
 
+# ─── Spelling the enemy's own name ───────────────────────────────────────────
+## Length of the longest stretch of the submitted word that spells CONSECUTIVE
+## letters of the enemy's own name — the word's longest common substring with
+## the name. Against "dragon": "drag" scores 4, "gone" scores 3 ("gon"), "one"
+## scores 2 ("on"); the trailing "e" is not in the name and does not count.
+## Returns 0 when nothing is shared and 1 when only a single letter is.
+func name_consecutive_run(word: String) -> int:
+	var w: String = word.to_upper()
+	var n: String = enemy_name.to_upper()
+	var best: int = 0
+	for i in range(w.length()):
+		for j in range(i + 1, w.length() + 1):
+			if n.contains(w.substr(i, j - i)):
+				best = maxi(best, j - i)
+	return best
+
+
+## Spelling two or more consecutive letters of the enemy's name doubles EVERY
+## card in the word, once more for each extra letter of the run: a 2-letter run
+## is x2, a 3-letter run x4, a 4-letter run x8. A shorter run earns nothing.
+func name_consecutive_multiplier(word: String) -> int:
+	var run: int = name_consecutive_run(word)
+	if run < 2:
+		return 1
+	return 1 << (run - 1)
+
+
+## The word spelled by an assignment, rebuilt from the cards' printed
+## characters. The submit preview only receives the assignment, not the string.
+func word_from_assignment(assignment: Array) -> String:
+	var out: String = ""
+	for src in assignment:
+		out += str(src.get("char", src.get("card_letter", "")))
+	return out
+
+
 # Feasibility check
 func validate_word(word: String) -> Dictionary:
 	var result := {"valid": false, "message": "INVALID", "assignment": []}
@@ -1599,6 +1635,14 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 	var active_w_mult: int = word_multiplier
 	word_multiplier = 1
 
+	# Spelling a run of the enemy's own name doubles every card in the word, once
+	# more per extra letter of the run (2 letters x2, 3 x4, 4 x8). Scaling the
+	# base scales the individual card values, and every color trait rides on the
+	# same base, so one multiplier covers the whole word.
+	var name_run: int = name_consecutive_run(word)
+	var name_mult: int = name_consecutive_multiplier(word)
+	base_damage *= name_mult
+
 	# RED trait (attack multiplier), applied EXACTLY ONCE:
 	#   0 red = x1 (no effect), exactly 1 red = x1.5 (exception),
 	#   2+ red = base x 2^(red - 1). The multiplier is NOT stacked with
@@ -1665,6 +1709,8 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 	return {
 		"message": "VALID: %s" % word.to_upper(),
 		"word_damage": base_damage,
+		"name_run": name_run,
+		"name_multiplier": name_mult,
 		"multiplier": multiplier,
 		"group_damage": group_damage,
 		"red_bonus": group_damage - base_damage,
@@ -2013,6 +2059,11 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 	var multiplier: float = calculate_color_multiplier(assignment)
 	var color_counts: Dictionary = count_colors_in_assignment(assignment)
 	var active_w: int = word_multiplier
+	# The same enemy-name bonus the real submit applies, so the preview never
+	# promises damage the word will not actually deal.
+	var preview_run: int = name_consecutive_run(word_from_assignment(assignment))
+	var preview_mult: int = name_consecutive_multiplier(word_from_assignment(assignment))
+	base_damage *= preview_mult
 	var final_damage: int = int(round(float(base_damage) * multiplier)) * active_w
 
 	# 1) Traits resolve before the damage exchange (positive base only)
@@ -2078,6 +2129,8 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 	var hp_lost: int = maxi((player_hp + heal_amount) - hp_pool, 0)
 	return {
 		"base_damage": base_damage,
+		"name_run": preview_run,
+		"name_multiplier": preview_mult,
 		"multiplier": multiplier,
 		"final_damage": final_damage,
 		"color_counts": color_counts,

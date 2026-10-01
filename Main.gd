@@ -592,6 +592,11 @@ func _build_formula_text() -> String:
 		"[BASE]  Base = total damage of every card used in the word.",
 		"        All color traits use this base (negative bases grant no traits).",
 		"",
+		"[ENEMY NAME]  base = card total x 2^(run - 1)",
+		"  Spelling 2+ letters of the enemy's name back-to-back doubles EVERY card",
+		"  in the word, and doubles again per extra letter: 2 letters x2, 3 x4, 4 x8.",
+		"  Enemy is '%s' right now — run your letters off its name." % GameManager.enemy_name.to_upper(),
+		"",
 		"[RED — enemy damage]  final = base x RED multiplier",
 		"  0 red: x1   |   1 red: x1.5   |   2 / 3 / 4 red: x2 / x4 / x8",
 		"",
@@ -1817,6 +1822,12 @@ func _preview_color(plan: Dictionary) -> Color:
 
 func _build_preview_text(plan: Dictionary, word: String) -> String:
 	var parts: Array = ["ON SUBMIT  '%s'  ->" % word.to_upper()]
+
+	# Spelling consecutive letters of the enemy's own name doubles every card.
+	var name_mult: int = int(plan.get("name_multiplier", 1))
+	if name_mult > 1:
+		parts.append("NAME RUN x%d (%d letters of '%s' in a row)" % [
+			name_mult, int(plan.get("name_run", 0)), GameManager.enemy_name.to_upper()])
 
 	# Enemy side. The enemy's AEGIS shield eats the hit first, so both numbers are
 	# shown: what you swung, and what actually reached its HP.
