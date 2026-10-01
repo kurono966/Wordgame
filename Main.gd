@@ -130,8 +130,6 @@ const BG_HAND         := Color(0.14, 0.20, 0.28, 1.0)
 const BORDER_HAND     := Color(0.35, 0.65, 0.95, 1.0) # Sky blue
 const TXT_HAND        := Color(0.85, 0.93, 1.00, 1.0)
 
-const BG_WORKBENCH_CARD := Color(0.18, 0.22, 0.30, 1.0)
-const BORDER_WORKBENCH  := Color(1.0, 0.85, 0.3, 1.0)
 const TXT_WORKBENCH     := Color(1.0, 1.0, 1.0, 1.0)
 
 const BG_EMPTY        := Color(0.12, 0.13, 0.17, 0.5)
@@ -1797,18 +1795,22 @@ func _refresh_workbench_ui() -> void:
 		var display_char: String = c_data.get("char", c_data.get("card_letter", "?"))
 		cv["letter"].text = display_char
 
-		# Wildcard: gold letter for identification, but border keeps the standard workbench style
-		# so players can match wildcards with same-color cards for multipliers
+		# Colour the card exactly like it is coloured in the hand and on the
+		# shared reels, so the player can read the word's traits (RED damage
+		# multiplier, BLUE shield, GREEN heal, YELLOW OP) at a glance.
+		var color_consts: Dictionary = get_card_color_constants(str(c_data.get("color", "red")))
+		sb.bg_color = color_consts["bg"]
+		sb.border_color = color_consts["border"]
+
 		cv["letter"].add_theme_color_override("font_color", TXT_WORKBENCH)
 		if c_data.get("is_wildcard", false):
+			# Gold letter marks the wildcard, but the border keeps the card's own
+			# colour so wildcards can still match same-colour cards.
 			cv["letter"].add_theme_color_override("font_color", Color(1.0, 0.8, 0.2, 1.0))
 
 		var src_label: String = "Slot %d" % (c_data["index"] + 1) if c_data["type"] == "slot" else "Hand"
 		cv["sub"].text = "%s (%ddmg)" % [src_label, c_data["damage"]]
-		cv["sub"].add_theme_color_override("font_color", Color(1, 0.85, 0.4, 0.9))
-
-		sb.bg_color = BG_WORKBENCH_CARD
-		sb.border_color = BORDER_WORKBENCH
+		cv["sub"].add_theme_color_override("font_color", Color(0.92, 0.95, 1.0, 0.85))
 
 		var captured_idx: int = i
 		panel.gui_input.connect(func(event: InputEvent):
