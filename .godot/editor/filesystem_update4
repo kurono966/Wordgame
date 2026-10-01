@@ -1,2 +1,5 @@
+res://_enemy_skill_test.gd
+res://_slot_clip_test.gd
+res://GameManager.gd
 res://Main.gd
-res://WorkbenchDropZone.gd
+res://README_JA.md

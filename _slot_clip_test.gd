@@ -14,7 +14,7 @@ extends Node
 #   * the whole slot row must still fit the 960px-wide play area
 
 # The same strings _setup_slot_card() builds, for the worst case of every skill.
-const SKILL_NAMES: Array = ["AEGIS", "HAND DOWN", "DRAIN", "NIGHTMARE", "REGROWTH", "THORNS"]
+const SKILL_NAMES: Array = ["AEGIS", "HAND DOWN", "DRAIN", "NIGHTMARE", "REGROWTH"]
 const DAMAGE_VALUES: Array = [1, 8, 9, 10, 12, 20, 99]
 
 func _ready() -> void:

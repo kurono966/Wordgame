@@ -81,11 +81,6 @@ const ENEMY_SKILL_DEFS: Array = [
 		"desc": "The enemy restores some of its own HP.",
 		"base": 3, "step": 2, "max": 20,
 	},
-	{
-		"id": "thorns", "name": "THORNS", "icon": "THN",
-		"desc": "The enemy's letters cut you as you spell them.",
-		"base": 4, "step": 3, "max": 25,
-	},
 ]
 
 # ── Card cost & special ability settings ──
@@ -860,24 +855,7 @@ func _preview_skill_card_night(rotating_slots: Array, shield: int, hp: int, enem
 				out["enemy_heal"] = int(out["enemy_heal"]) + healed
 				out["log"].append("%s — enemy repairs %d HP (now %d / %d)." % [
 					label, healed, enemy_hp_pool + healed, enemy_max_hp])
-			"thorns":
-				# Same pipeline as any other damage to the player: the BLUE shield
-				# soaks first, then HP.
-				var absorbed: int = mini(shield_pool_from(out), value)
-				var taken: int = value - absorbed
-				out["shield_after"] = int(out["shield_after"]) - absorbed
-				out["hp_after"] = maxi(int(out["hp_after"]) - taken, 0)
-				out["player_absorbed"] = int(out["player_absorbed"]) + absorbed
-				out["player_damage"] = int(out["player_damage"]) + taken
-				out["log"].append("%s — you take %d damage%s." % [
-					label, taken, (" (shield blocked %d)" % absorbed) if absorbed > 0 else ""])
 	return out
-
-
-## The player's shield as it stands inside a running _preview_skill_card_night()
-## result. Small helper so the "thorns" branch reads like the real damage path.
-func shield_pool_from(preview: Dictionary) -> int:
-	return int(preview.get("shield_after", shield))
 
 
 ## Drops every effect the current enemy granted. Called when a stage is cleared
@@ -963,16 +941,6 @@ func _apply_skill_card_night() -> Dictionary:
 				var healed: int = mini(value, enemy_max_hp - enemy_hp)
 				enemy_hp += healed
 				out["log"].append("%s — enemy repairs %d HP (now %d / %d)." % [label, healed, enemy_hp, enemy_max_hp])
-			"thorns":
-				# Identical pipeline to every other hit on the player: the BLUE
-				# shield absorbs first, then HP.
-				var taken_hit: Dictionary = _take_self_damage(value)
-				out["player_absorbed"] = int(out["player_absorbed"]) + int(taken_hit.get("absorbed", 0))
-				out["player_damage"] = int(out["player_damage"]) + int(taken_hit.get("taken", 0))
-				out["log"].append("%s — you take %d damage%s." % [
-					label, int(taken_hit.get("taken", 0)),
-					(" (shield blocked %d)" % int(taken_hit.get("absorbed", 0))) if int(taken_hit.get("absorbed", 0)) > 0 else ""
-				])
 	return out
 
 

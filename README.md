@@ -21,7 +21,7 @@ Every enemy is built out of the letters of its own name, and **one of those lett
 
 - **Spelling the letter does nothing — the POSITION is the trigger.** Use that letter in a word, or click the card: unless it is in the bottom row, nothing happens
 - It fires **only at night**. A day turn never triggers it
-- The card is listed under the HP bars (`STAGE … | DANGER: [B]THORNS — slot 2 BOTTOM`, or `— safe`), and it is outlined in **orange with a ⚠ mark** while it is in the firing line, so you can always see whether tonight is dangerous
+- The card is listed under the HP bars (`STAGE … | DANGER: [B]AEGIS — slot 2 BOTTOM`, or `— safe`), and it is outlined in **orange with a ⚠ mark** while it is in the firing line, so you can always see whether tonight is dangerous
 - **There is only one such card**, so the threat is always in exactly one known place. The other eight cards are safe
 - **Getting it out of the bottom row is the player's job.** Press that reel's **SPIN button (1 OP)**, or submit a word that uses that reel, and the reel rolls the card away. Do it before night falls
 - **No card carrying the skill letter ever enters your deck** — not the draw pile, not your hand, not the graveyard (reward cards skip it too). Note that **Q and X cannot be dealt as cards at all** (they are reward-only), so they are never chosen as the skill letter
@@ -36,7 +36,6 @@ Every enemy is built out of the letters of its own name, and **one of those lett
 | **DRAIN** | The enemy drinks operation points (never below 0) |
 | **NIGHTMARE** | Adds a flat amount to the NIGHT self-damage **base**, so the same-color multiplier still scales it |
 | **REGROWTH** | The enemy repairs some of its own HP (never past its max) |
-| **THORNS** | You are hurt. It runs through the **same damage path as any other hit on you**: your BLUE shield soaks it first, then HP |
 
 **Nothing survives a stage clear.** The moment an enemy dies, its shield, its night tax and its shrunken hand are all wiped and the hand is dealt back to full — the next enemy starts clean. The **only** thing that carries over is damage you have already taken, because that is HP you can heal back.
 

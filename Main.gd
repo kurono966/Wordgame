@@ -2512,8 +2512,8 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 		for line in night_skill_log:
 			_show_step_message("ENEMY SKILL — %s" % str(line), ENEMY_SKILL_COLOR)
 			await get_tree().create_timer(0.75).timeout
-		# AEGIS / REGROWTH change the enemy, and THORNS may have cost the player
-		# HP, so let the board catch up with what GameManager already applied.
+		# AEGIS / REGROWTH change the enemy, so let the board catch up with what
+		# GameManager already applied.
 		_refresh_ui()
 
 	_refresh_ui()

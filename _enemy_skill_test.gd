@@ -306,18 +306,20 @@ func _check_each_skill_does_its_job(gm: Node) -> int:
 	fails += _check(gm.get_enemy_hp() == gm.ENEMY_BASE_HP,
 		"REGROWTH never heals past the enemy's max HP (%d)" % gm.get_enemy_hp())
 
-	# THORNS — the player takes damage, and BLUE shield soaks it first.
+	# No skill hurts the player directly any more (THORNS was removed), so the
+	# skill must never touch the player's HP, shield or OP on its own.
 	_setup(gm)
+	gm.enemy_shield = 0
+	gm.enemy_hp = 20
 	var php: int = gm.player_hp
-	_fire_at_night(gm, "B", "thorns", 7)
-	fails += _check(gm.player_hp == php - 7,
-		"THORNS costs the player 7 HP (%d -> %d)" % [php, gm.player_hp])
-	_setup(gm)
-	gm.shield = 4
-	php = gm.player_hp
-	_fire_at_night(gm, "B", "thorns", 7)
-	fails += _check(gm.player_hp == php - 3,
-		"BLUE shield blocks part of THORNS (%d -> %d)" % [php, gm.player_hp])
+	var op_before: int = gm.operation_points
+	_fire_at_night(gm, "B", "aegis", 7)
+	fails += _check(gm.player_hp == php,
+		"the skill costs the player no HP (%d -> %d)" % [php, gm.player_hp])
+	fails += _check(gm.shield == 0,
+		"the skill does not touch the player's BLUE shield (%d)" % gm.shield)
+	fails += _check(gm.operation_points == op_before,
+		"the skill spends no operation points (%d)" % gm.operation_points)
 
 	return fails
 
@@ -327,7 +329,7 @@ func _check_killing_blow_fires_no_skill(gm: Node) -> int:
 	_setup(gm, 5)
 	# Park the card in the firing line and resolve a NIGHT, so the only thing
 	# stopping it is the stage clear. A defeated enemy must never answer.
-	_arm(gm, "B", "thorns", 20)
+	_arm(gm, "B", "aegis", 20)
 	gm.slots = _board_with_skill_at("B", 0, 0)
 	_point_at_skill(gm, 0, 0, 2)
 	var php: int = gm.player_hp
@@ -340,7 +342,7 @@ func _check_killing_blow_fires_no_skill(gm: Node) -> int:
 
 	# Now actually clear the stage, with the card waiting in the firing line.
 	_setup(gm, 5)
-	_arm(gm, "B", "thorns", 20)
+	_arm(gm, "B", "aegis", 20)
 	gm.slots = _board_with_skill_at("B", 0, 0)
 	_point_at_skill(gm, 0, 0, 2)
 	php = gm.player_hp
@@ -427,10 +429,10 @@ func _check_damage_taken_is_left_alone(gm: Node) -> int:
 func _check_preview_matches_reality(gm: Node) -> int:
 	var fails: int = 0
 
-	# THORNS with the card in the firing line: the forecast HP must equal the HP
-	# the player really ends the turn with, skill and night damage included.
+	# AEGIS with the card in the firing line: the forecast enemy shield must equal
+	# the shield the real night grants, so the player is warned correctly.
 	_setup(gm)
-	_arm(gm, "B", "thorns", 6)
+	_arm(gm, "B", "aegis", 6)
 	gm.slots = _board_with_skill_at("B", 0, 0)
 	# The card is already in the bottom row and the word uses only hand cards,
 	# so no reel rotates: the forecast and the real night see the same board.
@@ -443,8 +445,9 @@ func _check_preview_matches_reality(gm: Node) -> int:
 	var night: Dictionary = gm.apply_turn_start_penalty()
 	fails += _check(bool(night.get("skill_fired", false)),
 		"and the real night really does fire it")
-	fails += _check(int(plan.get("player_hp_after", -1)) == gm.player_hp,
-		"THORNS preview HP %d == real HP %d" % [int(plan.get("player_hp_after", -1)), gm.player_hp])
+	fails += _check(int(plan.get("enemy_shield_after", -1)) == gm.get_enemy_shield(),
+		"AEGIS preview shield %d == real %d" % [
+			int(plan.get("enemy_shield_after", -1)), gm.get_enemy_shield()])
 
 	# The same card parked in the CENTRE row stays clear, and the forecast must
 	# agree that nothing fires.
@@ -463,7 +466,7 @@ func _check_preview_matches_reality(gm: Node) -> int:
 
 	# A killing blow must be previewed as firing nothing.
 	_setup(gm, 5)
-	_arm(gm, "B", "thorns", 30)
+	_arm(gm, "B", "aegis", 30)
 	gm.slots = _board_with_skill_at("B", 0, 0)
 	_point_at_skill(gm, 0, 0, 2)
 	gm.is_night = false
