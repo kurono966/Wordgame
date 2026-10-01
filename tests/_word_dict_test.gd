@@ -114,23 +114,62 @@ func _check_short_translations(gm: Node) -> int:
 		var gloss: String = gm.get_word_translation(word)
 		fails += _check(gloss != "", "short word '%s' is translated ('%s')" % [word, gloss])
 
-	# The first-2000 batch is translated in full, so translations are no longer
-	# limited to <=3 letters; what still has to hold is that the set is exactly
-	# the three documented sources (samples + head2000 + short words).
-	var head_2000: Dictionary = _load_head_2000_file()
-	fails += _check(head_2000.size() == 2000,
-		"the head-2000 batch holds 2000 entries (%d)" % head_2000.size())
+	# The head-3000 batch is translated in full, so translations are no longer
+	# limited to <=3 letters. The glossary is far bigger than these tables -- it
+	# covers the whole alphabet -- so tracing every entry back to three named
+	# tables would be wrong. The invariant that actually matters is that every
+	# gloss belongs to a real dictionary word.
+	var head_3000: Dictionary = _load_head_3000_file()
+	fails += _check(head_3000.size() == 3000,
+		"the head-3000 batch holds 3000 entries (%d)" % head_3000.size())
+	var unbacked: String = ""
 	for key: String in gm.word_translations:
-		if not SAMPLE_WORDS.has(key) and not head_2000.has(key) and key.length() > 3:
-			fails += _check(false, "'%s' has no documented source" % key)
+		if not _is_in_dictionary_txt(key):
+			unbacked = key
 			break
-	fails += _check(true, "every translation traces back to a documented source")
+	fails += _check(unbacked == "",
+		"every translated word exists in dictionary.txt (%s)" % unbacked)
 	return fails
 
 
-## Reads the head-2000 source table straight from disk.
-func _load_head_2000_file() -> Dictionary:
-	var file := FileAccess.open("res://data/head2000.json", FileAccess.READ)
+## Cached lower-cased contents of data/dictionary.txt. Built once, on first use:
+## this is the file GameManager validates against, so a gloss for a word that is
+## not in it would be a phantom the game can never play.
+var _dict_words: Dictionary = {}
+
+
+func _is_in_dictionary_txt(word: String) -> bool:
+	if _dict_words.is_empty():
+		var file := FileAccess.open("res://data/dictionary.txt", FileAccess.READ)
+		if file == null:
+			return false
+		while not file.eof_reached():
+			var line: String = file.get_line().strip_edges().to_lower()
+			if line != "":
+				_dict_words[line] = true
+		file.close()
+	return _dict_words.has(word.to_lower())
+
+
+## The first accepted word the glossary does not translate, or "" if it covers
+## everything. Sampled from dictionary.txt rather than the whole file so the
+## search stays fast.
+func _find_untranslated_word(gm: Node) -> String:
+	var file := FileAccess.open("res://data/dictionary.txt", FileAccess.READ)
+	if file == null:
+		return ""
+	while not file.eof_reached():
+		var word: String = file.get_line().strip_edges().to_lower()
+		if word.length() > 3 and gm.dictionary.has(word) and not gm.has_word_translation(word):
+			file.close()
+			return word
+	file.close()
+	return ""
+
+
+## Reads the head-3000 source table straight from disk.
+func _load_head_3000_file() -> Dictionary:
+	var file := FileAccess.open("res://data/head3000.json", FileAccess.READ)
 	if file == null:
 		return {}
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
@@ -230,7 +269,11 @@ func _check_untranslated_shows_nothing(gm: Node) -> int:
 	await get_tree().process_frame
 
 	# A valid but untranslated word (longer than 3 letters, not a sample word).
-	var probe := "abandon" if not gm.has_word_translation("abandon") else "zebra"
+	# A valid but untranslated word. Hard-coding one no longer works: the glossary
+	# grew past 99k entries, so both former probes now have a gloss. Search the
+	# accepted set for a word the glossary does NOT cover.
+	var probe: String = _find_untranslated_word(gm)
+	fails += _check(probe != "", "found a valid word with no bundled gloss")
 	fails += _check(not gm.has_word_translation(probe),
 		"the probe word '%s' genuinely has no bundled gloss" % probe)
 

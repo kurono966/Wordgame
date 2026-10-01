@@ -116,7 +116,7 @@
 1. **`data/word_dictionary.json`**（同梱 glossary） — 即座に表示され、ネットワーク不要で、Web エクスポートでも動作します。和訳のある単語だけを記載しています（空のエントリは無く、未収録の単語は手順2に回ります）。和訳のある単語は **`translations` にだけ記載し、`words` には入れない**（両セクションは重複しない）ので、ゲームは両者の和集合を使用可能な単語として扱います
 2. **Jisho**（jisho.org） — 同梱 glossary に無い単語のためのフォールバックです（リクエストと結果の選び方は下記の通り）
 
-> 現在 glossary には **> 現在 glossary には **2241語**（アルバドット列の先頭2000語（`data/head2000.json`）+ 3文字以下の一般的な単語 + サンプル群）が入っています。
+> 現在 glossary には **98,813語**（アルバドット列のほぼ全体）が入っています。先頭3000語は和訳が確定しているものには実際の和訳を付与し（`data/head3000.json`）、確定的な和訳が無いものはカテゴリタグで示しています（この範囲は化学のtrivial名・ラテン語の分類群名・地名／人名が中心和）。したがって `CAT`・`AND`・`THE`・`ABBACY`・`ACCUMULATE`・`ACETYLENE` などが即座にオフラインで和訳され、それ以外は Jisho に回ります。単語を追加するにはソース表に1行足して `build_word_json.py` を再実行するだけで、コード変更は不要です。このスクリプトは既存 `word_dictionary.json` を**消 않고統合**します。
 
 ```
 GOAT   →   山羊 (やぎ)  Noun
@@ -263,7 +263,7 @@ src/            ゲーム本体
   Main.gd/.tscn   シーンと UI の配線
   core/           GameManager.gd（ルール、autoload）、JishoClient.gd（autoload）
   ui/             DraggableCard.gd、WorkbenchDropZone.gd
-data/           word_dictionary.json（実行時）、dictionary.txt（フォールバック）、head2000.json
+data/           word_dictionary.json（実行時）、dictionary.txt（フォールバック）、head3000.json
 tests/          テスト一式（実行方法は下記）
   fixtures/       Jisho API の固定レスポンス
 tools/          build_word_json.py、deck_simulation.py（オフライン補助ツール）

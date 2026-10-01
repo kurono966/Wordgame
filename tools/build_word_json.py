@@ -43,19 +43,19 @@ SAMPLE_TRANSLATIONS = {
     "ability": "能力",
 }
 
-# Translations for the FIRST 2000 entries of the alphabetical word list, as
+# Translations for the FIRST 3000 entries of the alphabetical word list, as
 # requested. That head is overwhelmingly abbreviations (aaa, aam), place
 # names (aachen, abbeville) and French/Neo-Latin derivatives (abacinate,
 # abbacy), so words with no settled Japanese rendering are tagged with
 # their category instead of being left blank. The table lives in
-# data/head2000.json so this generator stays readable.
-HEAD_2000_PATH = os.path.join(DATA_DIR, "head2000.json")
+# data/head3000.json so this generator stays readable.
+HEAD_3000_PATH = os.path.join(DATA_DIR, "head3000.json")
 
 
-def _load_head_2000():
-    if not os.path.exists(HEAD_2000_PATH):
+def _load_head_3000():
+    if not os.path.exists(HEAD_3000_PATH):
         return {}
-    with open(HEAD_2000_PATH, "r", encoding="utf-8") as handle:
+    with open(HEAD_3000_PATH, "r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -310,6 +310,25 @@ SHORT_TRANSLATIONS = {
 }
 
 
+def _existing_translations():
+    """Glosses already in the output file, or {} when there is none yet.
+
+    The committed word_dictionary.json carries ~99k glosses covering the whole
+    alphabet, far more than the tables above can rebuild. Regenerating from
+    scratch therefore DELETED ~95k of them once already, so the file -- not this
+    script -- is the source of truth and the tool merges into it.
+    """
+    if not os.path.exists(OUT_JSON):
+        return {}
+    with open(OUT_JSON, "r", encoding="utf-8") as handle:
+        try:
+            return json.load(handle).get("translations", {})
+        except ValueError:
+            print("warning: %s is unreadable; starting from an empty table"
+                  % os.path.basename(OUT_JSON))
+            return {}
+
+
 def main() -> None:
     words = set()
     with open(DICT_TXT, "r", encoding="utf-8") as handle:
@@ -322,11 +341,22 @@ def main() -> None:
     # so the table can never advertise a word the game would reject.
     table = dict(SAMPLE_TRANSLATIONS)
     table.update(SHORT_TRANSLATIONS)
-    head_2000 = _load_head_2000()
-    # Sample words win over the head-300 table if the same word is in both.
-    for word, gloss in head_2000.items():
+    head_3000 = _load_head_3000()
+    # Sample words win over the head-3000 table if the same word is in both.
+    for word, gloss in head_3000.items():
         table.setdefault(word, gloss)
-    translations = {w: t for w, t in table.items() if w in words}
+
+    # Merge rather than rebuild: glosses already in the file are kept unless a
+    # table here deliberately supersedes one.
+    merged = dict(_existing_translations())
+    superseded = 0
+    for word, gloss in table.items():
+        if word in merged and merged[word] != gloss:
+            superseded += 1
+        merged[word] = gloss
+
+    accepted = words | set(merged)
+    translations = {w: t for w, t in merged.items() if w in words}
 
     # A word that has a translation is stored ONLY in "translations" (that is
     # what the translation is for), so remove it from "words" to keep the two
@@ -336,6 +366,7 @@ def main() -> None:
 
     sorted_words = sorted(words)
     sorted_translations = dict(sorted(translations.items()))
+    assert len(words) + len(translations) == len(accepted), "sections overlap"
 
     # Hand-formatted rather than json.dump: one word (and one gloss) per line so
     # the file stays readable and diffable in an editor. The game only parses it,
@@ -367,7 +398,9 @@ def main() -> None:
     size_mb = os.path.getsize(OUT_JSON) / (1024 * 1024)
     print("words: %d" % len(sorted_words))
     print("translations: %d" % len(sorted_translations))
-    print("dropped (not in dictionary): %d" % (len(table) - len(sorted_translations)))
+    print("kept from the previous file: %d" % len(_existing_translations()))
+    print("superseded by a table entry: %d" % superseded)
+    print("dropped (not in dictionary): %d" % (len(merged) - len(sorted_translations)))
     print("lines: %d" % (len(out) + 1))
     print("written: %s (%.2f MB)" % (os.path.basename(OUT_JSON), size_mb))
 

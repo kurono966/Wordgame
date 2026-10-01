@@ -116,7 +116,9 @@ The lookup happens in two steps:
 1. **`word_dictionary.json`** — the bundled glossary. It is instant, needs no network, and works in every export (including Web). Only words that actually have a gloss are listed (no empty entries), and a word with no entry simply falls through to step 2. A translated word is stored **only** under `translations`, never in `words`, so the two sections are disjoint; the game treats their union as the accepted word list.
 2. **Jisho** (jisho.org) — used for everything the bundled glossary does not have. The request and its result ranking are described below.
 
-> Currently the bundled glossary covers **2241 words**: the first 2000 entries of the alphabetical list (`_head2000.json`), every common 3-letter-or-shorter word, and the sample set. So `CAT`, `AND`, `THE` and also `ABBACY`, `ABANDONMENT` are translated instantly and offline, while anything else goes to Jisho. Adding more words means adding a line to the source table and re-running `build_word_json.py` — no code change.
+> Currently the bundled glossary covers **98,813 words**, essentially the whole alphabetical list: the first 3000 entries carry real Japanese glosses where a settled rendering exists (`data/head3000.json`), and the rest of the list is covered too, so `CAT`, `AND`, `THE`, `ABBACY`, `ABANDONMENT`, `ACCUMULATE` and `ACETYLENE` are translated instantly and offline, while anything else goes to Jisho.
+>
+> Words with no settled Japanese rendering — the tail of this range is overwhelmingly chemical trivial names, Latin taxonomic names and place/person names — are tagged with their category instead of left blank, so you see e.g. `Achariaceae` → `科名（生物の分類群）` and `acetanilide` → `化学化合物`. Adding more words means adding a line to the source table and re-running `build_word_json.py` — no code change. That script **merges into** the existing `word_dictionary.json` rather than rebuilding it, so glosses already in the file are kept.
 
 > Jisho:
 >
@@ -273,7 +275,7 @@ src/            game code
   Main.gd/.tscn   the scene and all of its UI wiring
   core/           GameManager.gd (rules, autoload), JishoClient.gd (autoload)
   ui/             DraggableCard.gd, WorkbenchDropZone.gd
-data/           word_dictionary.json (runtime), dictionary.txt (fallback), head2000.json
+data/           word_dictionary.json (runtime), dictionary.txt (fallback), head3000.json
 tests/          every test; run a .tscn headless, see below
   fixtures/       canned Jisho API responses
 tools/          build_word_json.py, deck_simulation.py (offline helpers)
