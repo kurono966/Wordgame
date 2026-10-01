@@ -42,19 +42,20 @@ Every enemy is built out of the letters of its own name, and **one of those lett
 ### Rewards (Enemy Defeat)
 | Reward | Effect |
 |---|---|
-| **ADD A CARD** | Adds the **specific card shown** to your deck (no strike-through) |
-| **BURN A CARD** | **You pick the card**: a picker opens with every card you hold — click one to remove it |
+| **★ SPECIAL CARD** | Adds the **specific ★ special shown** to your deck, with its power and OP cost spelled out |
+| **BURN A CARD** | **You pick the card**: a picker opens with every card you own — click one to remove it |
 | **VITALITY** (HP) | Restore HP (25% of max, minimum 10) |
 | **BARRIER** (SH) | Gain 8 shield |
 | **INSIGHT** (OP) | Gain 5 operation points |
 | **IRON WILL** (MAX) | Max HP +5 (heals the same amount) |
 | **CARD DRAW** (DR) | Draw a card into hand |
+| **WILDCARDS** (???) | Add **3 wildcard (?) cards** to your deck |
 
-- **ADD A CARD is rolled up front and shown face-up.** You are not picking freely from the card pool — you are offered one specific card
-- The card you are shown is always the card you get. If identical copies exist, any of them counts
-- **BURN A CARD is the opposite: nothing is decided for you.** Taking it opens a picker listing every card in your draw pile *and* your hand, each drawn in its own colour. Click the one you want gone and only that card is removed
-- You can press **BACK TO REWARDS** in the picker to change your mind; the reward is not spent until you click a card
-- Burned cards are gone for good. The graveyard is not offered, because those cards get shuffled back into the draw pile
+- **The card reward only ever hands over a ★ SPECIAL.** A plain letter card would be filler that plays no differently from the fixed 20 you already have, so the real choice is *which power to take* rather than whether the roll happened to be interesting. The card is rolled up front and shown face-up, so the one you are offered is the one you get
+- **WILDCARDS gives three "?" cards at 0 damage.** Each still carries a colour, so it counts toward that colour's multiplier; what it buys is flexibility, standing in for whichever letter you are missing
+- **BURN A CARD is the opposite: nothing is decided for you.** Taking it opens a picker listing your whole deck — draw pile, hand *and* spent pile — each drawn in its own colour and tagged with the pile it came from. Click the one you want gone and only that card is removed
+- A **★ special** in the picker spells out its power and its price, so you never burn one blind
+- You can press **BACK TO REWARDS** in the picker to change your mind; the reward is not spent until you click a card, and the three options come back exactly as they were
 - There are always **three** options, at least one of which is a deck change (add/remove) while the deck size allows
 - The deck is clamped to **5-40 cards**; when the draw pile runs out the graveyard is shuffled back in, so the draw never breaks
 - **Negative damage**: reduces your HP (never below 0). If your HP reaches 0, it's GAME OVER (DEFEAT).

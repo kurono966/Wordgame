@@ -33,6 +33,7 @@ const FALLBACK_ENEMY_NAMES: Array = ["DRAGON", "SLIME", "GOLEM", "WRAITH", "TROL
 # ── HP & Damage settings ──
 const PLAYER_MAX_HP: int = 50     # Player's maximum HP at the START of a game
 const MAX_HP_REWARD_GAIN: int = 5  # HP ceiling granted by the "IRON WILL" reward
+const WILDCARD_REWARD_COUNT: int = 3  # Wildcards handed over by the "WILDCARDS" reward
 const ENEMY_BASE_HP: int = 30     # HP of the first enemy
 const ENEMY_HP_GROWTH: int = 15   # Max HP increase for each next enemy
 
@@ -357,22 +358,19 @@ func get_pending_reward_options() -> Array:
 	return reward_options
 
 
-## Adds one "gain this card" and one "burn a card" option when the deck size
+## Adds one "gain a ★ SPECIAL" and one "burn a card" option when the deck size
 ## allows. The card you GAIN is rolled up front and shown face-up.
 func _build_deck_rewards() -> void:
 	if deck.size() < MAX_DECK_SIZE:
+		# _pick_reward_card() only ever returns a special, so this is always a
+		# "★ SPECIAL CARD" and its power is spelled out on the button.
 		var card: Dictionary = _pick_reward_card()
-		var title: String = "ADD A CARD"
-		var detail: String = "Add this card to your deck."
-		if has_special_ability(card):
-			title = "★ SPECIAL CARD"
-			detail = "★ %s (%d OP)\n%s" % [
+		reward_options.append({"type": "add_card", "title": "★ SPECIAL CARD",
+			"detail": "★ %s (%d OP)\n%s" % [
 				get_special_name(card),
 				get_special_cost(card),
 				get_special_desc(card)
-			]
-		reward_options.append({"type": "add_card", "title": title,
-			"detail": detail,
+			],
 			"card": card})
 	if deck.size() > MIN_DECK_SIZE:
 		# No card is chosen here: the player picks one from the burn list.
@@ -465,23 +463,31 @@ func is_burning() -> bool:
 	return pending_burn_index >= 0
 
 
-## Picks a random card from SPECIAL_CARD_DEFS. Rewards go straight into the
-## player's deck, which is made of PLAYER cards — the skill card only ever exists
-## on the shared reels, so any letter is safe to offer here.
-func _pick_special_reward_card() -> Dictionary:
+## Picks the card an "ADD A CARD" reward hands over.
+##
+## Rewards only ever give a ★ SPECIAL. A plain letter card would just dilute the
+## deck with filler that plays no differently from the fixed 20 the player
+## started with, so the interesting decision is WHICH power to take rather than
+## whether the roll happened to be interesting.
+func _pick_reward_card() -> Dictionary:
 	if SPECIAL_CARD_DEFS.is_empty():
-		return _pick_reward_card()
+		# No specials defined at all: fall back to the plain pool rather than crash.
+		if CARD_DEFS.is_empty():
+			return {"letter": "E", "damage": 1, "color": "red"}
+		return CARD_DEFS[randi() % CARD_DEFS.size()].duplicate()
 	return SPECIAL_CARD_DEFS[randi() % SPECIAL_CARD_DEFS.size()].duplicate()
 
 
-## Picks a random card for the reward. 70% chance to offer a SPECIAL card,
-## ensuring specials appear reliably through victory rewards.
-func _pick_reward_card() -> Dictionary:
-	if not SPECIAL_CARD_DEFS.is_empty() and randf() < 0.7:
-		return _pick_special_reward_card()
-	if CARD_DEFS.is_empty():
-		return {"letter": "E", "damage": 1, "color": "red"}
-	return CARD_DEFS[randi() % CARD_DEFS.size()].duplicate()
+## A wildcard from the pool: 0 damage, a colour so it still counts toward that
+## colour's multiplier, and "?" standing in for whatever letter is needed.
+func _pick_wildcard_card() -> Dictionary:
+	var wildcards: Array = []
+	for card_def in CARD_DEFS:
+		if str(card_def.get("letter", "")) == "?":
+			wildcards.append(card_def)
+	if wildcards.is_empty():
+		return {"letter": "?", "damage": 0, "color": "red"}
+	return wildcards[randi() % wildcards.size()].duplicate()
 
 
 ## Stat rewards, offered with weights that keep all three useful.
@@ -491,7 +497,9 @@ func _build_stat_rewards() -> void:
 		{"type": "shield", "title": "BARRIER", "detail": "Gain shield."},
 		{"type": "op", "title": "INSIGHT", "detail": "Gain operation points."},
 		{"type": "max_hp", "title": "IRON WILL", "detail": "Raise max HP."},
-		{"type": "draw", "title": "CARD DRAW", "detail": "Draw a card into hand."}
+		{"type": "draw", "title": "CARD DRAW", "detail": "Draw a card into hand."},
+		{"type": "wildcards", "title": "WILDCARDS",
+			"detail": "Add %d wildcard (?) cards to your deck. They deal 0 damage, but each stands in for any letter you need." % WILDCARD_REWARD_COUNT}
 	]
 	pool.shuffle()
 	# Fill up to three options, but never duplicate a deck option already added.
@@ -560,6 +568,22 @@ func choose_reward(index: int) -> Dictionary:
 			hand.append(drawn)
 			result["message"] = "Drew %s (%d dmg) into your hand." % [
 				drawn.get("letter", "?"), int(drawn.get("damage", 0))]
+		"wildcards":
+			# Appended INSIDE the loop so the ceiling check sees the deck grow;
+			# collecting first and appending after would let all three through.
+			var added: Array = []
+			for _i in range(WILDCARD_REWARD_COUNT):
+				if deck.size() >= MAX_DECK_SIZE:
+					break
+				var wild: Dictionary = _pick_wildcard_card()
+				deck.append(wild)
+				added.append(wild)
+			result["cards"] = added
+			if added.is_empty():
+				result["message"] = "Your deck is full (%d cards) — no wildcards added." % deck.size()
+			else:
+				result["message"] = "Added %d wildcard (?) card(s) to your deck (now %d cards)." % [
+					added.size(), deck.size()]
 
 	# Reset shield when claiming a reward after defeating an enemy. A shield
 	# reward keeps its own value, otherwise it would cancel itself out.
