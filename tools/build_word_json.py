@@ -59,6 +59,62 @@ def _load_head_3000():
         return json.load(handle)
 
 
+# Headwords whose ONLY sense is a person name. These are excluded from the
+# accepted set: a surname is a poor candidate word and adds nothing playable.
+#
+# The list is curated, not derived from the 人名 tag, because that tag is not
+# reliable -- it is also attached to ordinary nouns (abbotship = 修道院長の所有),
+# French verb participles (abaised, abatised), place names (abbasi, ackley),
+# genus names (achaeta, achras, achorion) and adjectives (acheulean), and it
+# false-matches on substrings (directory -> 人名簿). Only words with no other
+# sense at all are listed here; anything ambiguous is deliberately left in.
+EXCLUDED_PERSON_NAMES = set("""
+aaberg aalii aaliis aalto aandahl aaqbiye aara aaren aarika aaron aaronson aaru
+aasvogel abac abacisci abacist abaculus abagael abagail abailard abaiser
+abakumov abbandono abarbarea abasias abasio abassieh abaue abave abbai
+abbott abbottson abbotcies abbotcy abbotsen
+achab achad achates acherman acheson achimelech achitophel achsah
+acker ackerley ackerly ackerman ackermanville ackey ackeys ackler ackman ackmen
+ackton
+""".split())
+
+
+# Glosses that were tagged 人名 but are not person names. Correcting them here
+# means a regeneration cannot put the wrong tag back.
+CORRECTED_GLOSSES = {
+    "abbotship": "修道院長の所有",
+    "abbotships": "修道院長の所有（複数形）",
+    "abaised": "reducingの過去分詞（フランス語 abaisser「下げる」）",
+    "abaissed": "reducingの過去分詞（フランス語 abaisser「下げる」）",
+    "abatised": "打ち倒すの過去分詞（フランス語 abattre）",
+    "abattised": "打ち倒すの過去分詞（フランス語 abattre）",
+    "accumbent": "在職者・現職者",
+    "achorion": "属名（真菌）",
+    "achras": "属名（植物）",
+    "achyranthes": "属名（植物）",
+    "achromobacter": "属名（細菌）",
+    "achromobacterieae": "科名（細菌）",
+    "achaeta": "属名（腔腸動物）",
+    "achlamydeae": "分類群名（腔腸動物）",
+    "achordata": "分類群名（脊索動物門）",
+    "acholoe": "属名（蝶）",
+    "achroanthes": "属名（植物）",
+    "achromatium": "属名（原生生物）",
+    "achinese": "アシナ族の",
+    "achomawi": "アチャマウィ族の",
+    "acheulean": "アシューリアン式の（考古学用語）",
+    "acheulian": "アシューリアン式の（考古学用語）",
+    "acheronian": "アケロン風の",
+    "acherontic": "アケロン風の",
+    "acherontical": "アケロン風の",
+    "acheron": "アケロン（ギリシャ神話・冥界の川）",
+    "achernar": "アケルナル（恒星名）",
+    "achagua": "地名（ニカラグア）",
+    "achaia": "地名（古代ギリシャの地域）",
+    "abbatial": "修道院長の",
+}
+
+
 # Japanese glosses for the short words (3 letters or fewer). Kept as a separate
 # table so the sample words above stay readable.
 SHORT_TRANSLATIONS = {
@@ -355,6 +411,16 @@ def main() -> None:
             superseded += 1
         merged[word] = gloss
 
+    # Corrections first, so they win over whatever the tables said.
+    merged.update(CORRECTED_GLOSSES)
+
+    # Person-name-only headwords never enter the accepted set.
+    dropped_names = sorted(set(merged) & EXCLUDED_PERSON_NAMES)
+    for word in dropped_names:
+        del merged[word]
+    for word in dropped_names:
+        words.discard(word)
+
     accepted = words | set(merged)
     translations = {w: t for w, t in merged.items() if w in words}
 
@@ -363,6 +429,12 @@ def main() -> None:
     # sections disjoint. The game treats the union as the accepted word list.
     translated = set(translations)
     words = words - translated
+
+    # Person-name-only headwords are out of the accepted set entirely, not just
+    # untranslated: otherwise dropping the gloss would hand the word back as a
+    # playable candidate.
+    excluded_present = sorted((words | set(translations)) & EXCLUDED_PERSON_NAMES)
+    words = words - EXCLUDED_PERSON_NAMES
 
     sorted_words = sorted(words)
     sorted_translations = dict(sorted(translations.items()))
@@ -400,6 +472,7 @@ def main() -> None:
     print("translations: %d" % len(sorted_translations))
     print("kept from the previous file: %d" % len(_existing_translations()))
     print("superseded by a table entry: %d" % superseded)
+    print("excluded (person name only): %d" % len(dropped_names))
     print("dropped (not in dictionary): %d" % (len(merged) - len(sorted_translations)))
     print("lines: %d" % (len(out) + 1))
     print("written: %s (%.2f MB)" % (os.path.basename(OUT_JSON), size_mb))
