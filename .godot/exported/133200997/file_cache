@@ -1,4 +1,4 @@
-res://Main.tscn::2a33c157b14a4546f6be67819d83fc8b::1790736823::res://.godot/exported/133200997/export-bcb0d2eb5949c52b6a65bfe9de3e985b-Main.scn
+res://Main.tscn::59fe9ff4366f48b0c5a4a5e3940bb172::1790866593::res://.godot/exported/133200997/export-bcb0d2eb5949c52b6a65bfe9de3e985b-Main.scn
 res://_jisho_test.tscn::9a7b9a4c6fbdd487c0e95257fabe1233::1790707077::res://.godot/exported/133200997/export-52fbf885efe531bba4e12d84021da72b-_jisho_test.scn
 res://_preview_test.tscn::fa01c1d823883ac335c01563c3b40e86::1790699755::res://.godot/exported/133200997/export-d23c9d2fa6e0d9f9b5df4645e054b8f3-_preview_test.scn
 res://_preview_ui_test.tscn::aaaa3606d2950d5e7802b9d00b673665::1790734293::res://.godot/exported/133200997/export-c7a2e1d5c8fb78521f49ff43f8527af6-_preview_ui_test.scn
@@ -8,3 +8,11 @@ res://_max_hp_reward_test.tscn::aa330b718863fe8407d9feaabe5462c3::1790741615::re
 res://_reward_test.tscn::3b94255a49302a5a86bee2a421ed488d::1790734280::res://.godot/exported/133200997/export-0e88a79078a48f5208536fcaf0719aa6-_reward_test.scn
 res://_special_visual_test.tscn::b842c6991b62865b2cb8345801ab3327::1790739064::res://.godot/exported/133200997/export-8da1beb24d5b308b50e0dae9e8765dca-_special_visual_test.scn
 res://_spin_test.tscn::f9899098b95db6d656a13dc893a8125b::1790732252::res://.godot/exported/133200997/export-721fcb12db89424ab4d56d03378f28fc-_spin_test.scn
+res://_board_qol_test.tscn::7a25627dbf892db10c182873b10150e2::1790866938::res://.godot/exported/133200997/export-78b7813b6af59925e04b5a74a06e370a-_board_qol_test.scn
+res://_card_gesture_test.tscn::75932125cdfc0c747096074e664c796d::1790870310::res://.godot/exported/133200997/export-05bddf88fb16c24b8bf385c2673f12a8-_card_gesture_test.scn
+res://_enemy_skill_card_test.tscn::4d0676f4613465407fda9b5b7d3e0cfd::1790790623::res://.godot/exported/133200997/export-48a1ac1cd121020ec4c9254794f14fa2-_enemy_skill_card_test.scn
+res://_enemy_skill_run_test.tscn::f6f5dd85a8c51b9ddc6e37ab50c3e730::1790778696::res://.godot/exported/133200997/export-bb2b9daeed6ca10ffe7c22c5db3f087b-_enemy_skill_run_test.scn
+res://_enemy_skill_test.tscn::60b5437911b8fb5ccfc19ebd7c61880a::1790777788::res://.godot/exported/133200997/export-3224f79e9974a9aea0cdc576ab1fa79c-_enemy_skill_test.scn
+res://_slot_clip_test.tscn::9ddef567e3a7335e6860cbf8475868df::1790788406::res://.godot/exported/133200997/export-9e32dbf415e83f3e793ba8b8afa5cad4-_slot_clip_test.scn
+res://_word_dict_test.tscn::cd9e1f6e7d8396a7b4b0f557e64cc470::1790744851::res://.godot/exported/133200997/export-ff88ec476b8af15df2dd6c16fdda0d50-_word_dict_test.scn
+res://_workbench_color_test.tscn::cf84af69dff590e270d89c47927fc6f0::1790865375::res://.godot/exported/133200997/export-0b16081daa5b9a3ba89f7d96582534dc-_workbench_color_test.scn
