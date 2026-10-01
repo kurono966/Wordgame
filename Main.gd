@@ -2841,8 +2841,10 @@ func _open_burn_picker() -> void:
 func _build_burn_card_button(entry: Dictionary) -> Button:
 	var card: Dictionary = entry.get("card", {})
 	var card_id: String = str(entry.get("id", ""))
+	var is_special: bool = GameManager.has_special_ability(card)
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(78, 114)
+	# A special needs two extra lines (its name and its price), so the cell grows.
+	button.custom_minimum_size = Vector2(78, 148 if is_special else 114)
 	_style_burn_card_button(button, str(card.get("color", "red")))
 	button.pressed.connect(_on_burn_card_picked.bind(card_id))
 
@@ -2868,13 +2870,37 @@ func _build_burn_card_button(entry: Dictionary) -> Button:
 	letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(letter)
 
+	var special_cost: int = GameManager.get_special_cost(card)
 	var dmg := Label.new()
-	dmg.text = "%d dmg" % int(card.get("damage", 0))
+	# Match the hand-card wording so a special reads the same way everywhere.
+	if is_special:
+		dmg.text = "%d dmg ★ %d OP" % [int(card.get("damage", 0)), special_cost]
+		dmg.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+	else:
+		dmg.text = "%d dmg" % int(card.get("damage", 0))
+		dmg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 1.0))
 	dmg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dmg.add_theme_font_size_override("font_size", 12)
-	dmg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 1.0))
 	dmg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(dmg)
+
+	# Burning a special silently throws its whole power away, so the NAME of that
+	# power is spelled out on the card instead of being left to memory.
+	if is_special:
+		var s_name := Label.new()
+		s_name.text = "★ %s" % GameManager.get_special_name(card)
+		s_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		s_name.clip_text = true
+		s_name.add_theme_font_size_override("font_size", 10)
+		s_name.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+		s_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(s_name)
+
+		# The cell is far too small for the full text, so the description goes in
+		# the tooltip — which matters most here, where the card is about to be lost.
+		button.tooltip_text = "★ %s (%d OP): %s\nBurn this card and the ability is gone for good." % [
+			GameManager.get_special_name(card), special_cost,
+			GameManager.get_special_desc(card)]
 
 	# Tag which pile the card came from. Identical letters appear several times
 	# in a deck, so this is what tells the player whether they are burning a card

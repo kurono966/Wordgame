@@ -22,6 +22,7 @@ func _ready() -> void:
 	var fails: int = 0
 	fails += _check_hand_is_kept_through_the_reward(main)
 	fails += _check_picker_lists_the_whole_deck(main)
+	fails += await _check_specials_show_their_skill(main)
 	fails += _check_cancel_keeps_the_same_reward(main)
 	fails += _check_burn_from_every_pile(main)
 	fails += await _check_ui_rewards_then_redraws(main)
@@ -120,6 +121,85 @@ func _check_picker_lists_the_whole_deck(main) -> int:
 	fails += _check(buttons == candidates.size(),
 		"every burnable card is drawn as a button (%d of %d)" % [buttons, candidates.size()])
 	fails += _check(tags.size() > 0, "cards are tagged with the pile they came from")
+	main.burn_dialog.visible = false
+	return fails
+
+
+## 2b. A card with a skill says so on the card, so nothing is burned blind.
+func _check_specials_show_their_skill(main) -> int:
+	var fails: int = 0
+	var gm = GameManager
+	gm.reset_game()
+
+	# Put one ★ SPECIAL and one plain card into the deck, and clear the hand so the
+	# two stand alone and are easy to find in the grid.
+	var special: Dictionary = {}
+	for card_def in GameManager.SPECIAL_CARD_DEFS:
+		special = card_def.duplicate()
+		break
+	gm.deck = [special, {"letter": "A", "damage": 5, "color": "red"}]
+	gm.hand = []
+	gm.graveyard = []
+	fails += _check(gm.has_special_ability(special), "the fixture card really is a special")
+
+	main._open_burn_picker()
+	# _open_burn_picker clears the grid with queue_free(), which only takes effect
+	# at the end of the frame. Without this wait the PREVIOUS test's twenty cards
+	# would still be sitting in the grid and be counted as this test's.
+	await get_tree().process_frame
+	var grid: Node = main.get_node("BurnDialog/DialogPanel/DialogVBox/Scroll/BurnGrid")
+	fails += _check(grid.get_child_count() == 2,
+		"the grid holds exactly the two cards (%d)" % grid.get_child_count())
+
+	var specials_drawn: int = 0
+	var plain_drawn: int = 0
+	var names_shown: int = 0
+	var costs_shown: int = 0
+	var tooltips: int = 0
+	for child in grid.get_children():
+		if not (child is Button):
+			continue
+		var btn: Button = child
+		var is_special_cell: bool = false
+		var texts: Array = []
+		for node in _flatten(btn):
+			if node is Label:
+				texts.append(str((node as Label).text))
+		var joined: String = " | ".join(texts)
+		if btn.tooltip_text.contains("★"):
+			tooltips += 1
+		if joined.contains("★ %s" % gm.get_special_name(special)):
+			names_shown += 1
+			is_special_cell = true
+		if joined.contains("%d OP" % gm.get_special_cost(special)):
+			costs_shown += 1
+		if is_special_cell:
+			specials_drawn += 1
+		else:
+			plain_drawn += 1
+
+	fails += _check(specials_drawn == 1, "the special card is drawn once")
+	fails += _check(plain_drawn == 1, "the plain card is drawn once")
+	fails += _check(names_shown == 1,
+		"the special spells out its name (★ %s)" % gm.get_special_name(special))
+	fails += _check(costs_shown == 1,
+		"the special shows its OP cost (%d)" % gm.get_special_cost(special))
+	fails += _check(tooltips == 1,
+		"the full skill description is available in the tooltip")
+
+	# A plain card must NOT be dressed up with a skill line.
+	for child in grid.get_children():
+		if not (child is Button):
+			continue
+		var btn2: Button = child
+		var joined2: String = ""
+		for node in _flatten(btn2):
+			if node is Label:
+				joined2 += str((node as Label).text)
+		if not joined2.contains("★"):
+			fails += _check(btn2.tooltip_text == "",
+				"a plain card shows no skill tooltip")
+			break
 	main.burn_dialog.visible = false
 	return fails
 
