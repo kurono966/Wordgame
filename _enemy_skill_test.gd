@@ -1,18 +1,19 @@
-﻿extends Node
+extends Node
 
-# Headless test for the enemy-skill system (3 skill letters taken from the
-# enemy's own name).
+# Headless test for the enemy-skill system (ONE skill card on the shared reels).
 #   * every enemy gets exactly ENEMY_SKILL_COUNT skills, all bound to letters
 #     that actually appear in its name
-#   * a letter that is not a skill letter wakes nothing
-#   * a WILDCARD can never stand in for a skill letter
+#   * THE HEADLINE RULE: the skill fires at NIGHT while its card sits in the
+#     BOTTOM row of a reel. Spelling the letter does nothing; a DAY turn does
+#     nothing; only the card's POSITION at night matters
 #   * each skill does what it says (shield / hand limit / OP / night / heal /
-#     player damage)
-#   * a KILLING blow fires no skill at all
+#     player damage), and that damage runs through the same shield-then-HP
+#     pipeline as every other hit on the player
+#   * a stage clear ends the fight, so a defeated enemy never answers
 #   * THE BIG ONE: clearing a stage wipes EVERY effect, so nothing leaks into the
-#     next fight. HP already lost is deliberately left alone 窶・that is damage the
+#     next fight. HP already lost is deliberately left alone — that is damage the
 #     player can heal back.
-#   * the submit preview agrees with what really happens
+#   * the submit preview agrees with what really happens at night
 
 # A 20-damage RED word: it grants no GREEN heal, so any HP the player has lost
 # stays lost and the assertions about stage clears are not confounded by it.
@@ -26,9 +27,9 @@ func _ready() -> void:
 	var fails: int = 0
 	await get_tree().process_frame
 
-	fails += _check_every_enemy_has_three_valid_skills(gm)
+	fails += _check_every_enemy_has_valid_skills(gm)
 	fails += _check_safe_letter_wakes_nothing(gm)
-	fails += _check_wildcard_never_wakes_a_skill(gm)
+	fails += _check_position_is_the_trigger(gm)
 	fails += _check_each_skill_does_its_job(gm)
 	fails += _check_killing_blow_fires_no_skill(gm)
 	fails += _check_stage_clear_wipes_everything(gm)
@@ -85,7 +86,40 @@ func _flat_board() -> Array:
 	]
 
 
-func _check_every_enemy_has_three_valid_skills(gm: Node) -> int:
+## A three-reel board where the skill card sits in EXACTLY one known spot, and
+## every other card is an inert filler. `index` is the card's position inside
+## that reel (0 = top, 1 = centre, 2 = bottom once the reel is parked).
+## The cards are deliberately spread across different colours: the night
+## multiplier is 10^(largest same-colour group - 1), so an all-red board would
+## charge a 100x penalty and drown out whatever the test is actually measuring.
+func _board_with_skill_at(letter: String, reel: int, index: int) -> Array:
+	var colours: Array = ["red", "blue", "green"]
+	var board: Array = []
+	for s in range(3):
+		var row_cards: Array = []
+		for i in range(3):
+			if s == reel and i == index:
+				row_cards.append({"letter": letter, "damage": 1, "color": colours[i]})
+			else:
+				# Filler letters that can never be the skill, so a stray match is
+				# impossible and the assertions stay unambiguous.
+				row_cards.append({"letter": "V", "damage": 1, "color": colours[i]})
+		board.append(row_cards)
+	return board
+
+
+## Parks the reels so the card sitting at `index` inside `reel` lands in display
+## row `row` (0 = top, 1 = centre, 2 = bottom), without running a whole turn.
+## The inverse of the display mapping used by _refresh_slots:
+##   row 0 (top)    = index (cur + 2) % 3
+##   row 1 (centre) = index cur
+##   row 2 (bottom) = index (cur + 1) % 3
+func _point_at_skill(gm: Node, reel: int, index: int, row: int) -> void:
+	gm.current_slot_indices = [0, 0, 0]
+	gm.current_slot_indices[reel] = (index - row + 1 + 6) % 3
+
+
+func _check_every_enemy_has_valid_skills(gm: Node) -> int:
 	var fails: int = 0
 	# Roll many enemies: every one must be well formed, not just the lucky ones.
 	for _i in range(60):
@@ -114,43 +148,105 @@ func _check_every_enemy_has_three_valid_skills(gm: Node) -> int:
 func _check_safe_letter_wakes_nothing(gm: Node) -> int:
 	var fails: int = 0
 	_setup(gm)
-	# Bind a skill to a letter the word does NOT contain.
+	# Arm a skill and park its card in the CENTRE row, then submit: the letter is
+	# in the word, but the card is not in the firing line, so nothing may happen.
 	_arm(gm, "B", "aegis", 10)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	_point_at_skill(gm, 0, 0, 1)  # centre row, not the bottom one
+	gm.is_night = false
 	gm.execute_assignment("A", _word("A", 5))
 	fails += _check(gm.get_enemy_shield() == 0,
-		"a word with no skill letter raises no enemy shield")
+		"submitting alone fires nothing (%d shield)" % gm.get_enemy_shield())
 	return fails
 
 
-func _check_wildcard_never_wakes_a_skill(gm: Node) -> int:
+## THE HEADLINE RULE: the card's POSITION decides, not the letters in the word.
+func _check_position_is_the_trigger(gm: Node) -> int:
 	var fails: int = 0
+
+	# BOTTOM row at NIGHT: fires, even though the word never touches the letter.
+	# No execute_assignment here on purpose: submitting would rotate the reels and
+	# move the card out of the firing line before night ever arrives.
 	_setup(gm)
-	# The enemy guards "A". A wildcard standing in for an A must not trigger it:
-	# the card has no letter of the enemy's own to give up.
-	_arm(gm, "A", "aegis", 12)
-	var wildcard: Array = [{"type": "hand", "hand_index": 0, "char": "A",
-		"card_letter": "?", "damage": 5, "color": "green"}]
-	gm.execute_assignment("A", wildcard)
-	fails += _check(gm.get_enemy_shield() == 0,
-		"a wildcard (?) never wakes the enemy's skill")
+	_arm(gm, "B", "aegis", 10)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	_point_at_skill(gm, 0, 0, 2)  # bottom row = in the firing line
+	gm.is_night = true
+	var fired: Dictionary = gm.apply_turn_start_penalty()
+	fails += _check(bool(fired.get("skill_fired", false)),
+		"the skill fires at NIGHT with its card in the BOTTOM row")
+	fails += _check(gm.get_enemy_shield() == 10,
+		"AEGIS applied (10 shield, got %d)" % gm.get_enemy_shield())
+	fails += _check(not str(fired.get("skill_log", [])[0] if (fired.get("skill_log", []) as Array).size() > 0 else "").is_empty(),
+		"the night result narrates the skill")
+
+	# BOTTOM row but DAY phase: does NOT fire.
+	_setup(gm)
+	_arm(gm, "B", "aegis", 10)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	_point_at_skill(gm, 0, 0, 2)
+	gm.is_night = false
+	var day: Dictionary = gm.apply_turn_start_penalty()
+	fails += _check(not bool(day.get("skill_fired", true)),
+		"the skill never fires during the DAY")
+
+	# BOTTOM row at NIGHT, but the card is NOT the skill letter: silent.
+	_setup(gm)
+	_arm(gm, "B", "aegis", 10)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	_point_at_skill(gm, 1, 0, 2)  # a filler reel is in the firing line instead
+	gm.is_night = true
+	var wrong: Dictionary = gm.apply_turn_start_penalty()
+	fails += _check(not bool(wrong.get("skill_fired", true)),
+		"a filler card in the bottom row fires nothing")
+
+	# Spelling the letter in a word does NOT wake the skill any more. The word
+	# comes from the hand, so no reel rotates, and the card stays parked in the
+	# top row while the submit flips the phase to NIGHT.
+	_setup(gm)
+	_arm(gm, "B", "aegis", 10)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	_point_at_skill(gm, 0, 0, 0)  # top row: safe
+	gm.is_night = false
+	gm.execute_assignment("B", _word("B", 1))
+	fails += _check(gm.get_phase() == "NIGHT", "the submit turned the phase to NIGHT")
+	var spelled: Dictionary = gm.apply_turn_start_penalty()
+	fails += _check(not bool(spelled.get("skill_fired", true)),
+		"spelling the skill letter while the card is SAFE fires nothing")
+
+	# A "?" wildcard is never the skill letter, so it cannot hold the card.
 	fails += _check(gm.get_enemy_skill_for_letter("?").is_empty(),
 		"get_enemy_skill_for_letter('?') is empty")
+	fails += _check(not gm.is_enemy_skill_letter("?"),
+		"a wildcard is never a skill letter")
 	return fails
+
+
+## Every skill is exercised through the real trigger: the card parked in a
+## bottom row, then NIGHT resolving.
+## The night self-damage is suppressed here on purpose — these tests measure what
+## the SKILL does, and the night penalty (which scales with board colours) would
+## otherwise swamp the numbers.
+func _fire_at_night(gm: Node, letter: String, skill_id: String, value: int) -> Dictionary:
+	_arm(gm, letter, skill_id, value)
+	gm.slots = _board_with_skill_at(letter, 0, 0)
+	_point_at_skill(gm, 0, 0, 2)  # bottom row = firing line
+	gm.is_night = true
+	gm.night_penalty_immune = true
+	return gm.apply_turn_start_penalty()
 
 
 func _check_each_skill_does_its_job(gm: Node) -> int:
 	var fails: int = 0
 
-	# AEGIS 窶・the enemy gains shield, and that shield really does eat damage.
+	# AEGIS — the enemy gains shield, and that shield really does eat damage.
 	_setup(gm)
-	_arm(gm, "A", "aegis", 8)
-	gm.execute_assignment("A", _word("A", 5))
+	_fire_at_night(gm, "B", "aegis", 8)
 	fails += _check(gm.get_enemy_shield() == 8, "AEGIS raises 8 shield (%d)" % gm.get_enemy_shield())
-	fails += _check(gm.get_enemy_hp() == gm.ENEMY_BASE_HP - 5,
-		"AEGIS raised after the hit, so it does not block its own word")
 	# Now prove the shield really is damage-first: bank 10, swing for 4.
 	# The skill is disarmed first so only the absorption is being measured.
 	gm.enemy_skills = []
+	gm.is_night = false
 	gm.enemy_shield = 10
 	var hp_before: int = gm.get_enemy_hp()
 	gm.execute_assignment("A", _word("A", 4))
@@ -158,70 +254,68 @@ func _check_each_skill_does_its_job(gm: Node) -> int:
 		"the enemy shield absorbs a small hit before any HP is lost")
 	fails += _check(gm.get_enemy_shield() == 6, "the shield is spent down (10 - 4 = 6)")
 
-	# HAND DOWN 窶・the hand shrinks, and never past the floor.
+	# HAND DOWN — the hand shrinks, and never past the floor.
 	_setup(gm)
-	_arm(gm, "A", "hand_down", 1)
 	var hand_before: int = gm.hand.size()
-	gm.execute_assignment("A", _word("A", 5))
+	_fire_at_night(gm, "B", "hand_down", 1)
 	fails += _check(gm.get_hand_limit() == gm.HAND_SIZE - 1,
 		"HAND DOWN lowers the hand limit by 1 (%d)" % gm.get_hand_limit())
 	fails += _check(gm.hand.size() <= gm.get_hand_limit(),
 		"the hand itself was trimmed to the new limit (%d <= %d)" % [gm.hand.size(), gm.get_hand_limit()])
 	fails += _check(hand_before == gm.HAND_SIZE, "the hand started full")
-	# Repeated use stacks, but stops at the floor instead of emptying the hand.
-	_arm(gm, "A", "hand_down", 5)
-	gm.execute_assignment("A", _word("A", 1))
+	# Over-stacking must stop at the floor instead of emptying the hand.
+	_fire_at_night(gm, "B", "hand_down", 5)
 	fails += _check(gm.get_hand_limit() == gm.ENEMY_MIN_HAND_LIMIT,
 		"HAND DOWN never goes below %d cards (%d)" % [gm.ENEMY_MIN_HAND_LIMIT, gm.get_hand_limit()])
 	fails += _check(gm.hand.size() <= gm.get_hand_limit(),
 		"the hand still holds cards after over-stacking")
 
-	# DRAIN 窶・operation points are taken, and never below zero.
+	# DRAIN — operation points are taken, and never below zero.
 	_setup(gm)
-	_arm(gm, "A", "drain", 4)
 	gm.operation_points = 10
-	gm.execute_assignment("A", _word("A", 5))
+	_fire_at_night(gm, "B", "drain", 4)
 	fails += _check(gm.get_operation_points() == 6,
 		"DRAIN takes 4 OP (10 -> %d)" % gm.get_operation_points())
 	gm.operation_points = 1
-	gm.execute_assignment("A", _word("A", 1))
+	_fire_at_night(gm, "B", "drain", 4)
 	fails += _check(gm.get_operation_points() == 0,
 		"DRAIN never drives OP negative (%d)" % gm.get_operation_points())
 
-	# NIGHTMARE 窶・the night penalty base grows.
+	# NIGHTMARE — the night penalty base grows.
 	_setup(gm)
-	_arm(gm, "A", "nightmare", 6)
+	_arm(gm, "B", "nightmare", 6)
 	gm.slots = _flat_board()
 	gm.current_slot_indices = [0, 0, 0]
 	var clean: int = gm.get_next_slot_penalty_with_multiplier([])["base_penalty"]
-	gm.execute_assignment("A", _word("A", 5))
+	# Put the card in the firing line on top of the flat board.
+	gm.slots[0][2]["letter"] = "B"
+	gm.is_night = true
+	gm.apply_turn_start_penalty()
 	var taxed: int = gm.get_next_slot_penalty_with_multiplier([])["base_penalty"]
 	fails += _check(taxed == clean + 6,
 		"NIGHTMARE adds 6 to the night base (%d -> %d)" % [clean, taxed])
 
-	# REGROWTH 窶・the enemy patches itself back up, capped at its max HP.
+	# REGROWTH — the enemy patches itself back up, capped at its max HP.
 	_setup(gm, 20)
-	_arm(gm, "A", "regrow", 5)
-	gm.execute_assignment("A", _word("A", 10))
+	gm.enemy_hp = 10
+	_fire_at_night(gm, "B", "regrow", 5)
 	fails += _check(gm.get_enemy_hp() == 15,
-		"REGROWTH heals 5 after the hit (10 -> %d)" % gm.get_enemy_hp())
+		"REGROWTH heals 5 off the damaged enemy (10 -> %d)" % gm.get_enemy_hp())
 	gm.enemy_hp = gm.ENEMY_BASE_HP - 1
-	gm.execute_assignment("A", _word("A", 1))
+	_fire_at_night(gm, "B", "regrow", 5)
 	fails += _check(gm.get_enemy_hp() == gm.ENEMY_BASE_HP,
 		"REGROWTH never heals past the enemy's max HP (%d)" % gm.get_enemy_hp())
 
-	# THORNS 窶・the player takes damage, and BLUE shield soaks it first.
+	# THORNS — the player takes damage, and BLUE shield soaks it first.
 	_setup(gm)
-	_arm(gm, "A", "thorns", 7)
 	var php: int = gm.player_hp
-	gm.execute_assignment("A", _word("A", 5))
+	_fire_at_night(gm, "B", "thorns", 7)
 	fails += _check(gm.player_hp == php - 7,
 		"THORNS costs the player 7 HP (%d -> %d)" % [php, gm.player_hp])
 	_setup(gm)
-	_arm(gm, "A", "thorns", 7)
 	gm.shield = 4
 	php = gm.player_hp
-	gm.execute_assignment("A", _word("A", 5))
+	_fire_at_night(gm, "B", "thorns", 7)
 	fails += _check(gm.player_hp == php - 3,
 		"BLUE shield blocks part of THORNS (%d -> %d)" % [php, gm.player_hp])
 
@@ -231,21 +325,32 @@ func _check_each_skill_does_its_job(gm: Node) -> int:
 func _check_killing_blow_fires_no_skill(gm: Node) -> int:
 	var fails: int = 0
 	_setup(gm, 5)
-	# Arm EVERY skill at once; none of them may fire.
-	gm.enemy_skills = [
-		{"letter": "A", "id": "aegis", "name": "AEGIS", "icon": "?", "desc": "", "value": 20, "cooldown": 0},
-		{"letter": "A", "id": "thorns", "name": "THORNS", "icon": "?", "desc": "", "value": 20, "cooldown": 0},
-		{"letter": "A", "id": "regrow", "name": "REGROWTH", "icon": "?", "desc": "", "value": 20, "cooldown": 0},
-		{"letter": "A", "id": "drain", "name": "DRAIN", "icon": "?", "desc": "", "value": 20, "cooldown": 0},
-	]
+	# Park the card in the firing line and resolve a NIGHT, so the only thing
+	# stopping it is the stage clear. A defeated enemy must never answer.
+	_arm(gm, "B", "thorns", 20)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	_point_at_skill(gm, 0, 0, 2)
 	var php: int = gm.player_hp
 	gm.operation_points = 10
-	var res: Dictionary = gm.execute_assignment("A", BIG_WORD)
-	fails += _check(int(res.get("enemies_defeated_delta", 0)) == 1, "the enemy was defeated")
-	fails += _check((res.get("enemy_skill_log", []) as Array).is_empty(),
-		"a killing blow fires no enemy skill")
+	gm.is_night = true
+	var res: Dictionary = gm.apply_turn_start_penalty()
+	# A stage clear has NOT happened yet, so the skill legitimately fires here.
+	fails += _check(bool(res.get("skill_fired", false)),
+		"the skill fires when nothing was killed")
+
+	# Now actually clear the stage, with the card waiting in the firing line.
+	_setup(gm, 5)
+	_arm(gm, "B", "thorns", 20)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	_point_at_skill(gm, 0, 0, 2)
+	php = gm.player_hp
+	gm.operation_points = 10
+	var kill: Dictionary = gm.execute_assignment("A", BIG_WORD)
+	fails += _check(int(kill.get("enemies_defeated_delta", 0)) == 1, "the enemy was defeated")
+	var night: Dictionary = gm.apply_turn_start_penalty()
+	fails += _check(not bool(night.get("skill_fired", true)),
+		"a stage clear means the enemy never answers at night")
 	fails += _check(gm.get_enemy_shield() == 0, "no shield is left on the NEW enemy")
-	fails += _check(gm.player_hp == php, "no skill damage on a killing blow")
 	fails += _check(gm.get_operation_points() == 10, "no OP drained on a killing blow")
 	fails += _check(gm.get_hand_limit() == gm.HAND_SIZE, "the hand limit is untouched")
 	return fails
@@ -318,43 +423,54 @@ func _check_damage_taken_is_left_alone(gm: Node) -> int:
 		"the stage clear did NOT heal the player's wounds (%d / %d)" % [
 			gm.player_hp, gm.PLAYER_MAX_HP])
 	return fails
-## The forecast must describe the enemy skills exactly as a real submit does.
+## The forecast must describe the night exactly as a real night resolves.
 func _check_preview_matches_reality(gm: Node) -> int:
 	var fails: int = 0
 
-	# THORNS: preview HP loss == the HP the player really ends the turn with.
+	# THORNS with the card in the firing line: the forecast HP must equal the HP
+	# the player really ends the turn with, skill and night damage included.
 	_setup(gm)
-	_arm(gm, "A", "thorns", 6)
+	_arm(gm, "B", "thorns", 6)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	# The card is already in the bottom row and the word uses only hand cards,
+	# so no reel rotates: the forecast and the real night see the same board.
+	_point_at_skill(gm, 0, 0, 2)
 	gm.is_night = false
-	var plan: Dictionary = gm.predict_submit_outcome(_word("A", 5), [])
-	gm.execute_assignment("A", _word("A", 5))
-	gm.apply_turn_start_penalty()
+	var plan: Dictionary = gm.predict_submit_outcome(_word("B", 5), [])
+	fails += _check(bool(plan.get("enemy_skills_fire", false)),
+		"the preview says the skill fires with the card in the bottom row")
+	gm.execute_assignment("B", _word("B", 5))
+	var night: Dictionary = gm.apply_turn_start_penalty()
+	fails += _check(bool(night.get("skill_fired", false)),
+		"and the real night really does fire it")
 	fails += _check(int(plan.get("player_hp_after", -1)) == gm.player_hp,
 		"THORNS preview HP %d == real HP %d" % [int(plan.get("player_hp_after", -1)), gm.player_hp])
-	fails += _check(bool(plan.get("enemy_skills_fire", false)),
-		"the preview says the skill fires")
 
-	# AEGIS: the preview must show the shield eating part of the word.
+	# The same card parked in the CENTRE row stays clear, and the forecast must
+	# agree that nothing fires.
 	_setup(gm)
-	_arm(gm, "A", "aegis", 30)
-	gm.enemy_shield = 10
-	var shield_plan: Dictionary = gm.predict_submit_outcome(_word("A", 8), [])
-	fails += _check(int(shield_plan.get("enemy_shield_absorbed", -1)) == 8,
-		"preview: the existing shield absorbs the whole hit (%d)" % int(shield_plan.get("enemy_shield_absorbed", -1)))
-	fails += _check(int(shield_plan.get("enemy_hp_damage", -1)) == 0,
-		"preview: no damage reaches the HP")
-	fails += _check(int(shield_plan.get("enemy_shield_after", -1)) == 32,
-		"preview: AEGIS then stacks on top (10 - 8 + 30 = %d)" % int(shield_plan.get("enemy_shield_after", -1)))
+	_arm(gm, "B", "aegis", 30)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	_point_at_skill(gm, 0, 0, 1)  # centre row
+	gm.is_night = false
+	var safe: Dictionary = gm.predict_submit_outcome(_word("B", 5), [])
+	fails += _check(not bool(safe.get("enemy_skills_fire", true)),
+		"preview: the card is safe while it sits in the centre row")
+	gm.execute_assignment("B", _word("B", 5))
+	var safe_night: Dictionary = gm.apply_turn_start_penalty()
+	fails += _check(not bool(safe_night.get("skill_fired", true)),
+		"and the real night agrees nothing fired")
 
 	# A killing blow must be previewed as firing nothing.
 	_setup(gm, 5)
-	_arm(gm, "A", "thorns", 30)
+	_arm(gm, "B", "thorns", 30)
+	gm.slots = _board_with_skill_at("B", 0, 0)
+	_point_at_skill(gm, 0, 0, 2)
+	gm.is_night = false
 	var kill_plan: Dictionary = gm.predict_submit_outcome(BIG_WORD, [])
 	fails += _check(bool(kill_plan.get("defeats_enemy", false)), "preview sees the kill")
-	fails += _check(not bool(kill_plan.get("enemy_skills_fire", false)),
+	fails += _check(not bool(kill_plan.get("enemy_skills_fire", true)),
 		"preview: a killing blow fires no skill")
-	fails += _check(int(kill_plan.get("player_hp_after", -1)) == gm.PLAYER_MAX_HP,
-		"preview: a killing blow costs no HP (%d)" % int(kill_plan.get("player_hp_after", -1)))
 	return fails
 
 

@@ -99,7 +99,14 @@ var _op_tween: Tween = null
 var _looked_up_word: String = ""
 
 # Card dimensions (all 3 cards are completely visible on screen)
-const SLOT_CARD_W := 120.0
+# SLOT_CARD_W must fit the WIDEST sub-label a reel card can ever show, otherwise
+# the label's minimum size pushes the card wider than the clipping window and
+# `window.clip_contents` silently cuts the right edge off. The worst case is the
+# ACTIVE row carrying a long skill tag, e.g. "★ ACTIVE (10dmg)  ⚠ HAND DOWN"
+# (129px) plus the card's own 2x5 content margin and 2x2 border = 143px.
+# 152px leaves headroom over that worst case. _slot_clip_test.gd measures the
+# real text every run and fails if this is ever too narrow again.
+const SLOT_CARD_W := 152.0
 const SLOT_CARD_H := 58.0
 const SLOT_SEP    := 8.0
 const WINDOWED_SIZE := Vector2i(1280, 800)
@@ -521,14 +528,16 @@ func _build_formula_text() -> String:
 	]
 	return "\n".join(lines)
 
-## The enemy-skills section of the FORMULAS panel: the three dangerous letters
-## of the current enemy, what each does, and what is running right now.
+## The enemy-skill section of the FORMULAS panel: the single skill card, what it
+## does, where it stands right now, and what is running at this moment.
 func _build_enemy_skill_text() -> String:
 	var lines: Array = [
-		"[ENEMY SKILLS]  3 letters of this enemy's NAME are dangerous.",
-		"  Spell one of them in a word and that skill fires back at you.",
-		"  A KILLING blow lands first — a defeated enemy never fires back.",
-		"  ALL of these are wiped the instant the stage is cleared."
+		"[ENEMY SKILL]  ONE card on the reels carries the enemy's skill.",
+		"  It fires at NIGHT while that card sits in the BOTTOM row of a reel.",
+		"  Spelling the letter does nothing — its POSITION is the trigger.",
+		"  SPIN that reel (1 OP) or use it in a word to roll the card clear.",
+		"  A stage clear lands first — a defeated enemy never fires back.",
+		"  ALL of this is wiped the instant the stage is cleared."
 	]
 	for skill: Dictionary in GameManager.get_enemy_skills():
 		lines.append("    [%s] %s (%d): %s" % [
@@ -595,8 +604,8 @@ func _build_last_calc_text() -> String:
 			last_penalty.get("requested_damage", 0), last_penalty.get("absorbed", 0),
 			last_penalty.get("applied_damage", 0)])
 
-	# Enemy skills: what the word woke, and what it cost / granted.
-	var skill_log: Array = last_result.get("enemy_skill_log", [])
+	# The enemy skill card: what it did at night, and what it cost / granted.
+	var skill_log: Array = last_penalty.get("skill_log", [])
 	for line: String in skill_log:
 		lines.append("      ! %s" % line)
 	var shield_absorbed: int = last_result.get("enemy_shield_absorbed", 0)
@@ -948,9 +957,14 @@ func _on_workbench_card_dropped(card_data: Dictionary) -> void:
 	add_card_to_workbench(card_data)
 
 # ── Card View Factory ────────────────────────────────────────────────────────
-func _create_card_view(w: float, h: float, letter_size: int, sub_size: int) -> Dictionary:
+## `clip_text` keeps a card's minimum width pinned to its `custom_minimum_size`
+## instead of letting a long label stretch it. Reel cards pass `true` because they
+## live inside a fixed-size clipping window, so an overflowing label would be
+## cut off at the edge; hand cards leave it off so their text can grow freely.
+func _create_card_view(w: float, h: float, letter_size: int, sub_size: int, clip_text: bool = false) -> Dictionary:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(w, h)
+	panel.clip_contents = false
 
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(10)
@@ -975,6 +989,7 @@ func _create_card_view(w: float, h: float, letter_size: int, sub_size: int) -> D
 	var lbl_letter := Label.new()
 	lbl_letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl_letter.clip_text = clip_text
 	lbl_letter.add_theme_font_size_override("font_size", letter_size)
 	lbl_letter.add_theme_color_override("font_outline_color", Color("080d17"))
 	lbl_letter.add_theme_constant_override("outline_size", 2)
@@ -983,6 +998,7 @@ func _create_card_view(w: float, h: float, letter_size: int, sub_size: int) -> D
 	var lbl_sub := Label.new()
 	lbl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl_sub.clip_text = clip_text
 	lbl_sub.add_theme_font_size_override("font_size", sub_size)
 	lbl_sub.add_theme_color_override("font_outline_color", Color("080d17"))
 	lbl_sub.add_theme_constant_override("outline_size", 1)
@@ -1028,7 +1044,9 @@ func _build_slot_reels() -> void:
 		# Index 3: Row 3 (Transition buffer card for smooth scroll)
 		var card_views: Array = []
 		for _i in range(4):
-			var cv: Dictionary = _create_card_view(SLOT_CARD_W, SLOT_CARD_H, 24, 10)
+			# clip_text = true: these cards live inside a fixed-width clipping
+			# window, so a long label must never stretch them past that window.
+			var cv: Dictionary = _create_card_view(SLOT_CARD_W, SLOT_CARD_H, 24, 10, true)
 			strip.add_child(cv["panel"])
 			card_views.append(cv)
 
@@ -1645,9 +1663,9 @@ func _build_preview_text(plan: Dictionary, word: String) -> String:
 	elif final_damage < 0:
 		parts.append("YOUR WORD HITS YOU %d" % -final_damage)
 
-	# Enemy skills: spelling one of its dangerous letters makes it answer back.
+	# Enemy skill: the card answers at NIGHT while it sits in a reel's bottom row.
 	if bool(plan.get("enemy_skills_fire", false)):
-		parts.append("ENEMY SKILLS: %s" % str(plan.get("enemy_skill_log", [])[0]))
+		parts.append("ENEMY SKILL: %s" % str(plan.get("enemy_skill_log", [])[0]))
 		var extra: Array = plan.get("enemy_skill_log", [])
 		for i in range(1, extra.size()):
 			parts.append(str(extra[i]))
@@ -1865,7 +1883,7 @@ func _refresh_hp_display() -> void:
 
 
 # ── Enemy skills ─────────────────────────────────────────────────────────────
-# Appends the three dangerous letters of the current enemy to the stats line.
+# Appends the current enemy's skill card to the stats line.
 # This is deliberately NOT a row of its own: the VBox already fills the 800px
 # window exactly, so any extra label would push the Workbench off screen. The
 # full rules live in the tooltip and the FORMULAS panel.
@@ -1875,17 +1893,28 @@ func _refresh_enemy_skill_display() -> void:
 		stats_label.tooltip_text = ""
 		return
 
+	var skill: Dictionary = skills[0]
+	var letter: String = str(skill.get("letter", ""))
+	var name_text: String = str(skill.get("name", "SKILL"))
 	var parts: Array = []
-	var tips: Array = ["ENEMY SKILLS — 3 letters of this enemy's name are dangerous.",
-		"Spell one of them in a submitted word and that skill fires back at you.",
-		"A killing blow lands FIRST, so a defeated enemy never fires back.",
-		"Every one of these is wiped the moment the stage is cleared."]
-	for skill: Dictionary in skills:
-		var letter: String = str(skill.get("letter", ""))
-		var name_text: String = str(skill.get("name", "SKILL"))
-		parts.append("[%s]%s" % [letter, name_text])
-		tips.append("  [%s] %s (%d) — %s" % [
-			letter, name_text, int(skill.get("value", 0)), str(skill.get("desc", ""))])
+	# Where the card stands right now, and whether it is in the firing line.
+	var firing: Array = GameManager.get_skill_card_in_firing_line([])
+	var where_text: String = "safe"
+	for hit in firing:
+		where_text = "slot %d BOTTOM" % (int(hit.get("slot", 0)) + 1)
+	parts.append("[%s]%s — %s" % [letter, name_text, where_text])
+
+	var tips: Array = [
+		"ENEMY SKILL CARD — exactly ONE card on the shared reels carries it.",
+		"  [%s] %s (%d) — %s" % [letter, name_text, int(skill.get("value", 0)), str(skill.get("desc", ""))],
+		"",
+		"IT FIRES AT NIGHT while that card sits in the BOTTOM row of a reel.",
+		"Spelling the letter does nothing — its POSITION is the trigger.",
+		"Use the SPIN buttons (1 OP each) or submit a word that uses that reel",
+		"to roll the card out of the bottom row before night falls.",
+		"A stage clear ends the fight, so a defeated enemy never fires.",
+		"Every one of these is wiped the moment the stage is cleared.",
+	]
 
 	# Live state of the persistent effects, so the board never lies about them.
 	var shield_now: int = GameManager.get_enemy_shield()
@@ -2211,26 +2240,10 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 		disp_enemy_hp = target
 		await get_tree().create_timer(0.9).timeout
 
-	# ── Step 2b: Enemy skills ──
-	# Spelling one of the enemy's dangerous letters wakes its skill. The log was
-	# built by GameManager, so the UI never re-derives the numbers. An empty log
-	# on a killing blow is correct: the enemy died before it could answer.
-	var skill_log: Array = result.get("enemy_skill_log", [])
-	if not skill_log.is_empty():
-		_play_score_down_sound()
-		_animate_enemy_hit()
-		_animate_player_hit()
-		for i in range(skill_log.size()):
-			_show_step_message("ENEMY SKILL — %s" % str(skill_log[i]), ENEMY_SKILL_COLOR)
-			# REGROWTH pushes the enemy's HP back up while it is on screen.
-			var healed: int = result.get("enemy_skill_heal", 0)
-			if healed > 0 and i == skill_log.size() - 1:
-				_animate_enemy_hp(stage_before, name_before, disp_enemy_hp,
-					mini(disp_enemy_hp + healed, enemy_max_start), enemy_max_start, 0.5)
-				disp_enemy_hp = mini(disp_enemy_hp + healed, enemy_max_start)
-			await get_tree().create_timer(0.75).timeout
-		# THORNS may have cost the player HP; bring the bar in line with reality.
-		_refresh_ui()
+	# ── Step 2b: (reserved) ──
+	# The enemy skill used to fire here, on submit. It no longer does: the skill
+	# is a CARD that answers at NIGHT while it sits in a reel's bottom row, so it
+	# is narrated in Step 5 with the rest of the night resolution.
 
 	# ── Step 3: BLUE shield, GREEN heal & YELLOW operation points ──
 	# All three traits scale off the base total with the same stacking multiplier
@@ -2306,6 +2319,23 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 		_play_score_up_sound()
 		_show_step_message("NIGHT: no damage — the enemy was defeated this turn!", Color(0.4, 1.0, 0.6, 1.0))
 		await get_tree().create_timer(0.9).timeout
+
+	# ── Step 5b: the enemy skill card answers ──
+	# It fires when its card was in a reel's BOTTOM row as night resolved. The
+	# log was built by GameManager, so the UI never re-derives the numbers. An
+	# empty log is correct when the card was rolled out of the firing line, or
+	# when the enemy died before it could answer.
+	var night_skill_log: Array = penalty_result.get("skill_log", [])
+	if not night_skill_log.is_empty():
+		_play_score_down_sound()
+		_animate_enemy_hit()
+		_animate_player_hit()
+		for line in night_skill_log:
+			_show_step_message("ENEMY SKILL — %s" % str(line), ENEMY_SKILL_COLOR)
+			await get_tree().create_timer(0.75).timeout
+		# AEGIS / REGROWTH change the enemy, and THORNS may have cost the player
+		# HP, so let the board catch up with what GameManager already applied.
+		_refresh_ui()
 
 	_refresh_ui()
 

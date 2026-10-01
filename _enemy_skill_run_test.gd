@@ -84,19 +84,24 @@ func _check_preview_matches_submit_every_time(gm: Node) -> int:
 			saw_skill_fire += 1
 
 		var res: Dictionary = gm.execute_assignment("A", BIG_WORD)
-		gm.apply_turn_start_penalty()
+		# The skill answers at NIGHT, so the submit's own log is always empty and
+		# the real answer is whatever the night resolution reports.
+		var night: Dictionary = gm.apply_turn_start_penalty()
 		checked += 1
 
 		if int(res.get("enemies_defeated_delta", 0)) == 0:
-			# The enemy lived, so the skills really did fire and the preview must
-			# have said so, and the numbers must match to the digit.
+			# The enemy lived, so the night really did resolve, and the preview
+			# must have said so, and the numbers must match to the digit.
 			fails += _check(predicted_hp == gm.player_hp,
 				"preview HP %d == real HP %d (%s)" % [predicted_hp, gm.player_hp, enemy])
 			fails += _check(predicted_shield == gm.get_enemy_shield(),
 				"preview enemy shield %d == real %d (%s)" % [
 					predicted_shield, gm.get_enemy_shield(), enemy])
-			fails += _check(predicted_skills == ((res.get("enemy_skill_log", []) as Array).size() > 0),
+			fails += _check(predicted_skills == bool(night.get("skill_fired", false)),
 				"preview skill-fire flag matches reality (%s)" % enemy)
+			fails += _check(bool(night.get("skill_fired", false)) ==
+					((night.get("skill_log", []) as Array).size() > 0),
+				"a night that fires the skill always narrates it (%s)" % enemy)
 		else:
 			# A clear must have taken every trace of the old enemy with it.
 			fails += _check(gm.get_enemy_shield() == 0,

@@ -2,3 +2,6 @@ res://_preview_test.gd
 res://GameManager.gd
 res://Main.gd
 res://README_JA.md
+res://_enemy_skill_test.gd
+res://_enemy_skill_card_test.gd
+res://_enemy_skill_run_test.gd
