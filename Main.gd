@@ -29,7 +29,8 @@ var _low_time_played: bool = false
 @onready var piles_button          : Button         = $Scroll/Center/VBox/ControlRow/PilesButton
 @onready var piles_dialog          : Control        = $PilesDialog
 @onready var piles_panel           : PanelContainer = $PilesDialog/DialogPanel
-@onready var piles_grid            : GridContainer  = $PilesDialog/DialogPanel/DialogVBox/Scroll/PilesGrid
+@onready var piles_grid            : VBoxContainer  = $PilesDialog/DialogPanel/DialogVBox/Scroll/PilesBody
+@onready var piles_subtitle_label  : Label          = $PilesDialog/DialogPanel/DialogVBox/Subtitle
 @onready var piles_close_button    : Button         = $PilesDialog/DialogPanel/DialogVBox/DialogHeader/CloseButton
 # Reward choice (offered after every enemy defeat)
 @onready var reward_dialog         : Control        = $RewardDialog
@@ -37,6 +38,7 @@ var _low_time_played: bool = false
 @onready var reward_title_label    : Label          = $RewardDialog/DialogPanel/DialogVBox/Title
 @onready var reward_subtitle_label : Label          = $RewardDialog/DialogPanel/DialogVBox/Subtitle
 @onready var reward_row            : HBoxContainer  = $RewardDialog/DialogPanel/DialogVBox/RewardRow
+@onready var reward_deck_button     : Button         = $RewardDialog/DialogPanel/DialogVBox/DeckButton
 # Deck-trimming picker (opened by the BURN A CARD reward)
 @onready var burn_dialog           : Control        = $BurnDialog
 @onready var burn_panel            : PanelContainer = $BurnDialog/DialogPanel
@@ -83,6 +85,10 @@ const FADED_OUT_META := "faded_out"
 
 # Workbench state
 var workbench_cards: Array = []
+## Gold marker showing which gap a dragged card would drop into. It is a child of
+## the Workbench card container so the HBox lays it out inside the gap itself.
+var _workbench_caret: ColorRect = null
+var _workbench_caret_index: int = -1
 
 # Last resolved word, kept so the FORMULAS panel can show its calculation
 var last_word: String = ""
@@ -205,6 +211,7 @@ func _ready() -> void:
 	formula_close_button.pressed.connect(_close_formula_dialog)
 	piles_button.pressed.connect(_on_piles_pressed)
 	piles_close_button.pressed.connect(_close_piles_dialog)
+	reward_deck_button.pressed.connect(_open_piles_dialog)
 
 	_setup_workbench_drop_target()
 	JishoClient.lookup_finished.connect(_on_jisho_lookup_finished)
@@ -221,6 +228,15 @@ func _ready() -> void:
 	burn_cancel_button.pressed.connect(_on_burn_cancel_pressed)
 	_refresh_formula_panel()
 	_refresh_ui()
+
+
+func _process(_delta: float) -> void:
+	# A drag that ends without a drop (released off the zone, or cancelled) never
+	# reaches _drop_data, so the insertion caret would be left behind. Clear it as
+	# soon as the viewport reports that nothing is being dragged any more.
+	if _workbench_caret != null and _workbench_caret.visible \
+			and not get_viewport().gui_is_dragging():
+		_hide_workbench_caret()
 
 # ──────────────────────────────────────────────────────────────────────────────
 func _style_global_ui() -> void:
@@ -259,6 +275,7 @@ func _style_global_ui() -> void:
 	_style_button(clear_button, Color("273650"), Color("7695c3"), Color("e6efff"))
 	_style_button(formula_button, Color("243c71"), Color("7eacff"), Color("e4efff"))
 	_style_button(piles_button, Color("3b2c67"), Color("a88cff"), Color("f0eaff"))
+	_style_button(reward_deck_button, Color("243c71"), Color("7eacff"), Color("e4efff"))
 	_style_button(formula_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
 	_style_button(piles_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
 
@@ -358,6 +375,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_toggle_fullscreen()
 		get_viewport().set_input_as_handled()
 		return
+	# D opens the deck viewer while choosing a reward, so the player can weigh
+	# "add this card" against what they already own without leaving the screen.
+	if (event.is_pressed() and not event.is_echo() and event.keycode == KEY_D
+			and reward_dialog.visible and not piles_dialog.visible):
+		_open_piles_dialog()
+		get_viewport().set_input_as_handled()
+		return
 	if not event.is_pressed() or event.keycode != KEY_ESCAPE:
 		return
 	if formula_dialog.visible:
@@ -399,30 +423,102 @@ func _on_piles_pressed() -> void:
 	if piles_dialog.visible:
 		_close_piles_dialog()
 		return
+	_open_piles_dialog()
+
+
+## Opens the deck viewer. It is a plain overlay, so the reward dialog stays open
+## underneath it: the player can inspect their deck mid-reward and carry on
+## picking when they close it again.
+func _open_piles_dialog() -> void:
 	_refresh_piles_dialog()
 	piles_dialog.visible = true
 	piles_close_button.grab_focus()
 
+
 func _close_piles_dialog() -> void:
 	piles_dialog.visible = false
-	piles_button.grab_focus()
+	# Focus must go back to whatever opened the dialog, not always the board
+	# button, or the keyboard would land on a control hidden behind the reward.
+	if reward_dialog.visible:
+		if reward_row.get_child_count() > 0:
+			(reward_row.get_child(0) as Button).grab_focus()
+		else:
+			reward_deck_button.grab_focus()
+	else:
+		piles_button.grab_focus()
 
+
+## Rebuilds the deck viewer as three clearly separated sections, so every card is
+## individually visible: what is still in the DRAW PILE, what is in HAND right
+## now, and what has been spent into the GRAVEYARD.
 func _refresh_piles_dialog() -> void:
 	for child in piles_grid.get_children():
+		piles_grid.remove_child(child)
 		child.queue_free()
 
 	var draw_pile: Array = GameManager.get_draw_pile_cards()
-	var full_deck: Array = []
-	full_deck.append_array(draw_pile)
+	var hand: Array = []
 	for card in GameManager.get_hand():
 		if card != null:
-			full_deck.append(card)
-	full_deck.append_array(GameManager.get_graveyard())
+			hand.append(card)
+	var graveyard: Array = GameManager.get_graveyard()
 
-	# Display all cards visually
-	for card in full_deck:
-		var entry = {"id": "deck_card", "card": card}
-		piles_grid.add_child(_build_piles_card_button(entry))
+	piles_subtitle_label.text = "%d in the draw pile   +   %d in hand   +   %d in the graveyard   =   %d cards" % [
+		draw_pile.size(), hand.size(), graveyard.size(),
+		draw_pile.size() + hand.size() + graveyard.size()]
+
+	_add_piles_section("DRAW PILE  (%d)" % draw_pile.size(), draw_pile,
+		"Every card you have not drawn yet, one by one. The draw order itself is "
+		+ "hidden, so the pile is shown sorted by letter.")
+	_add_piles_section("HAND  (%d)" % hand.size(), hand,
+		"The cards you are holding right now.")
+	_add_piles_section("GRAVEYARD  (%d)" % graveyard.size(), graveyard,
+		"Spent cards. They are shuffled back into the draw pile when it runs dry.")
+
+
+## One labelled block of cards in the deck viewer.
+func _add_piles_section(title: String, cards: Array, hint: String) -> void:
+	var header := Label.new()
+	header.text = title
+	header.add_theme_font_size_override("font_size", 15)
+	header.add_theme_color_override("font_color", Color(0.55, 0.82, 1.0, 1.0))
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	piles_grid.add_child(header)
+
+	if cards.is_empty():
+		var empty := Label.new()
+		empty.text = "  (empty)"
+		empty.add_theme_font_size_override("font_size", 13)
+		empty.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.8))
+		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		piles_grid.add_child(empty)
+		return
+
+	# Sorted so the draw pile's contents can be read at a glance without
+	# revealing the order the cards will actually be dealt in.
+	var sorted_cards: Array = cards.duplicate()
+	sorted_cards.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if str(a.get("letter", "")) == str(b.get("letter", "")):
+			return int(a.get("damage", 0)) < int(b.get("damage", 0))
+		return str(a.get("letter", "")) < str(b.get("letter", ""))
+	)
+
+	var grid := GridContainer.new()
+	grid.columns = 12
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for card: Dictionary in sorted_cards:
+		grid.add_child(_build_piles_card_button({"id": "deck_card", "card": card}))
+	piles_grid.add_child(grid)
+
+	var note := Label.new()
+	note.text = "  " + hint
+	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_color_override("font_color", Color(0.6, 0.66, 0.76, 0.75))
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	piles_grid.add_child(note)
 
 func _format_card_counts(cards: Array) -> String:
 	if cards.is_empty():
@@ -950,9 +1046,78 @@ func _setup_workbench_drop_target() -> void:
 
 	workbench_panel.set_script(load("res://WorkbenchDropZone.gd"))
 	workbench_panel.card_dropped.connect(_on_workbench_card_dropped)
+	workbench_panel.drop_hovered.connect(_on_workbench_drop_hovered)
 
-func _on_workbench_card_dropped(card_data: Dictionary) -> void:
-	add_card_to_workbench(card_data)
+
+## A card was dropped on the Workbench. It lands in whichever gap the player was
+## aiming at, so a word can be built in any order instead of left to right.
+func _on_workbench_card_dropped(card_data: Dictionary, at_position: Vector2) -> void:
+	_hide_workbench_caret()
+	add_card_to_workbench(card_data, _workbench_insert_index(at_position))
+
+
+## Keeps a gold caret in the gap the card would drop into, so the insertion
+## point is obvious while dragging.
+func _on_workbench_drop_hovered(at_position: Vector2, valid: bool) -> void:
+	if not valid:
+		_hide_workbench_caret()
+		return
+	_show_workbench_caret(_workbench_insert_index(at_position))
+
+
+## Which slot in `workbench_cards` a drop at `at_position` (panel-local) belongs
+## in: the gap before the first card whose midpoint is to the right of the
+## pointer, or the end of the word when the pointer is past the last card.
+func _workbench_insert_index(at_position: Vector2) -> int:
+	# The drop position is relative to the panel; the cards live in the inner
+	# container, which is offset inside it.
+	var local: Vector2 = at_position - workbench_container.position
+	var cards: Array[Control] = []
+	for child in workbench_container.get_children():
+		# The caret is a UI hint, not a card, so it never counts.
+		if child is Control and child != _workbench_caret:
+			cards.append(child)
+	for i in range(cards.size()):
+		var centre: float = cards[i].position.x + cards[i].size.x * 0.5
+		if local.x < centre:
+			return i
+	return cards.size()
+
+
+## The insertion caret lives inside the card container so the HBox lays it out
+## in the gap it marks. It is hidden whenever no card is being dragged.
+func _show_workbench_caret(index: int) -> void:
+	_ensure_workbench_caret()
+	_workbench_caret_index = index
+	# Translate the card index into a child index, since the caret itself is one.
+	var target: int = 0
+	var seen: int = 0
+	for child in workbench_container.get_children():
+		if child == _workbench_caret:
+			continue
+		if seen == index:
+			break
+		seen += 1
+		target += 1
+	workbench_container.move_child(_workbench_caret, mini(target, workbench_container.get_child_count() - 1))
+	_workbench_caret.visible = true
+
+
+func _hide_workbench_caret() -> void:
+	_workbench_caret_index = -1
+	if _workbench_caret != null:
+		_workbench_caret.visible = false
+
+
+func _ensure_workbench_caret() -> void:
+	if _workbench_caret == null:
+		_workbench_caret = ColorRect.new()
+		_workbench_caret.color = Color(1.0, 0.85, 0.30, 0.95)
+		_workbench_caret.custom_minimum_size = Vector2(5, 64)
+		_workbench_caret.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_workbench_caret.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if _workbench_caret.get_parent() != workbench_container:
+		workbench_container.add_child(_workbench_caret)
 
 # ── Card View Factory ────────────────────────────────────────────────────────
 ## `clip_text` keeps a card's minimum width pinned to its `custom_minimum_size`
@@ -1713,11 +1878,15 @@ func _build_preview_text(plan: Dictionary, word: String) -> String:
 
 
 # ── Workbench Management ────────────────────────────────────────────────────
-func add_card_to_workbench(card_data: Dictionary) -> void:
+func add_card_to_workbench(card_data: Dictionary, index: int = -1) -> void:
 	if _is_card_in_workbench(card_data):
 		return
 
-	workbench_cards.append(card_data)
+	# index -1 appends (the click path); a drag supplies the gap it aimed at.
+	if index < 0 or index > workbench_cards.size():
+		workbench_cards.append(card_data)
+	else:
+		workbench_cards.insert(index, card_data)
 	_refresh_workbench_ui()
 	_refresh_slots()
 	_refresh_hand_and_deck()
@@ -1773,6 +1942,9 @@ func remove_card_from_workbench_at(idx: int) -> void:
 	_refresh_submit_preview()
 
 func _refresh_workbench_ui() -> void:
+	# Remember whether a drop is in progress: this rebuilds every child, which
+	# would otherwise destroy the caret mid-drag.
+	var caret_was_shown: bool = _workbench_caret != null and _workbench_caret.visible
 	for ch in workbench_container.get_children():
 		workbench_container.remove_child(ch)
 		ch.queue_free()
@@ -1783,6 +1955,8 @@ func _refresh_workbench_ui() -> void:
 		hint.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
 		hint.add_theme_font_size_override("font_size", 14)
 		workbench_container.add_child(hint)
+		if caret_was_shown:
+			_show_workbench_caret(0)
 		return
 
 	for i in range(workbench_cards.size()):
@@ -1819,6 +1993,9 @@ func _refresh_workbench_ui() -> void:
 		)
 
 		workbench_container.add_child(panel)
+
+	if caret_was_shown:
+		_show_workbench_caret(mini(_workbench_caret_index, workbench_cards.size()))
 
 func _refresh_ui() -> void:
 	_refresh_slots()

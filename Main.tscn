@@ -323,6 +323,13 @@ theme_override_font_sizes/font_size = 14
 text = "Pick one. Deck size: 20"
 horizontal_alignment = 1
 
+[node name="DeckButton" type="Button" parent="RewardDialog/DialogPanel/DialogVBox"]
+custom_minimum_size = Vector2(240, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 14
+text = "VIEW MY DECK  (D)"
+
 [node name="RewardRow" type="HBoxContainer" parent="RewardDialog/DialogPanel/DialogVBox"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -508,14 +515,20 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "CLOSE  (Esc)"
 
+[node name="Subtitle" type="Label" parent="PilesDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
 [node name="Scroll" type="ScrollContainer" parent="PilesDialog/DialogPanel/DialogVBox"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="PilesGrid" type="GridContainer" parent="PilesDialog/DialogPanel/DialogVBox/Scroll"]
+[node name="PilesBody" type="VBoxContainer" parent="PilesDialog/DialogPanel/DialogVBox/Scroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
-columns = 10
+theme_override_constants/separation = 12

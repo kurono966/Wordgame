@@ -75,11 +75,17 @@ Every enemy is built out of the letters of its own name, and **one of those lett
 
 ### How to Play
 1. Click or drag cards from slots (marked with ★ ACTIVE) or your hand to the Workbench
-2. Arrange cards to form a valid word
+2. Arrange cards to form a valid word — **drag a card into the gap you want it in**, or click to append it
 3. Click SUBMIT WORD to deal damage with your word
 4. Used slots rotate to the next card
 5. Used hand cards are discarded and replaced from the deck
 6. Defeat the enemy (reduce its HP to 0) to clear the stage — the next stage starts, your hand is redrawn and all three shared reels roll to the new enemy's cards
+
+### Inspecting your deck
+- **CARD PILES** (bottom button) opens the deck viewer at any time during a fight
+- It splits your cards into three separately counted sections — **DRAW PILE**, **HAND** and **GRAVEYARD** — and draws **every card individually**, so you can see exactly what is still waiting to be drawn
+- The draw pile is listed sorted by letter so the contents are readable without revealing the order the cards will actually be dealt in
+- **VIEW MY DECK** (or the **D** key) does the same from the reward screen, and the reward choices stay open behind it, so you can weigh "add this card" against what you already own
 
 ### Submit Preview (damage forecast)
 A line above the buttons shows, **while you are still building the word**, exactly what SUBMIT will cost you. It updates every time you add or remove a card on the Workbench.
