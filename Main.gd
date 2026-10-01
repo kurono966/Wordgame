@@ -2524,6 +2524,11 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 	if cleared_enemy and not turn_limit_reached and not player_defeated:
 		_show_step_message("Enemy defeated! Choose your reward.", Color(1.0, 0.88, 0.45, 1.0))
 		show_reward_choice()
+	else:
+		# No reward is coming, so the stage hand is drawn right away instead of
+		# being left owed forever.
+		GameManager.flush_pending_hand_redraw()
+		_refresh_ui()
 
 	# Defeat takes priority over the turn limit
 	if GameManager.is_game_over() and GameManager.get_game_outcome() == "DEFEAT":
@@ -2561,8 +2566,13 @@ func _style_reward_panel() -> void:
 
 ## Shows the reward dialog with the options GameManager rolled. Blocks until the
 ## player picks one, then applies it and refreshes the UI.
+## If a reward is already pending (we are coming back from the BURN A CARD
+## picker), the SAME options are re-shown instead of being rolled again, so
+## backing out of the deck picker never changes the deal on offer.
 func show_reward_choice() -> void:
-	var options: Array = GameManager.roll_rewards()
+	var options: Array = GameManager.get_pending_reward_options()
+	if options.is_empty():
+		options = GameManager.roll_rewards()
 	if options.is_empty():
 		return
 	reward_subtitle_label.text = "Pick one.  Deck size: %d" % GameManager.get_deck_size()
@@ -2744,6 +2754,9 @@ func _on_reward_chosen(index: int) -> void:
 		_open_burn_picker()
 		return
 	reward_dialog.visible = false
+	# The reward is settled, so the stage hand is finally drawn. For BURN A CARD
+	# this is deferred to _on_burn_card_picked(), which owns the second step.
+	GameManager.flush_pending_hand_redraw()
 	_play_score_up_sound()
 	_refresh_ui()
 	_refresh_formula_panel()
@@ -2777,7 +2790,15 @@ func _open_burn_picker() -> void:
 		child.queue_free()
 
 	var candidates: Array = GameManager.get_burnable_cards()
-	burn_subtitle_label.text = "Click a card to remove it from your deck.  (%d cards)" % candidates.size()
+	var by_source: Dictionary = {}
+	for entry: Dictionary in candidates:
+		var src: String = str(entry.get("source", ""))
+		by_source[src] = int(by_source.get(src, 0)) + 1
+	burn_subtitle_label.text = "Your whole deck — %s.  Click one to burn it." % ", ".join([
+		"%d deck" % int(by_source.get("deck", 0)),
+		"%d hand" % int(by_source.get("hand", 0)),
+		"%d spent" % int(by_source.get("grave", 0)),
+	])
 	for entry: Dictionary in candidates:
 		burn_grid.add_child(_build_burn_card_button(entry))
 
@@ -2792,7 +2813,7 @@ func _build_burn_card_button(entry: Dictionary) -> Button:
 	var card: Dictionary = entry.get("card", {})
 	var card_id: String = str(entry.get("id", ""))
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(78, 100)
+	button.custom_minimum_size = Vector2(78, 114)
 	_style_burn_card_button(button, str(card.get("color", "red")))
 	button.pressed.connect(_on_burn_card_picked.bind(card_id))
 
@@ -2825,7 +2846,27 @@ func _build_burn_card_button(entry: Dictionary) -> Button:
 	dmg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 1.0))
 	dmg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(dmg)
+
+	# Tag which pile the card came from. Identical letters appear several times
+	# in a deck, so this is what tells the player whether they are burning a card
+	# still in the draw pile, one they are holding, or one already spent.
+	var src_label := Label.new()
+	src_label.text = _burn_source_tag(str(entry.get("source", "")))
+	src_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	src_label.add_theme_font_size_override("font_size", 9)
+	src_label.add_theme_color_override("font_color", Color(0.62, 0.68, 0.80, 1.0))
+	src_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(src_label)
 	return button
+
+
+## Short badge naming the pile a burnable card is sitting in.
+func _burn_source_tag(source: String) -> String:
+	match source:
+		"deck":  return "in deck"
+		"hand":  return "in hand"
+		"grave": return "spent"
+	return ""
 
 
 func _style_burn_card_button(button: Button, color_name: String) -> void:
@@ -2847,6 +2888,8 @@ func _on_burn_card_picked(card_id: String) -> void:
 		_refresh_ui()
 		show_reward_choice()
 		return
+	# The reward is settled, so the stage hand is finally drawn.
+	GameManager.flush_pending_hand_redraw()
 	_play_score_up_sound()
 	_refresh_ui()
 	_refresh_formula_panel()

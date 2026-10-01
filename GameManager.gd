@@ -323,6 +323,7 @@ var stage_cleared_immune: bool = false
 var reward_options: Array = []     # 3 reward dictionaries, empty when none pending
 var rewards_taken: int = 0         # How many rewards the player has claimed
 var pending_reward_choice: bool = false  # True while a choice is on screen
+var hand_redraw_pending: bool = false  # A stage was cleared and owes a fresh hand
 # Index into reward_options while the player is picking WHICH card to burn.
 # -1 means no pick is in progress.
 var pending_burn_index: int = -1
@@ -343,6 +344,16 @@ func roll_rewards() -> Array:
 	_build_stat_rewards()
 	# Shuffle so the order differs each time, but keep it stable for the UI.
 	reward_options.shuffle()
+	return reward_options
+
+
+## The reward options that are already on offer, WITHOUT rolling new ones.
+## Returning from the BURN A CARD picker uses this, so backing out of the deck
+## picker leaves the player looking at exactly the same three choices instead of
+## a fresh roll.
+func get_pending_reward_options() -> Array:
+	if not pending_reward_choice:
+		return []
 	return reward_options
 
 
@@ -370,9 +381,12 @@ func _build_deck_rewards() -> void:
 
 
 ## Lists every card the player may burn, as stable pick entries.
-## Includes the draw pile and the hand, so a card already in hand can be
-## discarded too. Each entry carries the source and index so the UI can hand
-## back a precise reference instead of guessing from letter/damage.
+## This is the WHOLE deck: the draw pile, the hand, and the graveyard. The
+## graveyard is included because burning a card there really does remove it —
+## the graveyard is only recycled into the deck when the deck runs dry, so a card
+## taken out of it never comes back.
+## Each entry carries the source and index so the UI can hand back a precise
+## reference instead of guessing from letter/damage.
 func get_burnable_cards() -> Array:
 	var out: Array = []
 	for i in range(deck.size()):
@@ -382,8 +396,10 @@ func get_burnable_cards() -> Array:
 		if hand[i] != null:
 			out.append({"id": "hand:%d" % i, "source": "hand", "index": i,
 				"card": hand[i].duplicate()})
-	# The graveyard is shuffled back into the deck when it runs dry, so burning a
-	# card from there would not actually shrink the deck. Those are not offered.
+	for i in range(graveyard.size()):
+		if graveyard[i] != null:
+			out.append({"id": "grave:%d" % i, "source": "grave", "index": i,
+				"card": graveyard[i].duplicate()})
 	return out
 
 
@@ -410,7 +426,16 @@ func confirm_burn_card(card_id: String) -> Dictionary:
 			return {"ok": false, "reason": "card no longer in hand"}
 		burned = hand[idx]
 		hand[idx] = null
-		_refill_hand()
+		# Top the slot back up so the hand stays full. Skipped when a whole fresh
+		# hand is already owed (the reward screen), because the redraw is about to
+		# replace the whole hand anyway and drawing here would be wasted churn.
+		if not hand_redraw_pending:
+			_refill_hand()
+	elif source == "grave":
+		if idx < 0 or idx >= graveyard.size() or graveyard[idx] == null:
+			return {"ok": false, "reason": "card no longer in the graveyard"}
+		burned = graveyard[idx]
+		graveyard.remove_at(idx)
 	else:
 		return {"ok": false, "reason": "unknown source"}
 
@@ -593,6 +618,7 @@ func reset_game() -> void:
 	pending_reward_choice = false
 	pending_burn_index = -1
 	slot_in_use = [false, false, false]
+	hand_redraw_pending = false
 
 	# Every enemy-granted effect from the previous run is wiped before the first
 	# enemy is rolled, so a fresh game never inherits a shield or a shrunken hand.
@@ -1711,8 +1737,24 @@ func _advance_stage() -> void:
 	enemy_hp = enemy_max_hp
 	enemy_name = _roll_enemy_name()
 	_roll_enemy_skills()
-	_reset_hand()
+	# The hand is NOT redrawn yet. Defering it keeps the cards the player was
+	# actually holding on the board while the reward is offered, so the BURN A
+	# CARD picker shows those real cards (and the whole deck) instead of a fresh
+	# hand that replaced them. The redraw happens in flush_pending_hand_redraw()
+	# once the reward has been resolved.
+	hand_redraw_pending = true
 	_build_shared_slots()
+
+
+## Draws the fresh hand for the new stage, but only if one is still owed.
+## Called after the reward has been taken (or skipped), never before, so the
+## player can still see and burn the hand they finished the fight with.
+func flush_pending_hand_redraw() -> void:
+	if not hand_redraw_pending:
+		return
+	hand_redraw_pending = false
+	_reset_hand()
+
 
 # Discard the whole hand and draw a fresh one, up to the current hand limit.
 func _reset_hand() -> void:
