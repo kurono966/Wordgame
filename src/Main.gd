@@ -60,6 +60,11 @@ var _low_time_played: bool = false
 # through and recoloured in place).
 @onready var enemy_parts_label     : RichTextLabel  = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyPartsLabel
 @onready var stats_label           : Label          = $Scroll/Center/VBox/StatsLabel
+# Relic panel, in the spare width to the left of the HP bars. Always visible so
+# the relics the player holds can be read at a glance, without opening a dialog.
+@onready var relic_panel          : PanelContainer = $Scroll/Center/VBox/StatusBox/RelicBox
+@onready var relic_title_label    : Label          = $Scroll/Center/VBox/StatusBox/RelicBox/RelicVBox/RelicTitleLabel
+@onready var relic_list_label     : Label          = $Scroll/Center/VBox/StatusBox/RelicBox/RelicVBox/RelicListLabel
 # Cached stats text without the enemy-skill "DANGER" suffix.
 var _stats_line: String = ""
 @onready var turn_label            : Label          = $Scroll/Center/VBox/HeaderBox/TurnLabel
@@ -238,6 +243,7 @@ func _ready() -> void:
 	_style_global_ui()
 	_style_hp_bars()
 	_style_op_panel()
+	_style_relic_panel()
 	_style_formula_panel()
 	_style_piles_panel()
 	_style_reward_panel()
@@ -2199,6 +2205,9 @@ func _refresh_hp_display() -> void:
 	enemy_hp_label.text = e_text
 	enemy_hp_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.85, 1.0))
 	_refresh_enemy_parts_display()
+	# The relic panel lives in the same status strip, so it refreshes with the HP
+	# bars: the relic list can change on the same submit that moves the HP.
+	_refresh_relic_panel()
 	_refresh_enemy_skill_display()
 
 	# Center the pivot so hit-shake animations scale from the middle
@@ -2251,6 +2260,76 @@ func _flash_broken_parts() -> void:
 	var tween := create_tween()
 	tween.tween_property(enemy_parts_label, "modulate", Color(1.6, 0.6, 0.6, 1.0), 0.1)
 	tween.tween_property(enemy_parts_label, "modulate", Color.WHITE, 0.45)
+
+
+# ── Relic panel ───────────────────────────────────────────────────────────────
+# Paints the permanent relic panel that sits in the spare width to the left of
+# the HP bars. It is ALWAYS on screen (not a dialog), so the player can check
+# what they hold without interrupting the fight. Styled after the OP gauge so it
+# reads as part of the same status strip.
+func _style_relic_panel() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.16, 0.14, 0.09, 0.85)
+	sb.border_color = Color(0.98, 0.80, 0.22, 0.55)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 6.0
+	sb.content_margin_right = 6.0
+	sb.content_margin_top = 4.0
+	sb.content_margin_bottom = 4.0
+	relic_panel.add_theme_stylebox_override("panel", sb)
+	relic_title_label.add_theme_color_override("font_color", REWARD_COLOR_TITLE)
+	relic_list_label.add_theme_color_override("font_color", Color(0.88, 0.90, 0.96, 1.0))
+
+
+## Rewrites the relic panel from the current relics: the header carries the
+## count, the body lists one line per relic held plus the running total. With
+## none held it shows a one-line reminder of how to get the first one.
+func _refresh_relic_panel() -> void:
+	var held: Array = GameManager.get_relics()
+	relic_title_label.text = "RELICS (%d)" % held.size()
+	if held.is_empty():
+		relic_list_label.text = "none yet\n— tear an enemy\n  apart to earn one —"
+		return
+
+	# Group duplicates so a stack reads as "IRON CORE x2" rather than two lines.
+	var counts: Dictionary = {}
+	var order: Array = []
+	for relic: Dictionary in held:
+		var id: String = str(relic.get("id", "?"))
+		if not counts.has(id):
+			counts[id] = {"count": 0, "relic": relic}
+			order.append(id)
+		counts[id]["count"] = int(counts[id]["count"]) + 1
+
+	var lines: Array = []
+	for id: String in order:
+		var entry: Dictionary = counts[id]
+		var relic: Dictionary = entry["relic"]
+		var n: int = int(entry["count"])
+		lines.append("%s%s" % [str(relic.get("name", "?")), " x%d" % n if n > 1 else ""])
+	relic_list_label.text = "\n".join(lines)
+
+	# The tooltip carries the full text: what each one does and which enemy it
+	# came from, which the narrow panel cannot fit.
+	var tips: Array = ["RELICS — permanent bonuses, kept for the whole run.", ""]
+	for relic: Dictionary in held:
+		tips.append("  %s x%d  (from %s)" % [
+			str(relic.get("name", "?")), int(relic.get("amount", 1)),
+			str(relic.get("from_enemy", "?"))])
+		tips.append("      %s" % str(relic.get("desc", "")))
+	tips.append("")
+	tips.append("  Active total: %s" % GameManager.get_relic_bonus_text())
+	tips.append("  Earned only by destroying every part of an enemy.")
+	relic_list_label.tooltip_text = "\n".join(tips)
+
+
+## Pulses the relic panel when a relic is taken, so the permanent record visibly
+## changes even though the acquire message has already scrolled past.
+func _flash_relic_panel() -> void:
+	var tween := create_tween()
+	tween.tween_property(relic_panel, "modulate", Color(1.7, 1.5, 0.9, 1.0), 0.12)
+	tween.tween_property(relic_panel, "modulate", Color.WHITE, 0.45)
 
 
 # ── Enemy skills ─────────────────────────────────────────────────────────────
@@ -2682,6 +2761,10 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 		_show_step_message("RELIC OBTAINED!  %s" % [
 			str(relic.get("desc", "A relic torn from the wreckage."))
 		], REWARD_COLOR_TITLE)
+		# Update the always-on panel at once, and pulse it: the message below is
+		# transient, so the permanent record must reflect the new relic too.
+		_refresh_relic_panel()
+		_flash_relic_panel()
 		# Spell out the running total too, so a stack of relics is visible without
 		# opening the FORMULAS panel.
 		_show_step_message("RELICS %d  |  permanent bonus: %s" % [

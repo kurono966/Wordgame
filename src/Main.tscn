@@ -56,6 +56,33 @@ text = "Turn: 0 / 10"
 layout_mode = 2
 theme_override_constants/separation = 20
 
+[node name="RelicBox" type="PanelContainer" parent="Scroll/Center/VBox/StatusBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(178, 0)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="RelicVBox" type="VBoxContainer" parent="Scroll/Center/VBox/StatusBox/RelicBox"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="RelicTitleLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/RelicBox/RelicVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "RELICS (0)"
+horizontal_alignment = 1
+
+[node name="RelicListLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/RelicBox/RelicVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(166, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 10
+text = "none yet"
+horizontal_alignment = 1
+autowrap_mode = 3
+
 [node name="PlayerHPBox" type="VBoxContainer" parent="Scroll/Center/VBox/StatusBox"]
 layout_mode = 2
 size_flags_horizontal = 3

@@ -43,7 +43,7 @@ The enemy's name is also its **body**. It is sliced left to right into a few non
 - **OPENING HAND** adds 2 cards to the opening deal only. The standing hand limit is **not** raised: from turn 2 the hand behaves exactly as it always did, and the 2 bonus cards stay in hand as extra options
 - **EXPANDED POCKET** is a standing +1. It composes with the enemy skill `HAND DOWN` rather than fighting it: base 7 + EXPANDED POCKET +1 = 8, and `HAND DOWN` then takes it to 7. A stage clear wipes the enemy effect but keeps the relic
 
-The type is drawn at random from the catalogue each time, and duplicates stack. The **FORMULAS** panel lists every relic you hold, its description, and your running total; the `RELIC OBTAINED!` message spells out what you just gained.
+The type is drawn at random from the catalogue each time, and duplicates stack. The **`RELICS` panel to the left of the HP bars is always on screen**, so you can check what you hold at any time — it lists every relic (collapsing a stack to `IRON CORE x2`) and hovering it shows each effect and which enemy it came from. The **FORMULAS** panel carries the same list in full, and the `RELIC OBTAINED!` message spells out what you just gained.
 
 ### Enemy Skills (one card out of the nine)
 Every enemy is built out of the letters of its own name, and **one of those letters carries a skill**. That letter is dealt to the shared reels as **exactly one card out of the nine**, and **the skill fires at NIGHT while that card sits in the BOTTOM row of a reel**.
