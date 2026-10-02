@@ -27,7 +27,19 @@ func _ready() -> void:
 	var fails: int = 0
 	var reels: Array = main.get("slot_reels")
 	var slot_w: float = main.SLOT_CARD_W
+	var card_h: float = main.get("_slot_card_height")
+	var window_h: float = main.get("_reel_window_height")
 	var vbox := main.get_node("Scroll/Center/VBox")
+	var center: CenterContainer = main.get_node("Scroll/Center")
+	var available: Vector2 = main.get_viewport_rect().size - Vector2(32.0, 32.0)
+	var fitted_size: Vector2 = vbox.size * vbox.scale
+	fails += _check(not (main.get_node("Scroll") is ScrollContainer),
+		"the main layout does not require a scroll container")
+	fails += _check(fitted_size.x <= available.x + 0.01 and fitted_size.y <= available.y + 0.01,
+		"the scaled main layout fits the viewport (%.1fx%.1f <= %.1fx%.1f)" % [
+			fitted_size.x, fitted_size.y, available.x, available.y])
+	fails += _check((vbox.position + vbox.pivot_offset).distance_to(center.size * 0.5) <= 1.0,
+		"the scaled main layout remains centered in the viewport")
 
 	# ===== 1. No card overflows the window that clips it =====================
 	var worst_overflow: float = 0.0
@@ -36,6 +48,8 @@ func _ready() -> void:
 		var reel: Dictionary = reels[s]
 		var window: Control = reel["window"]
 		var card_views: Array = reel["card_views"]
+		fails += _check(window.size.y >= window_h - 0.01,
+			"reel %d clipping window fits the font-sized card rows (%.1f >= %.1f)" % [s, window.size.y, window_h])
 		for i in range(card_views.size()):
 			var panel: PanelContainer = card_views[i]["panel"]
 			var overflow: float = panel.get_combined_minimum_size().x - window.size.x
@@ -45,6 +59,8 @@ func _ready() -> void:
 			# The card must also be no wider than the window it is drawn in.
 			fails += _check(panel.size.x <= window.size.x + 0.01,
 				"reel %d row %d card (%.1f) fits its window (%.1f)" % [s, i, panel.size.x, window.size.x])
+			fails += _check(panel.size.y <= card_h + 0.01,
+				"reel %d row %d fits its font-sized card height (%.1f <= %.1f)" % [s, i, panel.size.y, card_h])
 	fails += _check(worst_overflow <= 0.0,
 		"no reel card overflows its clipping window (worst: %s by %.1fpx)" % [worst_label, worst_overflow])
 

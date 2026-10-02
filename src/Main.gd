@@ -16,6 +16,7 @@ extends Control
 var _turn_timer: SceneTreeTimer = null
 var _turn_timer_left: float = 0.0
 const TURN_SECONDS: float = 30.0
+var _ui_fit_queued: bool = false
 
 # Play a short sound when the timer runs low.
 var _low_time_played: bool = false
@@ -118,6 +119,8 @@ const SLOT_SEP    := 8.0
 const WINDOWED_SIZE := Vector2i(1280, 800)
 # Exactly 3 cards + 2 gaps visible
 const REEL_WINDOW_H := (SLOT_CARD_H * 3.0) + (SLOT_SEP * 2.0)
+var _slot_card_height: float = SLOT_CARD_H
+var _reel_window_height: float = REEL_WINDOW_H
 
 # Color Palette
 const BG_CURRENT_SLOT := Color(0.25, 0.21, 0.08, 1.0)
@@ -228,6 +231,37 @@ func _ready() -> void:
 	burn_cancel_button.pressed.connect(_on_burn_cancel_pressed)
 	_refresh_formula_panel()
 	_refresh_ui()
+	var main_layout: VBoxContainer = $Scroll/Center/VBox
+	main_layout.minimum_size_changed.connect(_schedule_ui_fit)
+	resized.connect(_schedule_ui_fit)
+	_schedule_ui_fit()
+
+
+func _schedule_ui_fit() -> void:
+	if _ui_fit_queued:
+		return
+	_ui_fit_queued = true
+	call_deferred("_fit_ui_to_viewport")
+
+
+func _fit_ui_to_viewport() -> void:
+	await get_tree().process_frame
+	_ui_fit_queued = false
+	if not is_inside_tree():
+		return
+
+	var main_layout: VBoxContainer = $Scroll/Center/VBox
+	var content_size: Vector2 = main_layout.get_combined_minimum_size()
+	var available_size: Vector2 = get_viewport_rect().size - Vector2(32.0, 32.0)
+	if content_size.x <= 0.0 or content_size.y <= 0.0:
+		return
+
+	var fit_scale: float = minf(1.0, minf(
+		available_size.x / content_size.x,
+		available_size.y / content_size.y
+	))
+	main_layout.pivot_offset = main_layout.size * 0.5
+	main_layout.scale = Vector2.ONE * fit_scale
 
 
 func _process(_delta: float) -> void:
@@ -1185,6 +1219,15 @@ func _create_card_view(w: float, h: float, letter_size: int, sub_size: int, clip
 ## so the player can advance that one reel for OP without touching the others.
 func _build_slot_reels() -> void:
 	slot_reels.clear()
+	var probe: Dictionary = _create_card_view(SLOT_CARD_W, SLOT_CARD_H, 24, 10, true)
+	var probe_panel: PanelContainer = probe["panel"]
+	probe["letter"].text = "あ"
+	probe["sub"].text = "12 dmg"
+	add_child(probe_panel)
+	_slot_card_height = max(SLOT_CARD_H, probe_panel.get_combined_minimum_size().y)
+	remove_child(probe_panel)
+	probe_panel.free()
+	_reel_window_height = (_slot_card_height * 3.0) + (SLOT_SEP * 2.0)
 	for s in range(GameManager.NUM_SLOTS):
 		# Column wrapper holding the reel window and its SPIN button. The button is
 		# deliberately slim so the reels still fit the 800px-tall window.
@@ -1195,7 +1238,7 @@ func _build_slot_reels() -> void:
 
 		# Window container: clips children to show exactly 3 card rows
 		var window := Control.new()
-		window.custom_minimum_size = Vector2(SLOT_CARD_W, REEL_WINDOW_H)
+		window.custom_minimum_size = Vector2(SLOT_CARD_W, _reel_window_height)
 		window.clip_contents = true
 		column.add_child(window)
 
@@ -1215,7 +1258,7 @@ func _build_slot_reels() -> void:
 		for _i in range(4):
 			# clip_text = true: these cards live inside a fixed-width clipping
 			# window, so a long label must never stretch them past that window.
-			var cv: Dictionary = _create_card_view(SLOT_CARD_W, SLOT_CARD_H, 24, 10, true)
+			var cv: Dictionary = _create_card_view(SLOT_CARD_W, _slot_card_height, 24, 10, true)
 			strip.add_child(cv["panel"])
 			card_views.append(cv)
 
@@ -1242,7 +1285,7 @@ func _build_slot_reels() -> void:
 		if s < GameManager.NUM_SLOTS - 1:
 			var gap_col := VBoxContainer.new()
 			gap_col.alignment = BoxContainer.ALIGNMENT_CENTER
-			gap_col.custom_minimum_size = Vector2(48, REEL_WINDOW_H)
+			gap_col.custom_minimum_size = Vector2(48, _reel_window_height)
 			slot_container.add_child(gap_col)
 
 			var gap_lbl := Label.new()
@@ -1539,7 +1582,7 @@ func _on_spin_pressed(slot_idx: int) -> void:
 		return
 
 	_play_card_swap_sound()
-	var step_dist: float = SLOT_CARD_H + SLOT_SEP
+	var step_dist: float = _slot_card_height + SLOT_SEP
 	var strip: VBoxContainer = slot_reels[slot_idx]["strip"]
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_QUAD)
@@ -1559,7 +1602,7 @@ func _on_spin_pressed(slot_idx: int) -> void:
 func animate_slot_rotations(used_slots: Array, on_complete: Callable) -> void:
 	if not used_slots.is_empty():
 		_play_card_swap_sound()
-	var step_dist: float = SLOT_CARD_H + SLOT_SEP # Scroll exactly 1 card distance
+	var step_dist: float = _slot_card_height + SLOT_SEP # Scroll exactly 1 card distance
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_QUAD)
