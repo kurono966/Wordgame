@@ -698,11 +698,12 @@ func _build_enemy_parts_text() -> String:
 	else:
 		lines.append("  %d relic(s) held. Active bonus: %s" % [
 			GameManager.get_relic_count(), GameManager.get_relic_bonus_text()])
-		lines.append("  Each relic is a permanent bonus. They survive every stage clear and")
-		lines.append("  every reward, and stack with each other and with the stage rewards.")
+		lines.append("  Each relic is permanent. They survive every stage clear and every")
+		lines.append("  reward, and stack with each other and with the stage rewards.")
 		for relic: Dictionary in GameManager.get_relics():
-			lines.append("    - from %s: %s" % [
-				str(relic.get("from_enemy", "?")), str(relic.get("label", "?"))])
+			lines.append("    - %s x%d  (from %s): %s" % [
+				str(relic.get("name", "RELIC")), int(relic.get("amount", 1)),
+				str(relic.get("from_enemy", "?")), str(relic.get("desc", ""))])
 	return "\n".join(lines)
 
 

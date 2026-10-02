@@ -29,16 +29,21 @@ The enemy's name is also its **body**. It is sliced left to right into a few non
 - **Parts never carry over.** The next enemy always arrives whole
 - **Where to see it**: a `PARTS` strip under the enemy HP bar shows each part, with the destroyed ones struck through in red (`PARTS DR AG ON (2 / 3 intact)`). The submit preview flags a coming total destruction before you commit, and the **FORMULAS** panel has the full rules
 
-> **Relics are permanent buffs.** Each relic is a bonus that lasts the rest of the run and **stacks** with the others. They are re-applied at every stage clear and every reward, so nothing is ever silently lost.
+> **Relics are permanent buffs.** A relic is earned only by a total part destruction, and lasts for the rest of the run. They are re-applied at every stage clear and every reward, so nothing is silently lost, and they stack with each other and with the stage rewards.
 
-| Relic type | Permanent bonus |
+| Relic | Effect |
 |---|---|
-| **VESSEL** | +6 to your max HP, healed immediately |
-| **AEGIS** | +3 shield at the start of every fight (a floor — words can still stack more) |
-| **REACH** | +1 card in hand |
-| **INSIGHT** | +4 OP, granted once |
+| **IRON CORE** | 戦闘開始時、シールド10を得る。 |
+| **OPENING HAND** | 戦闘開始時、最初の手札を2枚多く引く。 |
+| **EXPANDED POCKET** | 手札上限+1。 |
+| **VESSEL** | 最大HP+6（同時にその分だけ回復）。 |
+| **INSIGHT** | その場で4 OPを得る。 |
 
-The type is rolled at random each time. The **FORMULAS** panel lists every relic you hold and your running total, and the `RELIC OBTAINED!` message spells out what you just gained.
+- **IRON CORE** pays out once as each fight opens — not on a turn change, and not on a word submit. It uses the normal player shield, so the words can stack more on top of it
+- **OPENING HAND** adds 2 cards to the opening deal only. The standing hand limit is **not** raised: from turn 2 the hand behaves exactly as it always did, and the 2 bonus cards stay in hand as extra options
+- **EXPANDED POCKET** is a standing +1. It composes with the enemy skill `HAND DOWN` rather than fighting it: base 7 + EXPANDED POCKET +1 = 8, and `HAND DOWN` then takes it to 7. A stage clear wipes the enemy effect but keeps the relic
+
+The type is drawn at random from the catalogue each time, and duplicates stack. The **FORMULAS** panel lists every relic you hold, its description, and your running total; the `RELIC OBTAINED!` message spells out what you just gained.
 
 ### Enemy Skills (one card out of the nine)
 Every enemy is built out of the letters of its own name, and **one of those letters carries a skill**. That letter is dealt to the shared reels as **exactly one card out of the nine**, and **the skill fires at NIGHT while that card sits in the BOTTOM row of a reel**.

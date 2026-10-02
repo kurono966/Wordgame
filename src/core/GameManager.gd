@@ -678,8 +678,10 @@ func reset_game() -> void:
 	relic_hp_bonus = 0
 	relic_shield_bonus = 0
 	relic_hand_bonus = 0
+	relic_opening_bonus = 0
 	relic_op_bonus = 0
 	reward_max_hp_bonus = 0
+	_battle_start_applied = false
 	slot_in_use = [false, false, false]
 	hand_redraw_pending = false
 	spins_this_turn = 0
@@ -711,8 +713,15 @@ func reset_game() -> void:
 
 	_build_shared_slots()
 
-	# Deal the opening hand, honouring any HAND DOWN already in force
-	for _h in range(hand_limit):
+	# A fight is about to begin: fire the battle-timing relics (IRON CORE's
+	# shield) exactly once, before the hand is dealt, so the first thing the
+	# player sees is the buff they earned.
+	_on_battle_start()
+
+	# Deal the opening hand, honouring any HAND DOWN already in force. The size
+	# comes from _opening_deal_size() so OPENING HAND can add cards HERE only,
+	# without ever raising the standing hand limit for the rest of the fight.
+	for _h in range(_opening_deal_size()):
 		hand.append(_draw_card())
 
 ## Loads the word list and the Japanese glosses from res://data/word_dictionary.json
@@ -980,68 +989,131 @@ func get_enemy_parts_text() -> String:
 # Deliberately kept OUT of roll_rewards() / choose_reward(): the existing
 # three-option reward choice is untouched, and a relic is an EXTRA on top of it,
 # never a replacement for the normal stage reward.
-const RELIC_MAX_HP: int = 6         # per relic: +6 to the HP ceiling
-const RELIC_SHIELD: int = 3        # per relic: minimum shield carried into a fight
-const RELIC_HAND: int = 1          # per relic: +1 card in hand
-const RELIC_OP: int = 4            # per relic: +4 operation points, granted once
+# ─── Relic catalogue ──────────────────────────────────────────────────────────
+# Every relic is ONE row of RELIC_DEFS. Adding a new relic in the future means
+# adding a row here (plus, at most, one line in _relic_apply_kind() if it needs a
+# brand-new kind of effect) — there is deliberately no per-relic `if` scattered
+# through the game's damage, turn or card code, so the systems stay untouched.
+#
+# Fields:
+#   id      stable key, used by the UI and by the tests
+#   name    shown to the player
+#   desc    the full rule, in the player's terms
+#   kind    what applying it does (see _relic_apply_kind) — the ONE place where
+#           new relic behaviour branches
+#   amount  how much of that kind
+#   timing  "passive"  -> the buff is re-derived whenever a stat is reset
+#           "battle"   -> fires ONCE at the start of each fight (IRON CORE)
+#           "opening"  -> affects only the opening draw of a fight (OPENING HAND)
+const RELIC_MAX_HP: int = 6         # VESSEL: +6 to the HP ceiling
+const RELIC_SHIELD: int = 10       # IRON CORE: shield granted as each fight opens
+const RELIC_HAND: int = 1          # EXPANDED POCKET: +1 to the hand limit
+const RELIC_OPENING_HAND: int = 2  # OPENING HAND: extra cards in the opening deal
+const RELIC_OP: int = 4            # INSIGHT: operation points, granted once
+
+const RELIC_DEFS: Array = [
+	{
+		"id": "iron_core", "name": "IRON CORE", "kind": "shield_floor",
+		"amount": RELIC_SHIELD, "timing": "battle",
+		"desc": "戦闘開始時、シールド10を得る。",
+	},
+	{
+		"id": "opening_hand", "name": "OPENING HAND", "kind": "opening_draw",
+		"amount": RELIC_OPENING_HAND, "timing": "opening",
+		"desc": "戦闘開始時、最初の手札を2枚多く引く。",
+	},
+	{
+		"id": "expanded_pocket", "name": "EXPANDED POCKET", "kind": "hand_limit",
+		"amount": RELIC_HAND, "timing": "passive",
+		"desc": "手札上限+1。",
+	},
+	{
+		"id": "vessel", "name": "VESSEL", "kind": "max_hp",
+		"amount": RELIC_MAX_HP, "timing": "passive",
+		"desc": "最大HP+6（同時にその分だけ回復）。",
+	},
+	{
+		"id": "insight", "name": "INSIGHT", "kind": "op",
+		"amount": RELIC_OP, "timing": "opening",
+		"desc": "その場で4 OPを得る。",
+	},
+]
 
 ## How many relics have been taken, and the running total of each permanent buff.
 var relics_owned: int = 0
 var relic_hp_bonus: int = 0
 var relic_shield_bonus: int = 0
 var relic_hand_bonus: int = 0
+## Extra cards OPENING HAND deals at the start of a fight. Kept apart from
+## relic_hand_bonus on purpose: this is an opening bonus, never a standing limit.
+var relic_opening_bonus: int = 0
 var relic_op_bonus: int = 0
 ## Max HP granted by the "IRON WILL" reward, kept apart from the relic bonus so
 ## _reapply_relic_buffs() can rebuild the ceiling without double-counting it.
 var reward_max_hp_bonus: int = 0
+## Guard so the battle-timing relics fire ONCE per fight. Set when a fight
+## begins, cleared by the next one; _on_battle_start() checks it.
+var _battle_start_applied: bool = false
 
-## Grants one relic for destroying `enemy` through its parts and applies its
-## permanent buff immediately. Each relic rolls ONE kind of buff, so a long run
-## sees variety and no single stat runs away. Returns the relic so the caller
-## can narrate it. Only grant_relic() should create relics.
+## Grants one relic for destroying `enemy` through its parts. The relic is drawn
+## at random from RELIC_DEFS, so a long run sees variety, and applied through
+## _relic_apply_kind() — the single place that knows what each KIND of relic does.
+## Returns the relic so the caller can narrate it.
+##
+## Duplicate holdings are allowed and simply stack, which is the existing
+## behaviour: a second EXPANDED POCKET really is a second +1.
 func grant_relic(enemy: String, parts: Array) -> Dictionary:
 	relics_owned += 1
-	var kind: String = String(["hp", "shield", "hand", "op"].pick_random())
-	var label: String = ""
-	var heal: int = 0
-	var op_gain: int = 0
-	match kind:
-		"hp":
-			relic_hp_bonus += RELIC_MAX_HP
-			label = "+%d MAX HP" % RELIC_MAX_HP
-			heal = RELIC_MAX_HP
-		"shield":
-			relic_shield_bonus += RELIC_SHIELD
-			label = "+%d shield at the start of every fight" % RELIC_SHIELD
-		"hand":
-			relic_hand_bonus += RELIC_HAND
-			label = "+%d card in hand" % RELIC_HAND
-		"op":
-			relic_op_bonus += RELIC_OP
-			label = "+%d OP now" % RELIC_OP
-			op_gain = RELIC_OP
+	var def: Dictionary = RELIC_DEFS[randi() % RELIC_DEFS.size()]
+	var kind: String = str(def.get("kind", ""))
+	var amount: int = int(def.get("amount", 0))
 	var relic: Dictionary = {
-		"id": "relic_%d" % relics_owned,
-		"name": "RELIC",
+		"id": str(def.get("id", "relic")),
+		"name": str(def.get("name", "RELIC")),
 		"kind": kind,
-		"label": label,
-		"desc": "Torn from %s after every one of its parts was destroyed. %s, permanently." % [
-			enemy.to_upper(), label],
+		"amount": amount,
+		"timing": str(def.get("timing", "passive")),
+		"label": str(def.get("name", "RELIC")),
+		"desc": str(def.get("desc", "")),
 		"from_enemy": enemy.to_upper(),
 		"parts": parts.duplicate(),
 		"stage": stage
 	}
 	relics.append(relic)
+	_relic_apply_kind(kind, amount)
 	_reapply_relic_buffs()
-	# Heal for the HP the ceiling just gained, so the extra HP is felt this fight
-	# rather than only mattering once the current HP has been spent down.
-	player_hp = mini(player_hp + heal, player_max_hp)
-	# OP is a pure lump sum, not a floor: the player keeps every OP they have
-	# ever earned (the game never spends it on damage) and the relic adds to it.
-	# This is deliberately outside _reapply_relic_buffs() so re-deriving the
-	# totals after a stage change can never hand out the same OP twice.
-	operation_points += op_gain
+	# A relic that only matters "at the start of a fight" cannot wait for the
+	# next one when it is granted mid-transition: the fight it lands in has
+	# already begun, so it pays out at once rather than being lost.
+	if str(def.get("timing", "")) == "battle" and hand_redraw_pending:
+		_on_battle_start()
 	return relic
+
+
+## The ONE place that knows what each kind of relic does. Adding a relic that
+## reuses an existing kind costs nothing; a genuinely new effect costs one branch
+## here and nowhere else in the game.
+func _relic_apply_kind(kind: String, amount: int) -> void:
+	match kind:
+		"max_hp":
+			relic_hp_bonus += amount
+			# Heal for the headroom just gained, so the extra HP is felt this fight
+			# rather than only once the current HP has been spent down.
+			player_hp = mini(player_hp + amount, player_max_hp + amount)
+		"shield_floor":
+			relic_shield_bonus += amount
+		"hand_limit":
+			relic_hand_bonus += amount
+		"opening_draw":
+			# Tracked as a total, but SPENT by the opening deal of a fight. It is
+			# deliberately NOT folded into hand_limit: extra opening cards are not
+			# a standing larger hand.
+			relic_opening_bonus += amount
+		"op":
+			# A one-time lump sum. Deliberately outside _reapply_relic_buffs() so
+			# re-deriving the totals can never pay it out a second time.
+			relic_op_bonus += amount
+			operation_points += amount
 
 
 ## Re-derives the live stats from the base game value, plus the "IRON WILL" reward,
@@ -1049,21 +1121,40 @@ func grant_relic(enemy: String, parts: Array) -> Dictionary:
 ## reset one of the underlying stats, so a relic buff is never silently lost.
 func _reapply_relic_buffs() -> void:
 	player_max_hp = PLAYER_MAX_HP + reward_max_hp_bonus + relic_hp_bonus
-	# Shield is a FLOOR, not a grant: the player always walks into a fight with at
-	# least the shield their relics bought, and can still gain more from words.
+	# Shield is a FLOOR, not a grant: a word can still stack shield above it.
 	shield = maxi(shield, relic_shield_bonus)
-	# The hand limit is the enemy skills' stat, so the relic rides on top of the
-	# base size; HAND DOWN still shrinks it from here exactly as before.
-	#
-	# Assigned, not max()'d: _reapply_relic_buffs() runs right after a reset that
-	# has already put the hand limit back to its base, so a plain assignment is
-	# correct AND is the only way a reduced bonus can lower the limit again. It
-	# is never called while HAND DOWN is in force — that effect is applied later,
-	# in _apply_skill_card_night(), from this same value.
+	# The hand limit is ALWAYS re-derived as base + relic bonus. HAND DOWN shrinks
+	# the live `hand_limit` afterwards exactly as before, and a stage clear
+	# re-derives it again — so the two effects compose instead of overwriting.
 	hand_limit = HAND_SIZE + relic_hand_bonus
 	# OP is deliberately NOT re-applied here: it is a one-time lump sum handed out
-	# by grant_relic(), not a floor, so re-deriving the totals must never pay it
-	# out a second time. relic_op_bonus is still tracked, for the UI summary.
+	# by _relic_apply_kind(), not a floor, so re-deriving the totals must never
+	# pay it out a second time. relic_op_bonus is still tracked, for the UI.
+
+
+## The extra cards OPENING HAND deals when a fight begins, and 0 otherwise. Read
+## only by the opening deal, so it can never leak into the standing hand limit.
+func _opening_hand_extra() -> int:
+	return relic_opening_bonus
+
+
+## A new fight has begun. This is the ONE place the battle-timing relics fire, so
+## they cannot re-trigger on a turn change or a word submit: those go through
+## apply_turn_start_penalty() / execute_assignment(), which never call this.
+##
+## The guard makes IRON CORE a grant ONCE per fight rather than a standing floor,
+## which is what "その戦闘中のみ有効" means: the shield is yours when the fight
+## opens and is spent (or reset) as the fight goes on.
+func _on_battle_start() -> void:
+	_battle_start_applied = true
+	shield = maxi(shield, relic_shield_bonus)
+
+
+## How many cards the opening deal of a fight should contain: the hand limit plus
+## whatever OPENING HAND adds. Isolated here so the deal code stays a plain
+## "draw N" and never has to know which relic is responsible.
+func _opening_deal_size() -> int:
+	return hand_limit + _opening_hand_extra()
 
 
 ## The one-line summary of every permanent buff held, for the UI.
@@ -1074,12 +1165,29 @@ func get_relic_bonus_text() -> String:
 	if relic_hp_bonus > 0:
 		parts.append("+%d max HP" % relic_hp_bonus)
 	if relic_shield_bonus > 0:
-		parts.append("+%d shield/fight" % relic_shield_bonus)
+		parts.append("+%d shield/battle" % relic_shield_bonus)
 	if relic_hand_bonus > 0:
-		parts.append("+%d hand" % relic_hand_bonus)
+		parts.append("+%d hand limit" % relic_hand_bonus)
+	if relic_opening_bonus > 0:
+		parts.append("+%d opening cards" % relic_opening_bonus)
 	if relic_op_bonus > 0:
 		parts.append("+%d OP granted" % relic_op_bonus)
 	return ", ".join(parts)
+
+
+## Every relic in the catalogue, with the description the UI shows. Separate from
+## get_relics(), which returns only the ones actually held.
+func get_relic_catalogue() -> Array:
+	return RELIC_DEFS
+
+
+## How many of a given relic id the player holds. 0 when it is not held.
+func get_relic_count_of(id: String) -> int:
+	var count: int = 0
+	for relic: Dictionary in relics:
+		if str(relic.get("id", "")) == id:
+			count += 1
+	return count
 
 
 func get_relics() -> Array:
@@ -1407,8 +1515,15 @@ func _reshuffle_graveyard() -> void:
 func _refill_hand() -> void:
 	# The hand never grows past the current limit, so HAND DOWN keeps biting
 	# until the enemy that cast it is gone.
-	for i in range(mini(hand.size(), hand_limit)):
-		if hand[i] == null:
+	#
+	# The bound is max(hand_limit, hand.size()) rather than plain hand_limit: the
+	# hand array is normally exactly hand_limit long, so this is identical — but
+	# an OPENING HAND relic deliberately deals a few cards beyond the limit, and
+	# those must keep refilling instead of being left as holes. _trim_hand_to_limit()
+	# still shrinks the array whenever the limit genuinely drops (HAND DOWN), so
+	# the extra slots cannot outlive the fight that earned them.
+	for i in range(maxi(hand_limit, hand.size())):
+		if i < hand.size() and hand[i] == null:
 			hand[i] = _draw_card()
 
 # ─── Card cost ─────────────────────────────────────────────────────────────────
@@ -2302,13 +2417,30 @@ func flush_pending_hand_redraw() -> void:
 	_reset_hand()
 
 
-# Discard the whole hand and draw a fresh one, up to the current hand limit.
+## Discard the whole hand and draw a fresh one for a new fight, up to the current
+## hand limit. This is the per-stage opening deal, so it goes through the same
+## _opening_deal_size() the first fight does — OPENING HAND pays out here every
+## time a new enemy arrives, and nowhere else.
 func _reset_hand() -> void:
 	for i in range(hand.size()):
 		_discard_hand_card(i)
-	while hand.size() < hand_limit:
-		hand.append(null)
+	# The new fight begins here, so the battle-timing relics fire now. Placed
+	# after the discard so the shield is granted onto the fight the player is
+	# actually entering, and called from exactly one place so it cannot double up.
+	_on_battle_start()
+	# Bring the hand to exactly the OPENING deal size. The standing limit is still
+	# its normal value here, so the hand is trimmed to it FIRST and the OPENING
+	# HAND bonus is added on top — that ordering is what lets the extra cards be
+	# dealt and then KEPT, instead of being trimmed straight back off.
 	_trim_hand_to_limit()
+	while hand.size() < _opening_deal_size():
+		hand.append(null)
+	# The extra OPENING HAND cards are dealt once and then KEPT, as required: the
+	# standing limit drops straight back to its normal value so turn 2 onward
+	# behaves exactly as it always did, while the extra cards stay in hand as
+	# bonus options. Nothing is sent to the graveyard here — that is the one
+	# outcome the relic is not supposed to cause.
+	hand_limit = HAND_SIZE + relic_hand_bonus
 	_refill_hand()
 
 # Rebuild the shared slot reels (3x3) from the current enemy's name letters,

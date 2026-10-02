@@ -34,35 +34,44 @@ func _ready() -> void:
 
 
 ## Every relic kind must move a real, visible stat — a relic that changed nothing
-## would be the placeholder this replaced.
+## would be the placeholder this replaced. The kind names come from RELIC_DEFS,
+## so this covers the catalogue rather than a hand-copied list.
 func _check_relic_changes_a_stat(gm: Node) -> int:
 	var fails: int = 0
 	var seen: Dictionary = {}
-	# Grant enough relics that all four kinds are drawn at least once.
+	# Grant enough relics that every catalogue row is drawn at least once.
 	for i in range(40):
 		gm.reset_game()
 		var r: Dictionary = gm.grant_relic("DRAGON", ["DR", "AG", "ON"])
 		var kind: String = str(r.get("kind", ""))
 		seen[kind] = true
 		match kind:
-			"hp":
+			"max_hp":
 				fails += _check(gm.get_max_player_hp() == gm.PLAYER_MAX_HP + gm.RELIC_MAX_HP,
 					"an HP relic raises the ceiling to %d" % gm.get_max_player_hp())
 				fails += _check(gm.get_player_hp() == gm.PLAYER_MAX_HP + gm.RELIC_MAX_HP,
 					"an HP relic also heals the new headroom immediately")
-			"shield":
+			"shield_floor":
 				fails += _check(gm.get_shield() == gm.RELIC_SHIELD,
 					"a shield relic grants %d shield now" % gm.RELIC_SHIELD)
-			"hand":
+			"hand_limit":
 				fails += _check(gm.get_hand_limit() == gm.HAND_SIZE + gm.RELIC_HAND,
 					"a hand relic raises the hand limit to %d" % gm.get_hand_limit())
+			"opening_draw":
+				# An opening bonus is spent at the next deal, not applied to a stat.
+				fails += _check(gm.get_hand_limit() == gm.HAND_SIZE,
+					"an opening-draw relic does not raise the standing hand limit")
 			"op":
 				fails += _check(gm.get_operation_points() == gm.RELIC_OP,
 					"an OP relic grants %d OP now" % gm.RELIC_OP)
 		fails += _check(not str(r.get("label", "")).is_empty(),
 			"the relic describes its own buff (%s)" % str(r.get("label", "")))
-	for kind: String in ["hp", "shield", "hand", "op"]:
-		fails += _check(seen.has(kind), "the '%s' relic kind is reachable" % kind)
+	# Every kind in the catalogue must be reachable, read from the catalogue
+	# itself so a new relic row cannot be added without this test noticing.
+	for def: Dictionary in gm.get_relic_catalogue():
+		var kind: String = str(def.get("kind", ""))
+		fails += _check(seen.has(kind),
+			"the '%s' relic kind is reachable" % kind)
 	return fails
 
 
