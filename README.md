@@ -16,6 +16,21 @@ Build valid English words using cards from your slots and hand. Each card has a 
 - **Stages**: Each stage has one enemy. Clearing a stage spawns a stronger enemy (+15 max HP) and **resets your cards**: all 7 hand cards are discarded and redrawn, and the shared slot reels are rebuilt from the new enemy's name (all three reels roll to the newly dealt cards).
 - **Rewards**: after every enemy defeat you pick **1 of 3** rewards before the next fight. Deck rewards are always in the pool while the deck size allows, so you can grow or slim your deck between stages.
 
+### Enemy Parts (break the name, not just the HP bar)
+
+The enemy's name is also its **body**. It is sliced left to right into a few non-overlapping **parts** of 2+ letters, and spelling a part inside any word you submit **destroys that part**. Destroying **every** part kills the enemy outright — whatever HP it has left — and pays a **RELIC**.
+
+- **How the name is cut**: 2-letter slices, with a 1-letter tail folded into the slice before it. `DRAGON → DR / AG / ON`, `SLIME → SL / IME`, `STONE → ST / ONE`, `PHOENIX → PH / OE / NIX`. This keeps an enemy to **1-4 readable parts** instead of one part per substring (a 6-letter name would otherwise expose 14)
+- **Matching**: the part must appear in the submitted word **in full and in order**. `DR` breaks on `DRIFT` and on `DRAFT`, but **not** on `DEAR` (the D and R are apart) and **not** on a lone `D`. Case is ignored, exactly like the rest of the word checks
+- **One word can break several parts**: submitting `DRAGON` breaks all three of `DR / AG / ON` at once
+- **A broken part is never restored** by spelling the same letters again — the part stays down until that enemy dies
+- **Total destruction ignores HP entirely**: an enemy on 87 / 100 HP falls just the same. This is a **second route to a defeat**, alongside "damage it to 0 HP"; both go through the same stage-clear, so the reels, the hand redraw and the enemy-skill wipe all behave identically
+- **Only a total destruction pays a relic.** Killing an enemy by damage (HP to 0) is a plain kill and pays **no** relic — even if the same word happened to spell its parts
+- **Parts never carry over.** The next enemy always arrives whole
+- **Where to see it**: a `PARTS` strip under the enemy HP bar shows each part, with the destroyed ones struck through in red (`PARTS DR AG ON (2 / 3 intact)`). The submit preview flags a coming total destruction before you commit, and the **FORMULAS** panel has the full rules
+
+> **Relics are currently a placeholder.** A relic is recorded and counted, and shown when you earn one, but it has no effect yet — a real relic system can be connected at `GameManager.grant_relic()`.
+
 ### Enemy Skills (one card out of the nine)
 Every enemy is built out of the letters of its own name, and **one of those letters carries a skill**. That letter is dealt to the shared reels as **exactly one card out of the nine**, and **the skill fires at NIGHT while that card sits in the BOTTOM row of a reel**.
 

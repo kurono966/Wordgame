@@ -17,6 +17,15 @@ const NAME_MIN_LEN: int = 3
 const NAME_MAX_LEN: int = 9      # <=9 so the whole name fits into the9 shared cards
 const FALLBACK_ENEMY_NAMES: Array = ["DRAGON", "SLIME", "GOLEM", "WRAITH", "TROLL", "OGRE", "BANSHEE"]
 
+# ── Enemy parts (部位 / part destruction) ─────────────────────────────────────
+# An enemy name is also read as a BODY: the name is sliced into a few
+# non-overlapping chunks (build_enemy_parts) and each chunk is one part the
+# player can shatter by spelling it inside a word. Slicing — rather than turning
+# every substring into a part — is what keeps the count readable: a 6-letter name
+# would otherwise expose 14 parts and no player could hold that in their head.
+const PART_MIN_LEN: int = 2       # a part must be at least this long
+const PART_CHUNK_LEN: int = 2     # base slice width; a 1-letter tail folds left
+
 # ── Color traits (triggered by the cards used in a valid word) ──
 # Every trait scales off the BASE TOTAL (the sum of the damage of all cards
 # used in the word) with the same stacking multiplier 2^(count - 1):
@@ -295,6 +304,13 @@ var enemy_shield: int = 0              # AEGIS: soaks damage before the enemy's 
 var enemy_night_tax: int = 0           # NIGHTMARE: added to the NIGHT penalty base
 var hand_limit: int = HAND_SIZE        # HAND DOWN: how many cards the hand may hold
 var enemy_skills: Array = []           # ENEMY_SKILL_COUNT entries: {letter, id, name, ...}
+## The current enemy's body: one {text, broken} entry per part, in name order.
+## Re-cut from the name on every _roll_enemy_name(), so a broken part can never
+## follow the player into the next fight.
+var enemy_parts: Array = []
+## Relics earned by destroying enemies through their parts. The game has no
+## relic system yet, so these are records only — see grant_relic().
+var relics: Array = []
 ## Lazily built cache of the letters that exist as cards (see _dealable_letters).
 var _dealable_letter_cache: Dictionary = {}
 var total_damage: int = 0              # Total damage dealt to enemies (evaluation)
@@ -640,6 +656,10 @@ func reset_game() -> void:
 	rewards_taken = 0
 	pending_reward_choice = false
 	pending_burn_index = -1
+	# A run starts with no relics. They are earned per destroyed enemy, so the
+	# tally has to clear with the rest of the run state.
+	relics.clear()
+	relics_owned = 0
 	slot_in_use = [false, false, false]
 	hand_redraw_pending = false
 	spins_this_turn = 0
@@ -773,9 +793,187 @@ func _is_valid_enemy_name(word: String) -> bool:
 # Pick a random enemy name from the dictionary (falls back to a small built-in
 # list when the dictionary is unavailable).
 func _roll_enemy_name() -> String:
-	if word_list.is_empty():
-		return String(FALLBACK_ENEMY_NAMES.pick_random())
-	return String(word_list.pick_random())
+	var rolled: String = String(FALLBACK_ENEMY_NAMES.pick_random()) if word_list.is_empty() \
+		else String(word_list.pick_random())
+	# The name and its body are always rolled together: a new enemy is a new set
+	# of unbroken parts, and a part broken on the last enemy can never survive
+	# into this one.
+	set_enemy_name(rolled)
+	return rolled
+
+
+## Points the fight at `new_name` and cuts a fresh set of unbroken parts from it.
+## Every path that changes the enemy goes through here, so the parts can never
+## drift out of sync with the name they were read from.
+func set_enemy_name(new_name: String) -> void:
+	enemy_name = new_name.to_upper()
+	enemy_parts = build_enemy_parts(enemy_name)
+
+
+# ─── Enemy parts (部位) ───────────────────────────────────────────────────────
+## Cuts an enemy name into the parts that make up its body.
+##
+## The name is consumed LEFT TO RIGHT in PART_CHUNK_LEN slices, and a 1-letter
+## tail is folded into the slice before it so no part is ever shorter than
+## PART_MIN_LEN:
+##
+##     DRAGON -> DR / AG / ON        SLIME -> SL / IME
+##     STONE  -> ST / ONE            PHOENIX -> PH / OE / NIX
+##     DRIFT  -> DR / IF             CAT    -> CAT   (too short to cut further)
+##
+## That gives 1-4 parts for the 3-9 letter names the game rolls, every part is
+## at least 2 letters, and the parts exactly tile the name. Because they are
+## non-overlapping slices no two parts ever share a letter, so a single word can
+## never consume the same character twice.
+func build_enemy_parts(name: String) -> Array:
+	var n: String = name.to_upper()
+	var parts: Array = []
+	# A name too short to be cut is its own single part; anything shorter than
+	# PART_MIN_LEN has no part at all and can never be destroyed this way.
+	if n.length() < PART_MIN_LEN:
+		return parts
+	var start: int = 0
+	while start < n.length():
+		var take: int = PART_CHUNK_LEN
+		# Fold a 1-letter remainder into this slice rather than emitting a
+		# 1-letter part, which would be unmatchable and unfair.
+		if n.length() - (start + take) == 1:
+			take += 1
+		parts.append({"text": n.substr(start, take), "broken": false})
+		start += take
+	return parts
+
+
+## The current enemy's parts, in name order. Each entry is {text, broken}.
+func get_enemy_parts() -> Array:
+	return enemy_parts
+
+
+func get_broken_part_count() -> int:
+	var count: int = 0
+	for part: Dictionary in enemy_parts:
+		if bool(part.get("broken", false)):
+			count += 1
+	return count
+
+
+## How many parts the current enemy has in total.
+func all_parts_broken_count() -> int:
+	return enemy_parts.size()
+
+
+## Whether the part spelled `text` is currently destroyed. Read-only, so the UI
+## and the tests can ask without touching the state.
+func is_part_broken(text: String) -> bool:
+	for part: Dictionary in enemy_parts:
+		if str(part.get("text", "")) == text.to_upper():
+			return bool(part.get("broken", false))
+	return false
+
+
+## True once EVERY part is broken, i.e. the enemy has been torn apart. An
+## enemy whose name was too short to cut has no parts, and an empty body is
+## never "fully destroyed" — otherwise a nameless board would auto-defeat.
+func all_parts_broken() -> bool:
+	if enemy_parts.is_empty():
+		return false
+	return get_broken_part_count() >= enemy_parts.size()
+
+
+## The parts `word` spells, i.e. the not-yet-broken parts that appear in it as
+## a CONTIGUOUS run. The match is on the part as a literal substring, so "THE"
+## and "THINK" both break a "TH" part while "T H" and a lone "T" do not — the
+## word must contain the whole part, in order, side by side.
+## Returns the part texts, so one word that breaks several parts reports all of
+## them. Comparison is case-insensitive: cards and names are both upper-case.
+func match_parts_in_word(word: String) -> Array:
+	var w: String = word.to_upper()
+	var hits: Array = []
+	for part: Dictionary in enemy_parts:
+		if bool(part.get("broken", false)):
+			continue
+		var text: String = str(part.get("text", ""))
+		if text.length() >= PART_MIN_LEN and w.contains(text):
+			hits.append(text)
+	return hits
+
+
+## Breaks every part `word` spells and returns the parts it actually broke.
+## Already-broken parts are skipped, so no part is ever credited twice, and the
+## parts are only marked here — killing the enemy is the caller's decision.
+func break_parts_with_word(word: String) -> Array:
+	var broken_now: Array = []
+	for part: Dictionary in enemy_parts:
+		if bool(part.get("broken", false)):
+			continue
+		var text: String = str(part.get("text", ""))
+		if text.length() >= PART_MIN_LEN and word.to_upper().contains(text):
+			part["broken"] = true
+			broken_now.append(text)
+	return broken_now
+
+
+## Marks the given part texts as broken on the current enemy and returns the ones
+## that were actually broken. Split out from break_parts_with_word() so the
+## submit flow can match BEFORE the damage resolves and only commit once it
+## knows the enemy survived that damage. A text is matched to the FIRST unbroken
+## part carrying it and then consumed, so two identical parts can never be
+## broken by one mention of that text twice.
+func _commit_part_breaks(texts: Array) -> Array:
+	var broken_now: Array = []
+	for text: Variant in texts:
+		var t: String = str(text)
+		for part: Dictionary in enemy_parts:
+			if str(part.get("text", "")) == t and not bool(part.get("broken", false)):
+				part["broken"] = true
+				broken_now.append(t)
+				break
+	return broken_now
+
+
+## The part state as one line of plain text, e.g. "[DR x] [AG o] [ON o]".
+## Shared by the enemy panel and the FORMULAS panel so both always agree.
+func get_enemy_parts_text() -> String:
+	var chunks: Array = []
+	for part: Dictionary in enemy_parts:
+		chunks.append("[%s %s]" % [
+			str(part.get("text", "?")),
+			"x" if bool(part.get("broken", false)) else "o"
+		])
+	return "  ".join(chunks)
+
+
+# ─── Relics ───────────────────────────────────────────────────────────────────
+# PLACEHOLDER. The game has no relic system yet, so a relic is currently just a
+# record: it is never spent, never shown in a panel, and changes no stat. The
+# one thing it does do is survive the stage change, so a future relic system can
+# read relics_owned / get_relics() and decide what the thing actually does.
+#
+# Deliberately kept OUT of roll_rewards() / choose_reward(): the existing
+# three-option reward choice is untouched, and a relic is an EXTRA on top of it
+# for a part destruction, never a replacement for the normal stage reward.
+var relics_owned: int = 0
+
+## Grants one relic for destroying `enemy` through its parts. Returns the relic
+## so the caller can narrate it. Only grant_relic() should create relics.
+func grant_relic(enemy: String, parts: Array) -> Dictionary:
+	relics_owned += 1
+	var relic: Dictionary = {
+		"id": "relic_%d" % relics_owned,
+		"name": "RELIC",
+		"desc": "Salvaged from %s after every one of its parts was destroyed." % enemy.to_upper(),
+		"from_enemy": enemy.to_upper(),
+		"parts": parts.duplicate(),
+		"stage": stage
+	}
+	relics.append(relic)
+	return relic
+
+func get_relics() -> Array:
+	return relics
+
+func get_relic_count() -> int:
+	return relics_owned
 
 # ─── Enemy skills ─────────────────────────────────────────────────────────────
 # An enemy is built out of the letters of its own name, and ONE of those
@@ -1781,10 +1979,49 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 
 	# Positive damage is dealt to the enemy, negative damage hurts the player
 	# (the BLUE shield absorbs incoming damage first)
+	#
+	# The part matches are read BEFORE the damage lands, and that order is
+	# deliberate: _apply_damage() can kill the enemy outright, which rolls a NEW
+	# name — and therefore a brand new, unbroken body — through _advance_stage().
+	# Matching first means the parts are always scored against the enemy that was
+	# actually fought, never against its successor. A word that killed the enemy
+	# by damage is a plain HP kill and pays no relic (see _commit_part_breaks).
+	var parts_matched: Array = match_parts_in_word(word)
+	var parts_total: int = enemy_parts.size()
 	var damage_result: Dictionary = _apply_damage(final_damage)
 
+	# ── Part destruction ─────────────────────────────────────────────────────────
+	# The word is also read against the enemy's BODY: every part it spells is
+	# shattered, and the enemy falls once the last one goes. This is a SECOND,
+	# independent route to a defeat, so HP damage and part destruction can both
+	# fire on the same word.
+	var hp_killed: bool = enemies_defeated > defeated_before
+	var parts_broken: Array = []
+	var part_defeat: bool = false
+	# The HP the enemy was still showing when its last part fell. Captured before
+	# the stage advances, so the UI can say "it fell with 87 HP to spare" — the
+	# clearest possible proof that a total destruction ignores the HP entirely.
+	var enemy_hp_at_part_defeat: int = 0
+	var relic: Dictionary = {}
+	if not hp_killed:
+		# Commit the matches now that we know the enemy survived: a word that
+		# already killed the enemy by damage is NOT a part destruction.
+		parts_broken = _commit_part_breaks(parts_matched)
+		# Every part gone -> the enemy dies no matter how much HP is left. This
+		# goes through the SAME _advance_stage() a normal kill uses, so the wipe
+		# of the fallen enemy's skills, the stronger next enemy, the fresh reels
+		# and the pending hand redraw all behave exactly as they do for damage.
+		# Only the relic is exclusive to this route.
+		part_defeat = all_parts_broken()
+		if part_defeat:
+			enemy_hp_at_part_defeat = enemy_hp
+			_advance_stage()
+			relic = grant_relic(enemy_name_before, parts_broken)
+	var parts_remaining: int = parts_total - parts_broken.size()
+
 	# Defeating an enemy ends the fight, so this turn's NIGHT self-damage is
-	# nullified (see apply_turn_start_penalty). The flag is one-shot.
+	# nullified (see apply_turn_start_penalty). The flag is one-shot. A part
+	# destruction counts too: it also goes through _advance_stage().
 	var defeated_delta: int = enemies_defeated - defeated_before
 	stage_cleared_immune = defeated_delta > 0
 
@@ -1844,6 +2081,15 @@ func execute_assignment(word: String, assignment: Array) -> Dictionary:
 		"player_hp_before": player_hp_before,
 		"player_hp_after": player_hp,
 		"enemies_defeated_delta": enemies_defeated - defeated_before,
+		"parts_broken": parts_broken,
+		"parts_broken_text": " ".join(parts_broken),
+		"parts_remaining": parts_remaining,
+		"parts_total": parts_total,
+		"parts_state": get_enemy_parts_text(),
+		"part_defeat": part_defeat,
+		"enemy_hp_at_part_defeat": enemy_hp_at_part_defeat,
+		"relic": relic,
+		"relic_count": get_relic_count(),
 		"used_hand": used_hand_indices,
 		"used_slots": used_slot_indices,
 		"turn": turn,
@@ -2186,7 +2432,21 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 	# Killing the enemy ends the fight, so this turn's NIGHT self-damage is
 	# nullified — the preview must show the same 0 the real submit will charge —
 	# and no enemy skill fires back.
-	var defeats_enemy: bool = final_damage > 0 and enemy_hp_pool <= 0
+	var hp_defeats: bool = final_damage > 0 and enemy_hp_pool <= 0
+
+	# 3b) The same part-destruction check the real submit runs, on throwaway
+	# state. match_parts_in_word() only reads, so the preview never breaks
+	# anything. A word that kills by damage is scored as a plain HP kill, exactly
+	# as the submit does, so a word that would do both never shows the relic.
+	var preview_parts: Array = match_parts_in_word(word_from_assignment(assignment))
+	var preview_parts_total: int = enemy_parts.size()
+	# The preview foresees a total destruction when breaking what this word
+	# spells would leave NOTHING standing: every part either is already broken or
+	# is one of the matches.
+	var preview_part_defeat: bool = not hp_defeats \
+		and not preview_parts.is_empty() \
+		and get_broken_part_count() + preview_parts.size() >= preview_parts_total
+	var defeats_enemy: bool = hp_defeats or preview_part_defeat
 
 	# 5) The turn advances and the phase flips
 	var next_is_night: bool = not is_night
@@ -2242,6 +2502,12 @@ func predict_submit_outcome(assignment: Array, used_slots: Array) -> Dictionary:
 		"night_next_cards": penalty["next_cards"],
 		"night_penalty_immune": penalty_immune,
 		"defeats_enemy": defeats_enemy,
+		"parts_broken": preview_parts,
+		"parts_broken_text": " ".join(preview_parts),
+		"parts_remaining": preview_parts_total - preview_parts.size(),
+		"parts_total": preview_parts_total,
+		"part_defeat": preview_part_defeat,
+		"hp_defeats": hp_defeats,
 		"total_absorbed": word_absorbed + skill_absorbed + night_absorbed,
 		"total_hp_lost": hp_lost,
 		"player_hp_after": hp_pool,

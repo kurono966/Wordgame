@@ -55,6 +55,10 @@ var _low_time_played: bool = false
 @onready var player_hp_bar         : ProgressBar    = $Scroll/Center/VBox/StatusBox/PlayerHPBox/PlayerHPBar
 @onready var enemy_hp_label        : Label          = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyHPLabel
 @onready var enemy_hp_bar          : ProgressBar    = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyHPBar
+# Enemy part destruction: the enemy's name split into its destructible parts,
+# shown right under the HP bar (a RichTextLabel so a broken part can be struck
+# through and recoloured in place).
+@onready var enemy_parts_label     : RichTextLabel  = $Scroll/Center/VBox/StatusBox/EnemyHPBox/EnemyPartsLabel
 @onready var stats_label           : Label          = $Scroll/Center/VBox/StatsLabel
 # Cached stats text without the enemy-skill "DANGER" suffix.
 var _stats_line: String = ""
@@ -187,6 +191,14 @@ const COLOR_GOLD_BORDER  := Color("ffe08a")
 const COLOR_GOLD_BG      := Color("4b3212")
 # Warning orange, used for any card carrying one of the enemy's skill letters.
 const ENEMY_SKILL_COLOR  := Color("ff7a3d")
+
+# Enemy part destruction. A part that is still standing is plain gold; a broken
+# one is struck through in red, so the current body reads at a glance and a
+# destruction can never be missed.
+const PART_COLOR_INTACT  := Color(1.00, 0.90, 0.60, 1.0)
+const PART_COLOR_BROKEN  := Color(1.00, 0.45, 0.40, 1.0)
+const PART_HEX_INTACT    := "ffE699"
+const PART_HEX_BROKEN    := "ff7366"
 
 # Phase Indicators
 const COLOR_DAY   := Color(1.0, 0.9, 0.6, 1.0)  # Warm yellow for day
@@ -621,6 +633,8 @@ func _build_formula_text() -> String:
 		"  in the word, and doubles again per extra letter: 2 letters x2, 3 x4, 4 x8.",
 		"  Enemy is '%s' right now — run your letters off its name." % GameManager.enemy_name.to_upper(),
 		"",
+		_build_enemy_parts_text(),
+		"",
 		"[RED — enemy damage]  final = base x RED multiplier",
 		"  0 red: x1   |   1 red: x1.5   |   2 / 3 / 4 red: x2 / x4 / x8",
 		"",
@@ -650,6 +664,36 @@ func _build_formula_text() -> String:
 		"  %d turns clears the game; player HP 0 is defeat." % GameManager.MAX_TURNS
 	]
 	return "\n".join(lines)
+
+## The enemy-part section of the FORMULAS panel: how the current enemy's name is
+## cut into parts, which are still standing, and what a total destruction pays.
+func _build_enemy_parts_text() -> String:
+	var parts: Array = GameManager.get_enemy_parts()
+	var lines: Array = [
+		"[ENEMY PARTS]  the enemy name is also a BODY you can tear apart",
+		"  The name is sliced left to right into 2-letter parts (a 1-letter tail",
+		"  folds into the one before it), so a name never has more than 4 parts:",
+		"      DRAGON -> DR / AG / ON      SLIME -> SL / IME"
+	]
+	if parts.is_empty():
+		lines.append("  '%s' is too short to cut into parts — this enemy has no body." % GameManager.enemy_name.to_upper())
+		return "\n".join(lines)
+
+	lines.append("  This enemy '%s':  %s" % [
+		GameManager.enemy_name.to_upper(), GameManager.get_enemy_parts_text()])
+	lines.append("    ( x = destroyed,  o = still standing )")
+	lines.append("  Spell a part inside ANY word you submit and that part is destroyed.")
+	lines.append("  The part must appear IN FULL and IN ORDER: DR breaks on DRIFT and on")
+	lines.append("  DRAFT, but never on DEAR (D and R apart) and never on D alone.")
+	lines.append("  One word can break several parts at once — submitting DRAGON breaks all 3.")
+	lines.append("")
+	lines.append("  Destroying EVERY part kills the enemy outright, whatever HP it has left,")
+	lines.append("  and pays 1 RELIC on top of the normal stage reward. Killing it by damage")
+	lines.append("  instead (HP to 0) pays NO relic. The parts never carry over to the next")
+	lines.append("  enemy, which always arrives whole.")
+	lines.append("  Relics held: %d   (they have no effect yet — a relic system is coming)." % GameManager.get_relic_count())
+	return "\n".join(lines)
+
 
 ## The enemy-skill section of the FORMULAS panel: the single skill card, what it
 ## does, where it stands right now, and what is running at this moment.
@@ -736,6 +780,17 @@ func _build_last_calc_text() -> String:
 	if shield_absorbed > 0:
 		lines.append("      enemy shield absorbed %d (only %d reached its HP)" % [
 			shield_absorbed, last_result.get("enemy_hp_damage", 0)])
+
+	# Part destruction: which parts this word broke, and — when it finished the
+	# enemy — the HP it fell on, which is the proof the total was never consulted.
+	var parts_broken: Array = last_result.get("parts_broken", [])
+	if not parts_broken.is_empty():
+		lines.append("      PARTS BROKEN: %s   (%d / %d left)" % [
+			" + ".join(parts_broken), int(last_result.get("parts_remaining", 0)),
+			int(last_result.get("parts_total", 0))])
+	if bool(last_result.get("part_defeat", false)):
+		lines.append("      *** TOTAL DESTRUCTION ***  every part shattered, enemy fell on %d HP, +1 RELIC" % [
+			int(last_result.get("enemy_hp_at_part_defeat", 0))])
 
 	return "\n".join(lines)
 
@@ -1870,6 +1925,18 @@ func _build_preview_text(plan: Dictionary, word: String) -> String:
 		parts.append("NAME RUN x%d (%d letters of '%s' in a row)" % [
 			name_mult, int(plan.get("name_run", 0)), GameManager.enemy_name.to_upper()])
 
+	# Part destruction: spelling a chunk of the enemy's name shatters it, and
+	# shattering the last one kills the enemy outright. Shown here so the player
+	# can see a coming total destruction before committing the word.
+	var preview_parts: Array = plan.get("parts_broken", [])
+	if not preview_parts.is_empty():
+		if bool(plan.get("part_defeat", false)):
+			parts.append("*** BREAKS ALL PARTS: %s — enemy dies on %d HP + RELIC ***" % [
+				" + ".join(preview_parts), int(plan.get("enemy_hp_after", 0))])
+		else:
+			parts.append("PART BREAK %s (%d left)" % [
+				" + ".join(preview_parts), int(plan.get("parts_remaining", 0))])
+
 	# Enemy side. The enemy's AEGIS shield eats the hit first, so both numbers are
 	# shown: what you swung, and what actually reached its HP.
 	var final_damage: int = int(plan.get("final_damage", 0))
@@ -2115,11 +2182,59 @@ func _refresh_hp_display() -> void:
 		e_text += "  [ENEMY SHIELD %d]" % GameManager.get_enemy_shield()
 	enemy_hp_label.text = e_text
 	enemy_hp_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.85, 1.0))
+	_refresh_enemy_parts_display()
 	_refresh_enemy_skill_display()
 
 	# Center the pivot so hit-shake animations scale from the middle
 	player_hp_label.pivot_offset = player_hp_label.size / 2.0
 	enemy_hp_label.pivot_offset = enemy_hp_label.size / 2.0
+
+
+# ── Enemy parts (部位) ────────────────────────────────────────────────────────
+# Draws the current enemy's body directly under its HP bar: the name sliced into
+# parts, with the destroyed ones struck through in red. This lives INSIDE
+# EnemyHPBox rather than as its own row on the main VBox on purpose — that VBox
+# already fills the 800px window exactly (see _refresh_enemy_skill_display), so
+# a new row would push the Workbench off screen, while EnemyHPBox has spare
+# height beside the much taller OPBox.
+#
+# A RichTextLabel is used rather than a plain Label because a struck-through,
+# recoloured part is the clearest possible "this one is gone", and BBCode is the
+# only way to get that out of a single-line control.
+func _refresh_enemy_parts_display() -> void:
+	var parts: Array = GameManager.get_enemy_parts()
+	if parts.is_empty():
+		# A name too short to cut into parts has no body to show. The label is
+		# hidden rather than emptied so the layout never shifts mid-fight.
+		enemy_parts_label.text = ""
+		enemy_parts_label.visible = false
+		return
+	enemy_parts_label.visible = true
+	var chunks: Array = []
+	for part: Dictionary in parts:
+		var text: String = str(part.get("text", "?"))
+		if bool(part.get("broken", false)):
+			chunks.append("[color=#%s][s]%s[/s][/color]" % [PART_HEX_BROKEN, text])
+		else:
+			chunks.append("[color=#%s]%s[/color]" % [PART_HEX_INTACT, text])
+	enemy_parts_label.text = "PARTS  %s   [color=#%s](%d / %d intact)[/color]" % [
+		" ".join(chunks), PART_HEX_INTACT,
+		parts.size() - GameManager.get_broken_part_count(), parts.size()]
+	# The tooltip spells the rule out, since a one-line strip cannot.
+	enemy_parts_label.tooltip_text = "ENEMY PARTS — '%s' is cut into these parts.\n" \
+		% GameManager.get_enemy_name().to_upper() \
+		+ "Spell a part inside ANY word you submit to destroy it.\n" \
+		+ "A part must appear in full and in order (DR breaks on DRIFT, not on DEAR).\n" \
+		+ "Destroy EVERY part and the enemy falls with all its HP left — and pays a RELIC.\n" \
+		+ "A broken part is never restored, and the next enemy is always whole."
+
+
+## Flashes the parts line when a part is destroyed, so a break that happened deep
+## in a long animation is still impossible to miss.
+func _flash_broken_parts() -> void:
+	var tween := create_tween()
+	tween.tween_property(enemy_parts_label, "modulate", Color(1.6, 0.6, 0.6, 1.0), 0.1)
+	tween.tween_property(enemy_parts_label, "modulate", Color.WHITE, 0.45)
 
 
 # ── Enemy skills ─────────────────────────────────────────────────────────────
@@ -2519,6 +2634,40 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 			_animate_player_hp(disp_player_hp, disp_player_hp + heal_amount, player_max, 0.5)
 			disp_player_hp += heal_amount
 		await get_tree().create_timer(0.9).timeout
+
+	# ── Step 3c: Part destruction ──
+	# The word is read against the enemy's BODY as well as its HP. Broken parts
+	# are announced before the stage clear, so when the last one falls the player
+	# can see exactly which part finished the enemy.
+	var parts_broken: Array = result.get("parts_broken", [])
+	if not parts_broken.is_empty():
+		_play_score_up_sound()
+		_animate_enemy_hit()
+		_refresh_enemy_parts_display()
+		_flash_broken_parts()
+		_show_step_message("PART BREAK!  %s  destroyed  (%d part(s) left)" % [
+			" + ".join(parts_broken), int(result.get("parts_remaining", 0))
+		], PART_COLOR_INTACT)
+		await get_tree().create_timer(0.9).timeout
+
+	# ── Step 3d: TOTAL DESTRUCTION ──
+	# Every part gone is a defeat in its own right, distinct from a plain kill:
+	# the enemy falls on whatever HP it had left, and it pays a RELIC. Narrated
+	# separately so it can never be mistaken for the HP bar reaching zero.
+	if result.get("part_defeat", false):
+		var relic: Dictionary = result.get("relic", {})
+		_play_score_up_sound()
+		_animate_enemy_hit()
+		_show_step_message("*** TOTAL DESTRUCTION! ***  Every part of %s shattered — it falls with %d HP still standing!" % [
+			str(result.get("enemy_name_before", "?")).to_upper(),
+			int(result.get("enemy_hp_at_part_defeat", 0))
+		], PART_COLOR_BROKEN)
+		await get_tree().create_timer(1.1).timeout
+		_show_step_message("RELIC OBTAINED!  %s  (relics held: %d)" % [
+			str(relic.get("desc", "A relic torn from the wreckage.")),
+			int(result.get("relic_count", 0))
+		], REWARD_COLOR_TITLE)
+		await get_tree().create_timer(1.0).timeout
 
 	# ── Step 4: Stage clear (next stage starts, hand reset) ──
 	if result.get("enemies_defeated_delta", 0) > 0:
