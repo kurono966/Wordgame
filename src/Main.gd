@@ -10,6 +10,7 @@ extends Control
 @onready var workbench_container   : HBoxContainer  = $Scroll/Center/VBox/WorkbenchPanel/WorkbenchContainer
 @onready var clear_button          : Button         = $Scroll/Center/VBox/ControlRow/ClearButton
 @onready var submit_button         : Button         = $Scroll/Center/VBox/ControlRow/SubmitButton
+@onready var retry_button          : Button         = $Scroll/Center/VBox/GameOverButtonRow/RetryButton
 # ══════════════════════════════════════════════════════════════════════════════
 # ── Gameplay timer (paused while the formulas dialog is open) ─────────────────
 # ══════════════════════════════════════════════════════════════════════════════
@@ -215,6 +216,7 @@ func _ready() -> void:
 	piles_button.pressed.connect(_on_piles_pressed)
 	piles_close_button.pressed.connect(_close_piles_dialog)
 	reward_deck_button.pressed.connect(_open_piles_dialog)
+	retry_button.pressed.connect(_on_retry_pressed)
 
 	_setup_workbench_drop_target()
 	JishoClient.lookup_finished.connect(_on_jisho_lookup_finished)
@@ -299,6 +301,7 @@ func _style_global_ui() -> void:
 	_style_button(reward_deck_button, Color("243c71"), Color("7eacff"), Color("e4efff"))
 	_style_button(formula_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
 	_style_button(piles_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
+	_style_button(retry_button, Color("3b2c67"), Color("a88cff"), Color("f0eaff"))
 
 	message_label.add_theme_color_override("font_outline_color", Color("07101f"))
 	message_label.add_theme_constant_override("outline_size", 3)
@@ -3009,6 +3012,8 @@ func _show_game_over() -> void:
 	workbench_panel.visible  = false
 	clear_button.visible     = false
 	submit_button.visible    = false
+	formula_button.visible   = false
+	piles_button.visible     = false
 	$Scroll/Center/VBox/SlotsSectionLabel.visible     = false
 	$Scroll/Center/VBox/HandSectionLabel.visible      = false
 	$Scroll/Center/VBox/WorkbenchSectionLabel.visible = false
@@ -3018,6 +3023,7 @@ func _show_game_over() -> void:
 	meaning_label.visible                              = false
 	definition_label.visible                           = false
 	burn_dialog.visible                               = false
+	$Scroll/Center/VBox/GameOverButtonRow.visible      = true
 
 	var outcome: String = GameManager.get_game_outcome()
 	var title: String = "GAME OVER"
@@ -3041,3 +3047,33 @@ func _show_game_over() -> void:
 	message_label.add_theme_font_size_override("font_size", 32)
 	message_label.add_theme_color_override("font_color", title_color)
 	message_label.custom_minimum_size = Vector2(400, 240)
+
+
+func _on_retry_pressed() -> void:
+	GameManager.reset_game()
+	_restore_game_ui()
+	_refresh_ui()
+
+
+func _restore_game_ui() -> void:
+	slot_container.visible   = true
+	hand_container.visible   = true
+	deck_grave_label.visible = true
+	workbench_panel.visible  = true
+	clear_button.visible     = true
+	submit_button.visible    = true
+	formula_button.visible   = true
+	piles_button.visible     = true
+	$Scroll/Center/VBox/SlotsSectionLabel.visible     = true
+	$Scroll/Center/VBox/HandSectionLabel.visible      = true
+	$Scroll/Center/VBox/WorkbenchSectionLabel.visible = true
+	stats_label.visible                               = true
+	op_panel.visible                                   = true
+	preview_label.visible                              = true
+	meaning_label.visible                              = true
+	definition_label.visible                           = true
+	$Scroll/Center/VBox/GameOverButtonRow.visible      = false
+
+	message_label.text = ""
+	message_label.add_theme_font_size_override("font_size", 13)
+	message_label.custom_minimum_size = Vector2(900, 20)
