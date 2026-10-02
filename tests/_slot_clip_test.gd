@@ -26,7 +26,9 @@ func _ready() -> void:
 
 	var fails: int = 0
 	var reels: Array = main.get("slot_reels")
-	var slot_w: float = main.SLOT_CARD_W
+	# The reel width is measured from the active font at build time, so the test
+	# asks the scene for it rather than assuming a constant.
+	var slot_w: float = main.reel_card_w
 	var vbox := main.get_node("Scroll/Center/VBox")
 
 	# ===== 1. No card overflows the window that clips it =====================

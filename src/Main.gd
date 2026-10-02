@@ -11,6 +11,63 @@ extends Control
 @onready var clear_button          : Button         = $Scroll/Center/VBox/ControlRow/ClearButton
 @onready var submit_button         : Button         = $Scroll/Center/VBox/ControlRow/SubmitButton
 # ══════════════════════════════════════════════════════════════════════════════
+# ── Font-metric driven layout ─────────────────────────────────────────────────
+# Card and button sizes were hard-coded in pixels while the font came from
+# project.godot's theme/custom_font. Swapping the font changes the line height
+# (ascent + descent) and the width of every glyph, so a size that was fine for
+# one face overflowed (or left a hole) for another -- text spilled out of cards,
+# the reel window no longer showed exactly three rows, and reward buttons grew
+# taller than their frame.
+#
+# These helpers measure the font that is ACTUALLY in use, so a layout built with
+# them stays correct whatever face is configured. They deliberately measure
+# rather than assume: a Label with clip_text reports a minimum width of 1px, so
+# the only reliable width is Font.get_string_size().
+
+## Height of one line of text in the current font at `font_size`.
+func _line_height(font_size: int) -> float:
+	var f: Font = get_theme_font("font")
+	if f == null:
+		return float(font_size)
+	return f.get_height(font_size)
+
+
+## Width of `text` in the current font at `font_size`.
+func _text_width(text: String, font_size: int) -> float:
+	var f: Font = get_theme_font("font")
+	if f == null:
+		return float(text.length() * font_size)
+	return f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size).x
+
+
+## A size that fits `lines` lines of `font_size` text plus `pad` pixels of
+## chrome (margins + borders), so nothing is clipped no matter the font.
+func _fit_height(lines: int, font_size: int, pad: float) -> float:
+	return _line_height(font_size) * float(lines) + pad
+
+
+## A size that fits `text` at `font_size` plus horizontal padding.
+func _fit_width(text: String, font_size: int, pad: float) -> float:
+	return _text_width(text, font_size) + pad
+
+
+## The width the status column occupies, used to keep labels inside the play area.
+func _column_width() -> float:
+	return 960.0
+
+
+## The distance the reel strip must travel to advance by exactly one card.
+## Read from a live card when one exists, so the scroll animation stays in step
+## with whatever height the font produced; otherwise measured from the font.
+func _reel_step_distance() -> float:
+	if not slot_reels.is_empty():
+		var card_views: Array = slot_reels[0].get("card_views", [])
+		if not card_views.is_empty():
+			var panel: Control = card_views[0]["panel"]
+			return panel.size.y + SLOT_SEP
+	return _line_height(24) + _line_height(10) + 6.0 + SLOT_SEP
+
+
 # ── Gameplay timer (paused while the formulas dialog is open) ─────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 var _turn_timer: SceneTreeTimer = null
@@ -105,19 +162,23 @@ var _op_tween: Tween = null
 var _looked_up_word: String = ""
 
 # Card dimensions (all 3 cards are completely visible on screen)
-# SLOT_CARD_W must fit the WIDEST sub-label a reel card can ever show, otherwise
-# the label's minimum size pushes the card wider than the clipping window and
-# `window.clip_contents` silently cuts the right edge off. The worst case is the
-# ACTIVE row carrying a long skill tag, e.g. "★ ACTIVE (10dmg)  ⚠ HAND DOWN"
-# (129px) plus the card's own 2x5 content margin and 2x2 border = 143px.
-# 152px leaves headroom over that worst case. _slot_clip_test.gd measures the
-# real text every run and fails if this is ever too narrow again.
-const SLOT_CARD_W := 152.0
-const SLOT_CARD_H := 58.0
+# The reel card's width and height are MEASURED from the active font at build
+# time (see _build_slot_reels) rather than fixed. A fixed width was safe for one
+# face and clipped for another: `window.clip_contents` silently cuts the right
+# edge off, and a Label with clip_text reports a minimum width of 1px, so Godot
+# never complains on its own. _slot_clip_test.gd re-measures the real text every
+# run and fails if it is ever too narrow again.
+# SLOT_CARD_W is the reel card's width. It is derived at build time from the
+# widest string the reel can print (see _build_slot_reels) so a wider face does
+# not get clipped. This constant is only the fallback / minimum.
+const SLOT_CARD_W_MIN := 152.0
+# Worst-case reel sub-label: the ACTIVE row carrying the longest skill tag.
+const _REEL_WORST_SUB := "★ ACTIVE (99dmg)  ⚠ NIGHTMARE"
 const SLOT_SEP    := 8.0
 const WINDOWED_SIZE := Vector2i(1280, 800)
-# Exactly 3 cards + 2 gaps visible
-const REEL_WINDOW_H := (SLOT_CARD_H * 3.0) + (SLOT_SEP * 2.0)
+# reel_window_h is measured from the font at build time; see _build_slot_reels.
+var reel_card_w: float = SLOT_CARD_W_MIN
+var reel_window_h: float = 0.0
 
 # Color Palette
 const BG_CURRENT_SLOT := Color(0.25, 0.21, 0.08, 1.0)
@@ -281,12 +342,29 @@ func _style_global_ui() -> void:
 
 	message_label.add_theme_color_override("font_outline_color", Color("07101f"))
 	message_label.add_theme_constant_override("outline_size", 3)
+	# Wrap rather than grow: a wider face must not push the message past the
+	# play area, and a multi-line game-over summary must not run off-screen.
+	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 	# Submit preview: outlined like the message label so it stays readable over
 	# the procedural background, and recoloured per state in _refresh_submit_preview
 	preview_label.add_theme_color_override("font_outline_color", Color("07101f"))
 	preview_label.add_theme_constant_override("outline_size", 3)
 	preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_IDLE)
+	# Preview / meaning / definition live in a fixed-height status column and must
+	# stay on screen. A wide/tall face must not (a) add wrapped lines that push the
+	# column past the window, or (b) widen the column past the play area.
+	# AUTOWRAP_OFF + clip_text keeps each label to exactly one line of whatever
+	# height the font gives, and the width is capped to the column.
+	var status_width: float = _column_width()
+	for lbl: Label in [preview_label, meaning_label, definition_label]:
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+		lbl.clip_text = true
+		lbl.custom_minimum_size = Vector2(0.0, _line_height(lbl.get_theme_font_size("font_size")))
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.custom_minimum_size.x = status_width
 
 	# Word meaning (Jisho): outlined like the other status lines so it stays
 	# readable over the procedural background
@@ -544,7 +622,9 @@ func _format_card_counts(cards: Array) -> String:
 func _build_piles_card_button(entry: Dictionary) -> Button:
 	var card: Dictionary = entry.get("card", {})
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(78, 100)
+	# Sized from the font (letter line + damage line + chrome) like the other
+	# card cells, so the read-only pile grid survives a font swap too.
+	button.custom_minimum_size = Vector2(78, _line_height(30) * 2.0 + 12.0)
 	_style_burn_card_button(button, str(card.get("color", "red")))
 	button.disabled = true  # Cards in piles are read-only
 
@@ -1119,7 +1199,10 @@ func _ensure_workbench_caret() -> void:
 	if _workbench_caret == null:
 		_workbench_caret = ColorRect.new()
 		_workbench_caret.color = Color(1.0, 0.85, 0.30, 0.95)
-		_workbench_caret.custom_minimum_size = Vector2(5, 64)
+		# Matches the hand card height so the marker lines up with the cards it
+		# sits between whatever height the font produced.
+		_workbench_caret.custom_minimum_size = Vector2(5,
+			_line_height(32) + _line_height(12) + 6.0)
 		_workbench_caret.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_workbench_caret.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if _workbench_caret.get_parent() != workbench_container:
@@ -1130,9 +1213,18 @@ func _ensure_workbench_caret() -> void:
 ## instead of letting a long label stretch it. Reel cards pass `true` because they
 ## live inside a fixed-size clipping window, so an overflowing label would be
 ## cut off at the edge; hand cards leave it off so their text can grow freely.
+##
+## `h` is NOT the panel height when it is <= 0: the panel is then sized from the
+## font metrics (two lines at `letter_size` / `sub_size` plus the chrome), which
+## is what makes the layout survive a font swap. Callers that pass an explicit
+## height keep it, so a fixed reel window still behaves as before.
 func _create_card_view(w: float, h: float, letter_size: int, sub_size: int, clip_text: bool = false) -> Dictionary:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(w, h)
+	var chrome: float = 6.0   # content margins (3 top + 3 bottom) + 2px border
+	var needed_h: float = _line_height(letter_size) + _line_height(sub_size) + chrome
+	# Never let a label spill out of the card: grow to fit the real line heights,
+	# but respect an explicit height the caller asked for.
+	panel.custom_minimum_size = Vector2(w, maxf(h, needed_h) if h <= 0.0 else h)
 	panel.clip_contents = false
 
 	var sb := StyleBoxFlat.new()
@@ -1185,6 +1277,16 @@ func _create_card_view(w: float, h: float, letter_size: int, sub_size: int, clip
 ## so the player can advance that one reel for OP without touching the others.
 func _build_slot_reels() -> void:
 	slot_reels.clear()
+	# Measure the reel card from the font BEFORE building anything, then size the
+	# 3-row clipping window and the width from those measurements. Hard-coding
+	# SLOT_CARD_W / SLOT_CARD_H here is what let a font swap clip a row or the
+	# right-hand edge.
+	var reel_card_h: float = _line_height(24) + _line_height(10) + 6.0
+	# Width: the widest sub-label the reel can print, plus the card chrome
+	# (2x5 content margin + 2x2 border = 14), floored at the historical minimum.
+	var reel_w: float = maxf(SLOT_CARD_W_MIN, _text_width(_REEL_WORST_SUB, 10) + 14.0)
+	reel_card_w = reel_w
+	reel_window_h = (reel_card_h * 3.0) + (SLOT_SEP * 2.0)
 	for s in range(GameManager.NUM_SLOTS):
 		# Column wrapper holding the reel window and its SPIN button. The button is
 		# deliberately slim so the reels still fit the 800px-tall window.
@@ -1195,13 +1297,13 @@ func _build_slot_reels() -> void:
 
 		# Window container: clips children to show exactly 3 card rows
 		var window := Control.new()
-		window.custom_minimum_size = Vector2(SLOT_CARD_W, REEL_WINDOW_H)
+		window.custom_minimum_size = Vector2(reel_card_w, reel_window_h)
 		window.clip_contents = true
 		column.add_child(window)
 
 		# Moving strip of cards inside window
 		var strip := VBoxContainer.new()
-		strip.custom_minimum_size = Vector2(SLOT_CARD_W, 0)
+		strip.custom_minimum_size = Vector2(reel_card_w, 0)
 		strip.add_theme_constant_override("separation", int(SLOT_SEP))
 		strip.position = Vector2(0, 0)
 		window.add_child(strip)
@@ -1215,13 +1317,13 @@ func _build_slot_reels() -> void:
 		for _i in range(4):
 			# clip_text = true: these cards live inside a fixed-width clipping
 			# window, so a long label must never stretch them past that window.
-			var cv: Dictionary = _create_card_view(SLOT_CARD_W, SLOT_CARD_H, 24, 10, true)
+			var cv: Dictionary = _create_card_view(reel_card_w, reel_card_h, 24, 10, true)
 			strip.add_child(cv["panel"])
 			card_views.append(cv)
 
 		# SPIN button: advances THIS reel by one step for OP
 		var spin_btn := Button.new()
-		spin_btn.custom_minimum_size = Vector2(SLOT_CARD_W, 20)
+		spin_btn.custom_minimum_size = Vector2(reel_card_w, _fit_height(1, 11, 8.0))
 		var caption: Array = _spin_button_caption()
 		spin_btn.text = str(caption[0])
 		spin_btn.tooltip_text = str(caption[1])
@@ -1242,7 +1344,7 @@ func _build_slot_reels() -> void:
 		if s < GameManager.NUM_SLOTS - 1:
 			var gap_col := VBoxContainer.new()
 			gap_col.alignment = BoxContainer.ALIGNMENT_CENTER
-			gap_col.custom_minimum_size = Vector2(48, REEL_WINDOW_H)
+			gap_col.custom_minimum_size = Vector2(48, reel_window_h)
 			slot_container.add_child(gap_col)
 
 			var gap_lbl := Label.new()
@@ -1256,7 +1358,8 @@ func _build_slot_reels() -> void:
 func _build_hand_cards() -> void:
 	hand_card_views.clear()
 	for _i in range(GameManager.HAND_SIZE):
-		var card_view: Dictionary = _create_card_view(96, 76, 32, 12)
+		# h <= 0 -> the card sizes itself from the font metrics.
+		var card_view: Dictionary = _create_card_view(96, 0.0, 32, 12)
 		hand_container.add_child(card_view["panel"])
 		hand_card_views.append(card_view)
 
@@ -1539,7 +1642,7 @@ func _on_spin_pressed(slot_idx: int) -> void:
 		return
 
 	_play_card_swap_sound()
-	var step_dist: float = SLOT_CARD_H + SLOT_SEP
+	var step_dist: float = _reel_step_distance()
 	var strip: VBoxContainer = slot_reels[slot_idx]["strip"]
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_QUAD)
@@ -1559,7 +1662,7 @@ func _on_spin_pressed(slot_idx: int) -> void:
 func animate_slot_rotations(used_slots: Array, on_complete: Callable) -> void:
 	if not used_slots.is_empty():
 		_play_card_swap_sound()
-	var step_dist: float = SLOT_CARD_H + SLOT_SEP # Scroll exactly 1 card distance
+	var step_dist: float = _reel_step_distance() # Scroll exactly 1 card distance
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_QUAD)
@@ -2623,7 +2726,11 @@ func show_reward_choice() -> void:
 	for i in range(options.size()):
 		var reward: Dictionary = options[i]
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(220, 268)
+		# Tall enough for the tallest reward: icon (30) + title (19) + a wrapped
+		# detail block (13). Measured from the font so a taller face is not cut
+		# off. The width stays fixed because the dialog lays three across.
+		var btn_h: float = _line_height(30) + _line_height(19) + (_line_height(13) * 6.0) + 24.0
+		button.custom_minimum_size = Vector2(220, btn_h)
 		button.text = ""
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_style_reward_button(button)
@@ -2695,7 +2802,9 @@ func _build_reward_card_view(card: Dictionary, is_burn: bool) -> Control:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(104, 128)
+	# Letter + damage lines measured from the font, so the miniature card keeps
+	# its proportions when the face changes.
+	panel.custom_minimum_size = Vector2(104, _line_height(30) * 2.0 + 12.0)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
 	var color_name: String = str(card.get("color", "red"))
@@ -2855,8 +2964,12 @@ func _build_burn_card_button(entry: Dictionary) -> Button:
 	var card_id: String = str(entry.get("id", ""))
 	var is_special: bool = GameManager.has_special_ability(card)
 	var button := Button.new()
-	# A special needs two extra lines (its name and its price), so the cell grows.
-	button.custom_minimum_size = Vector2(78, 148 if is_special else 114)
+	# Height is measured from the font: one letter line + one damage line, plus
+	# a special's two extra lines (its name and its OP price), plus the 12px of
+	# button chrome. Fixed pixels here used to clip tall or loose faces.
+	var lines: int = 4 if is_special else 2
+	var card_h: float = _line_height(30) * float(lines) + 12.0
+	button.custom_minimum_size = Vector2(78, card_h)
 	_style_burn_card_button(button, str(card.get("color", "red")))
 	button.pressed.connect(_on_burn_card_picked.bind(card_id))
 

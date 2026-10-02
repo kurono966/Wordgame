@@ -21,26 +21,29 @@ grow_vertical = 2
 expand_mode = 1
 stretch_mode = 0
 
-[node name="Scroll" type="Control" parent="."]
+[node name="Scroll" type="ScrollContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+horizontal_scroll_mode = 0
 
-[node name="Center" type="CenterContainer" parent="Scroll"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="Center" type="MarginContainer" parent="Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
 
 [node name="VBox" type="VBoxContainer" parent="Scroll/Center"]
 custom_minimum_size = Vector2(960, 0)
 layout_mode = 2
 theme_override_constants/separation = 6
+alignment = 0
 
 [node name="HeaderBox" type="HBoxContainer" parent="Scroll/Center/VBox"]
 layout_mode = 2
