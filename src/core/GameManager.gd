@@ -455,6 +455,10 @@ func confirm_burn_card(card_id: String) -> Dictionary:
 
 	# Reset shield when claiming a reward after defeating an enemy
 	shield = 0
+	# A relic shield is a permanent floor, so it is re-derived here too — this is
+	# where a BURN A CARD reward actually settles (choose_reward() returns early
+	# while the player is still picking), so without this the floor would be lost.
+	_reapply_relic_buffs()
 
 	pending_burn_index = -1
 	pending_reward_choice = false
@@ -553,7 +557,11 @@ func choose_reward(index: int) -> Dictionary:
 				card.get("letter", "?"), int(card.get("damage", 0)),
 				str(card.get("color", "red")).to_upper(), special_note, deck.size()]
 		"remove_card":
-			# Wait for the player to pick which card to burn.
+			# Wait for the player to pick which card to burn. This RETURNS EARLY —
+			# the reward is not settled until confirm_burn_card() runs — so the
+			# shield reset and the relic re-apply below are deliberately skipped
+			# here, exactly as they always have been for a two-step reward. The
+			# shield only needs re-deriving once, when the reward truly settles.
 			pending_burn_index = index
 			result["needs_card"] = true
 			result["message"] = "Choose a card to burn from your deck."
@@ -575,6 +583,10 @@ func choose_reward(index: int) -> Dictionary:
 			# the reward is felt immediately (previously this only added 5 to
 			# current HP, pushing the player ABOVE the old ceiling and making
 			# every later heal subtract HP).
+			#
+			# Tracked in reward_max_hp_bonus so _reapply_relic_buffs() can rebuild
+			# the ceiling from base + reward + relic without double-counting.
+			reward_max_hp_bonus += MAX_HP_REWARD_GAIN
 			player_max_hp += MAX_HP_REWARD_GAIN
 			player_hp = mini(player_hp + MAX_HP_REWARD_GAIN, player_max_hp)
 			result["message"] = "Max HP is now %d (+%d)." % [player_max_hp, MAX_HP_REWARD_GAIN]
@@ -604,6 +616,9 @@ func choose_reward(index: int) -> Dictionary:
 	# reward keeps its own value, otherwise it would cancel itself out.
 	if not keep_shield:
 		shield = 0
+	# ...but a relic shield is a permanent floor, so it comes straight back. The
+	# player still loses the shield the fight earned, just not what they own.
+	_reapply_relic_buffs()
 
 	pending_reward_choice = false
 	reward_options = []
@@ -656,10 +671,15 @@ func reset_game() -> void:
 	rewards_taken = 0
 	pending_reward_choice = false
 	pending_burn_index = -1
-	# A run starts with no relics. They are earned per destroyed enemy, so the
-	# tally has to clear with the rest of the run state.
+	# A run starts with no relics. They are earned per destroyed enemy, so every
+	# relic total has to clear with the rest of the run state.
 	relics.clear()
 	relics_owned = 0
+	relic_hp_bonus = 0
+	relic_shield_bonus = 0
+	relic_hand_bonus = 0
+	relic_op_bonus = 0
+	reward_max_hp_bonus = 0
 	slot_in_use = [false, false, false]
 	hand_redraw_pending = false
 	spins_this_turn = 0
@@ -944,30 +964,123 @@ func get_enemy_parts_text() -> String:
 
 
 # ─── Relics ───────────────────────────────────────────────────────────────────
-# PLACEHOLDER. The game has no relic system yet, so a relic is currently just a
-# record: it is never spent, never shown in a panel, and changes no stat. The
-# one thing it does do is survive the stage change, so a future relic system can
-# read relics_owned / get_relics() and decide what the thing actually does.
+# Destroying an enemy through its parts pays a RELIC, and a relic is a PERMANENT
+# buff that lasts for the rest of the run — the harder route to a defeat is
+# worth something beyond the stage reward it is paid alongside.
+#
+# WHY THE TOTALS ARE STORED SEPARATELY: several of the stats a relic touches are
+# WIPED on every stage change — _clear_enemy_skills() resets the hand limit to
+# HAND_SIZE, and choose_reward() drops the shield to 0. Adding straight into
+# those variables would silently erase the buff at the next stage clear. So the
+# running totals live in `relic_*`, and _reapply_relic_buffs() re-derives the
+# live stats from base + rewards + relics wherever one of them could be reset.
+# The totals are the single source of truth; the player-facing variables are
+# only ever a mirror of them.
 #
 # Deliberately kept OUT of roll_rewards() / choose_reward(): the existing
-# three-option reward choice is untouched, and a relic is an EXTRA on top of it
-# for a part destruction, never a replacement for the normal stage reward.
-var relics_owned: int = 0
+# three-option reward choice is untouched, and a relic is an EXTRA on top of it,
+# never a replacement for the normal stage reward.
+const RELIC_MAX_HP: int = 6         # per relic: +6 to the HP ceiling
+const RELIC_SHIELD: int = 3        # per relic: minimum shield carried into a fight
+const RELIC_HAND: int = 1          # per relic: +1 card in hand
+const RELIC_OP: int = 4            # per relic: +4 operation points, granted once
 
-## Grants one relic for destroying `enemy` through its parts. Returns the relic
-## so the caller can narrate it. Only grant_relic() should create relics.
+## How many relics have been taken, and the running total of each permanent buff.
+var relics_owned: int = 0
+var relic_hp_bonus: int = 0
+var relic_shield_bonus: int = 0
+var relic_hand_bonus: int = 0
+var relic_op_bonus: int = 0
+## Max HP granted by the "IRON WILL" reward, kept apart from the relic bonus so
+## _reapply_relic_buffs() can rebuild the ceiling without double-counting it.
+var reward_max_hp_bonus: int = 0
+
+## Grants one relic for destroying `enemy` through its parts and applies its
+## permanent buff immediately. Each relic rolls ONE kind of buff, so a long run
+## sees variety and no single stat runs away. Returns the relic so the caller
+## can narrate it. Only grant_relic() should create relics.
 func grant_relic(enemy: String, parts: Array) -> Dictionary:
 	relics_owned += 1
+	var kind: String = String(["hp", "shield", "hand", "op"].pick_random())
+	var label: String = ""
+	var heal: int = 0
+	var op_gain: int = 0
+	match kind:
+		"hp":
+			relic_hp_bonus += RELIC_MAX_HP
+			label = "+%d MAX HP" % RELIC_MAX_HP
+			heal = RELIC_MAX_HP
+		"shield":
+			relic_shield_bonus += RELIC_SHIELD
+			label = "+%d shield at the start of every fight" % RELIC_SHIELD
+		"hand":
+			relic_hand_bonus += RELIC_HAND
+			label = "+%d card in hand" % RELIC_HAND
+		"op":
+			relic_op_bonus += RELIC_OP
+			label = "+%d OP now" % RELIC_OP
+			op_gain = RELIC_OP
 	var relic: Dictionary = {
 		"id": "relic_%d" % relics_owned,
 		"name": "RELIC",
-		"desc": "Salvaged from %s after every one of its parts was destroyed." % enemy.to_upper(),
+		"kind": kind,
+		"label": label,
+		"desc": "Torn from %s after every one of its parts was destroyed. %s, permanently." % [
+			enemy.to_upper(), label],
 		"from_enemy": enemy.to_upper(),
 		"parts": parts.duplicate(),
 		"stage": stage
 	}
 	relics.append(relic)
+	_reapply_relic_buffs()
+	# Heal for the HP the ceiling just gained, so the extra HP is felt this fight
+	# rather than only mattering once the current HP has been spent down.
+	player_hp = mini(player_hp + heal, player_max_hp)
+	# OP is a pure lump sum, not a floor: the player keeps every OP they have
+	# ever earned (the game never spends it on damage) and the relic adds to it.
+	# This is deliberately outside _reapply_relic_buffs() so re-deriving the
+	# totals after a stage change can never hand out the same OP twice.
+	operation_points += op_gain
 	return relic
+
+
+## Re-derives the live stats from the base game value, plus the "IRON WILL" reward,
+## plus the relic totals. Called wherever a stage change or a reward could have
+## reset one of the underlying stats, so a relic buff is never silently lost.
+func _reapply_relic_buffs() -> void:
+	player_max_hp = PLAYER_MAX_HP + reward_max_hp_bonus + relic_hp_bonus
+	# Shield is a FLOOR, not a grant: the player always walks into a fight with at
+	# least the shield their relics bought, and can still gain more from words.
+	shield = maxi(shield, relic_shield_bonus)
+	# The hand limit is the enemy skills' stat, so the relic rides on top of the
+	# base size; HAND DOWN still shrinks it from here exactly as before.
+	#
+	# Assigned, not max()'d: _reapply_relic_buffs() runs right after a reset that
+	# has already put the hand limit back to its base, so a plain assignment is
+	# correct AND is the only way a reduced bonus can lower the limit again. It
+	# is never called while HAND DOWN is in force — that effect is applied later,
+	# in _apply_skill_card_night(), from this same value.
+	hand_limit = HAND_SIZE + relic_hand_bonus
+	# OP is deliberately NOT re-applied here: it is a one-time lump sum handed out
+	# by grant_relic(), not a floor, so re-deriving the totals must never pay it
+	# out a second time. relic_op_bonus is still tracked, for the UI summary.
+
+
+## The one-line summary of every permanent buff held, for the UI.
+func get_relic_bonus_text() -> String:
+	if relics_owned == 0:
+		return "none yet"
+	var parts: Array = []
+	if relic_hp_bonus > 0:
+		parts.append("+%d max HP" % relic_hp_bonus)
+	if relic_shield_bonus > 0:
+		parts.append("+%d shield/fight" % relic_shield_bonus)
+	if relic_hand_bonus > 0:
+		parts.append("+%d hand" % relic_hand_bonus)
+	if relic_op_bonus > 0:
+		parts.append("+%d OP granted" % relic_op_bonus)
+	return ", ".join(parts)
+
 
 func get_relics() -> Array:
 	return relics
@@ -1139,6 +1252,9 @@ func _clear_enemy_skills() -> void:
 	enemy_night_tax = 0
 	hand_limit = HAND_SIZE
 	enemy_skills.clear()
+	# hand_limit was just reset to the base size, which would silently drop any
+	# relic hand bonus, so the permanent buffs are re-derived here too.
+	_reapply_relic_buffs()
 
 
 ## The skill bound to `letter`, or an empty dictionary when the enemy has no

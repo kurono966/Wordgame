@@ -371,8 +371,11 @@ func _check_skills_unaffected(gm: Node) -> int:
 		gm.execute_assignment(w, _word(w))
 	fails += _check(gm.get_enemy_shield() == 0,
 		"a part destruction wipes the fallen enemy's shield like a normal kill")
-	fails += _check(gm.get_hand_limit() == gm.HAND_SIZE,
-		"a part destruction restores the hand limit like a normal kill")
+	# The hand limit returns to ITS base, which is HAND_SIZE plus whatever a
+	# relic hand bonus is holding — a total destruction grants a relic, so this
+	# cannot assume a bare HAND_SIZE.
+	fails += _check(gm.get_hand_limit() == gm.HAND_SIZE + gm.relic_hand_bonus,
+		"a part destruction restores the hand limit to its base (%d)" % gm.get_hand_limit())
 	return fails
 
 

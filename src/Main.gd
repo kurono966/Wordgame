@@ -691,7 +691,18 @@ func _build_enemy_parts_text() -> String:
 	lines.append("  and pays 1 RELIC on top of the normal stage reward. Killing it by damage")
 	lines.append("  instead (HP to 0) pays NO relic. The parts never carry over to the next")
 	lines.append("  enemy, which always arrives whole.")
-	lines.append("  Relics held: %d   (they have no effect yet — a relic system is coming)." % GameManager.get_relic_count())
+	lines.append("")
+	lines.append("[RELICS]  permanent buffs, kept for the whole run")
+	if GameManager.get_relic_count() == 0:
+		lines.append("  None yet. Destroy an enemy through all of its parts to take your first.")
+	else:
+		lines.append("  %d relic(s) held. Active bonus: %s" % [
+			GameManager.get_relic_count(), GameManager.get_relic_bonus_text()])
+		lines.append("  Each relic is a permanent bonus. They survive every stage clear and")
+		lines.append("  every reward, and stack with each other and with the stage rewards.")
+		for relic: Dictionary in GameManager.get_relics():
+			lines.append("    - from %s: %s" % [
+				str(relic.get("from_enemy", "?")), str(relic.get("label", "?"))])
 	return "\n".join(lines)
 
 
@@ -2158,6 +2169,10 @@ func _refresh_hp_display() -> void:
 	player_hp_bar.max_value = p_max
 	player_hp_bar.value = p_hp
 	var p_text: String = "PLAYER HP: %d / %d" % [p_hp, p_max]
+	# A relic HP bonus is permanent, so it is stated outright rather than left for
+	# the player to infer from a ceiling that quietly grew.
+	if GameManager.relic_hp_bonus > 0:
+		p_text += "  (+%d RELIC)" % GameManager.relic_hp_bonus
 	if GameManager.get_shield() > 0:
 		p_text += "  [SHIELD %d]" % GameManager.get_shield()
 	if GameManager.get_phase() == "NIGHT":
@@ -2663,10 +2678,14 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 			int(result.get("enemy_hp_at_part_defeat", 0))
 		], PART_COLOR_BROKEN)
 		await get_tree().create_timer(1.1).timeout
-		_show_step_message("RELIC OBTAINED!  %s  (relics held: %d)" % [
-			str(relic.get("desc", "A relic torn from the wreckage.")),
-			int(result.get("relic_count", 0))
+		_show_step_message("RELIC OBTAINED!  %s" % [
+			str(relic.get("desc", "A relic torn from the wreckage."))
 		], REWARD_COLOR_TITLE)
+		# Spell out the running total too, so a stack of relics is visible without
+		# opening the FORMULAS panel.
+		_show_step_message("RELICS %d  |  permanent bonus: %s" % [
+			int(result.get("relic_count", 0)), GameManager.get_relic_bonus_text()
+		], REWARD_COLOR_ICON)
 		await get_tree().create_timer(1.0).timeout
 
 	# ── Step 4: Stage clear (next stage starts, hand reset) ──

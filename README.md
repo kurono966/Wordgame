@@ -29,7 +29,16 @@ The enemy's name is also its **body**. It is sliced left to right into a few non
 - **Parts never carry over.** The next enemy always arrives whole
 - **Where to see it**: a `PARTS` strip under the enemy HP bar shows each part, with the destroyed ones struck through in red (`PARTS DR AG ON (2 / 3 intact)`). The submit preview flags a coming total destruction before you commit, and the **FORMULAS** panel has the full rules
 
-> **Relics are currently a placeholder.** A relic is recorded and counted, and shown when you earn one, but it has no effect yet — a real relic system can be connected at `GameManager.grant_relic()`.
+> **Relics are permanent buffs.** Each relic is a bonus that lasts the rest of the run and **stacks** with the others. They are re-applied at every stage clear and every reward, so nothing is ever silently lost.
+
+| Relic type | Permanent bonus |
+|---|---|
+| **VESSEL** | +6 to your max HP, healed immediately |
+| **AEGIS** | +3 shield at the start of every fight (a floor — words can still stack more) |
+| **REACH** | +1 card in hand |
+| **INSIGHT** | +4 OP, granted once |
+
+The type is rolled at random each time. The **FORMULAS** panel lists every relic you hold and your running total, and the `RELIC OBTAINED!` message spells out what you just gained.
 
 ### Enemy Skills (one card out of the nine)
 Every enemy is built out of the letters of its own name, and **one of those letters carries a skill**. That letter is dealt to the shared reels as **exactly one card out of the nine**, and **the skill fires at NIGHT while that card sits in the BOTTOM row of a reel**.
