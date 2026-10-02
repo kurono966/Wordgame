@@ -38,27 +38,23 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="VBox" type="VBoxContainer" parent="Scroll/Center"]
-custom_minimum_size = Vector2(960, 0)
+custom_minimum_size = Vector2(900, 0)
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 4
 
 [node name="HeaderBox" type="HBoxContainer" parent="Scroll/Center/VBox"]
 layout_mode = 2
 
-[node name="TitleLabel" type="Label" parent="Scroll/Center/VBox/HeaderBox"]
+[node name="TurnLabel" type="Label" parent="Scroll/Center/VBox/HeaderBox"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "WORD FORGE   |   F11: FULLSCREEN"
-
-[node name="TurnLabel" type="Label" parent="Scroll/Center/VBox/HeaderBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 14
 text = "Turn: 0 / 10"
 
 [node name="StatusBox" type="HBoxContainer" parent="Scroll/Center/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 32
+theme_override_constants/separation = 20
 
 [node name="PlayerHPBox" type="VBoxContainer" parent="Scroll/Center/VBox/StatusBox"]
 layout_mode = 2
@@ -66,12 +62,14 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 
 [node name="PlayerHPLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/PlayerHPBox"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 13
 text = "PLAYER HP: 50 / 50"
 
 [node name="PlayerHPBar" type="ProgressBar" parent="Scroll/Center/VBox/StatusBox/PlayerHPBox"]
-custom_minimum_size = Vector2(0, 18)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 14)
 layout_mode = 2
 max_value = 50.0
 value = 50.0
@@ -83,19 +81,22 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 
 [node name="EnemyHPLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/EnemyHPBox"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 13
 text = "STAGE 1  ENEMY HP: 30 / 30"
 
 [node name="EnemyHPBar" type="ProgressBar" parent="Scroll/Center/VBox/StatusBox/EnemyHPBox"]
-custom_minimum_size = Vector2(0, 18)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 14)
 layout_mode = 2
 max_value = 30.0
 value = 30.0
 show_percentage = false
 
 [node name="OPBox" type="PanelContainer" parent="Scroll/Center/VBox/StatusBox"]
-custom_minimum_size = Vector2(240, 0)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 size_flags_vertical = 4
 
@@ -104,8 +105,9 @@ layout_mode = 2
 theme_override_constants/separation = 3
 
 [node name="OPTitleLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 10
 text = "OP POINTS  (YELLOW)"
 horizontal_alignment = 1
 
@@ -115,53 +117,60 @@ alignment = 1
 theme_override_constants/separation = 8
 
 [node name="OPValueLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPRow"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 20
 text = "0 OP"
 vertical_alignment = 1
 
 [node name="OPMovesLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPRow"]
 layout_mode = 2
 size_flags_vertical = 4
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 11
 text = "= 0 MOVES"
 vertical_alignment = 1
 
 [node name="OPBar" type="ProgressBar" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
-custom_minimum_size = Vector2(0, 12)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
 max_value = 5.0
 value = 0.0
 show_percentage = false
 
 [node name="OPHintLabel" type="Label" parent="Scroll/Center/VBox/StatusBox/OPBox/OPVBox"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 9
 text = "1 OP = move a card one place"
 horizontal_alignment = 1
 autowrap_mode = 3
 
 [node name="StatsLabel" type="Label" parent="Scroll/Center/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 11
 text = "STAGE 1  |  TOTAL DAMAGE: 0  |  DEFEATED: 0"
 
 [node name="SlotsSectionLabel" type="Label" parent="Scroll/Center/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.85, 0.95, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 11
 text = "SHARED SLOTS (Click or Drag Active card to Workbench)"
 
 [node name="SlotContainer" type="HBoxContainer" parent="Scroll/Center/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 16
 
 [node name="HandSectionLabel" type="Label" parent="Scroll/Center/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.85, 0.95, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 11
 text = "PLAYER HAND (Click or Drag card to Workbench)"
 
 [node name="HandContainer" type="HBoxContainer" parent="Scroll/Center/VBox"]
@@ -170,39 +179,33 @@ alignment = 1
 theme_override_constants/separation = 12
 
 [node name="DeckGraveLabel" type="Label" parent="Scroll/Center/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.7, 0.8, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 11
 text = "Deck: 0 | Graveyard: []"
 
 [node name="WorkbenchSectionLabel" type="Label" parent="Scroll/Center/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.88, 0.45, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 11
 text = "WORKBENCH (Construct your word here - Click card to return)"
 
 [node name="WorkbenchPanel" type="PanelContainer" parent="Scroll/Center/VBox"]
-custom_minimum_size = Vector2(0, 82)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
 
 [node name="WorkbenchContainer" type="HBoxContainer" parent="Scroll/Center/VBox/WorkbenchPanel"]
+unique_name_in_owner = true
 layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 8
 
 [node name="MeaningLabel" type="Label" parent="Scroll/Center/VBox"]
-custom_minimum_size = Vector2(0, 18)
-layout_mode = 2
-size_flags_vertical = 0
-theme_override_font_sizes/font_size = 15
-text = ""
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
-clip_text = false
-
-[node name="DefinitionLabel" type="Label" parent="Scroll/Center/VBox"]
-custom_minimum_size = Vector2(0, 16)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(900, 14)
 layout_mode = 2
 size_flags_vertical = 0
 theme_override_font_sizes/font_size = 12
@@ -212,11 +215,24 @@ vertical_alignment = 1
 autowrap_mode = 3
 clip_text = false
 
-[node name="PreviewLabel" type="Label" parent="Scroll/Center/VBox"]
-custom_minimum_size = Vector2(0, 30)
+[node name="DefinitionLabel" type="Label" parent="Scroll/Center/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(900, 12)
 layout_mode = 2
 size_flags_vertical = 0
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 10
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = false
+
+[node name="PreviewLabel" type="Label" parent="Scroll/Center/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(900, 24)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 11
 text = "Place cards to preview the damage you will take on SUBMIT"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -229,33 +245,38 @@ alignment = 1
 theme_override_constants/separation = 12
 
 [node name="ClearButton" type="Button" parent="Scroll/Center/VBox/ControlRow"]
-custom_minimum_size = Vector2(110, 38)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 32)
 layout_mode = 2
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 13
 text = "CLEAR"
 
 [node name="SubmitButton" type="Button" parent="Scroll/Center/VBox/ControlRow"]
-custom_minimum_size = Vector2(160, 38)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 32)
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 14
 text = "SUBMIT WORD"
 
 [node name="FormulaButton" type="Button" parent="Scroll/Center/VBox/ControlRow"]
-custom_minimum_size = Vector2(130, 38)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 32)
 layout_mode = 2
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 13
 text = "FORMULAS"
 
 [node name="PilesButton" type="Button" parent="Scroll/Center/VBox/ControlRow"]
-custom_minimum_size = Vector2(130, 38)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 32)
 layout_mode = 2
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 13
 text = "CARD PILES"
 
 [node name="MessageLabel" type="Label" parent="Scroll/Center/VBox"]
-custom_minimum_size = Vector2(0, 24)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(900, 20)
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 13
 horizontal_alignment = 1
 
 [node name="ScoreUpSound" type="AudioStreamPlayer" parent="."]

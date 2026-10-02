@@ -250,18 +250,10 @@ func _fit_ui_to_viewport() -> void:
 	if not is_inside_tree():
 		return
 
+	# Disable automatic scaling to keep layout size constant during gameplay
 	var main_layout: VBoxContainer = $Scroll/Center/VBox
-	var content_size: Vector2 = main_layout.get_combined_minimum_size()
-	var available_size: Vector2 = get_viewport_rect().size - Vector2(32.0, 32.0)
-	if content_size.x <= 0.0 or content_size.y <= 0.0:
-		return
-
-	var fit_scale: float = minf(1.0, minf(
-		available_size.x / content_size.x,
-		available_size.y / content_size.y
-	))
 	main_layout.pivot_offset = main_layout.size * 0.5
-	main_layout.scale = Vector2.ONE * fit_scale
+	main_layout.scale = Vector2.ONE
 
 
 func _process(_delta: float) -> void:
@@ -289,11 +281,6 @@ func _style_global_ui() -> void:
 	background_texture.fill_to = Vector2(0.95, 1.0)
 	background.texture = background_texture
 
-	var title: Label = $Scroll/Center/VBox/HeaderBox/TitleLabel
-	title.add_theme_color_override("font_color", Color("f8d77a"))
-	title.add_theme_color_override("font_outline_color", Color("11182b"))
-	title.add_theme_constant_override("outline_size", 3)
-	title.add_theme_font_size_override("font_size", 24)
 	turn_label.add_theme_color_override("font_outline_color", Color("0a1020"))
 	turn_label.add_theme_constant_override("outline_size", 2)
 
