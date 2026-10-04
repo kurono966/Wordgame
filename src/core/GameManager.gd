@@ -374,6 +374,232 @@ func get_pending_reward_options() -> Array:
 	return reward_options
 
 
+# ─── Shop ────────────────────────────────────────────────────────────────────
+# Every SHOP_STAGE_EVERY stages the stage clear offers a SHOP instead of the
+# usual pick-one-of-three reward. The shop is paid for with OP — the same
+# currency the word traits and the spin buttons use — so spending OP in the shop
+# is a real trade-off against spending it on the board.
+#
+# The stock is ROLLED ONCE per visit and then stays put, so the player sees the
+# same three cards whether they look now or after browsing the deck.
+const SHOP_STAGE_EVERY: int = 3
+const SHOP_STOCK: int = 3          # how many cards are on sale each visit
+const SHOP_CARD_COST: int = 12     # OP to buy ONE card
+
+## DECK COMPRESSION IS ONE CARD AT A TIME. There is no batch.
+##
+## The batch buttons are gone, and deliberately so. Every version that offered a
+## 2- and 3-card batch found a way to be cheaper per card, and once a batch beats
+## a single, compressing two cards together is simply the efficient play — the
+## player is being offered the thing this section is meant to prevent. Removing
+## the option is the only way to make "two cards at once is cheap" impossible
+## rather than merely discouraged.
+##
+## So a compression is always exactly ONE card, and the price is
+## SHOP_COMPRESS_COST scaled by how many you have already done this visit.
+const SHOP_COMPRESS_COST: int = 18   # OP for the first compression of a visit
+## Each further compression in the same visit costs this many times the last, so
+## the 1st is x1, the 2nd x2, the 3rd x4. Coming back to the counter is
+## progressively worse value.
+const SHOP_COMPRESS_REPEAT_STEP: int = 2
+## How many cards may be compressed during one visit.
+const SHOP_COMPRESS_PER_VISIT: int = 3
+
+## The rolled stock for the visit in progress, and what has already been bought
+## from it. Empty until open_shop() runs.
+var shop_stock: Array = []
+var shop_bought: Array = []
+var shop_open: bool = false
+## How many cards have been compressed during the visit in progress. Drives the
+## escalation; reset by open_shop().
+var shop_compress_count: int = 0
+
+## Whether the stage just cleared should offer the shop rather than a reward.
+## Every 3rd stage (3, 6, 9, ...) qualifies; `cleared_stage` is the stage the
+## player just finished.
+func is_shop_stage(cleared_stage: int) -> bool:
+	return cleared_stage > 0 and cleared_stage % SHOP_STAGE_EVERY == 0
+
+
+## The multiplier the NEXT compression in this visit costs: 1st x1, 2nd x2, 3rd
+## x4. Returns -1 once the per-visit cap is reached, so there is no price at all
+## for a card beyond it.
+func shop_compress_multiplier() -> int:
+	if shop_compress_count >= SHOP_COMPRESS_PER_VISIT:
+		return -1
+	var mult: int = 1
+	for _n in range(shop_compress_count):
+		mult *= SHOP_COMPRESS_REPEAT_STEP
+	return mult
+
+
+## The OP to compress the next single card. This is the only compression price
+## there is — there is no count parameter, because there is no batch.
+func shop_compress_cost() -> int:
+	var mult: int = shop_compress_multiplier()
+	if mult < 0:
+		return -1
+	return SHOP_COMPRESS_COST * mult
+
+
+## How many cards may still be compressed in this visit.
+func shop_compresses_left() -> int:
+	return maxi(SHOP_COMPRESS_PER_VISIT - shop_compress_count, 0)
+
+
+## Whether one more single card may be compressed right now: the visit still has
+## an allowance left, the deck can spare a card, and the player can pay.
+func can_compress() -> bool:
+	if not shop_open or shop_compress_cost() < 0:
+		return false
+	if deck.size() - 1 < MIN_DECK_SIZE:
+		return false
+	return operation_points >= shop_compress_cost()
+
+
+## Opens the shop for a visit, rolling a fresh stock. Called INSTEAD of
+## roll_rewards() on a shop stage, so no reward is pending.
+func open_shop() -> Array:
+	shop_stock = []
+	shop_bought = []
+	# A new visit always starts on the cheapest compression again.
+	shop_compress_count = 0
+	for _i in range(SHOP_STOCK):
+		shop_stock.append(_pick_reward_card())
+	shop_open = true
+	pending_reward_choice = false
+	return shop_stock
+
+
+func close_shop() -> void:
+	shop_open = false
+	shop_stock = []
+	shop_bought = []
+	shop_compress_count = 0
+
+# SHOP_BUY_AND_COMPRESS
+
+
+## Buys the card at `index` in the stock. The OP is only spent once the card is
+## known to be buyable, and the deck ceiling is re-checked here rather than
+## trusted from the UI, so a stale button can never overrun MAX_DECK_SIZE.
+## Returns {"ok": false, "reason": ...} without spending anything on failure.
+func shop_buy_card(index: int) -> Dictionary:
+	if not shop_open:
+		return {"ok": false, "reason": "shop is not open"}
+	if index < 0 or index >= shop_stock.size():
+		return {"ok": false, "reason": "no such card"}
+	if index in shop_bought:
+		return {"ok": false, "reason": "already bought"}
+	if deck.size() >= MAX_DECK_SIZE:
+		return {"ok": false, "reason": "deck is full"}
+	if operation_points < SHOP_CARD_COST:
+		return {"ok": false, "reason": "not enough OP"}
+	operation_points -= SHOP_CARD_COST
+	var card: Dictionary = shop_stock[index]
+	shop_bought.append(index)
+	deck.append(card.duplicate())
+	return {
+		"ok": true,
+		"card": card,
+		"index": index,
+		"message": "Bought %s (%d dmg, %s). Deck: %d cards." % [
+			card.get("letter", "?"), int(card.get("damage", 0)),
+			str(card.get("color", "red")).to_upper(), deck.size()]
+	}
+
+
+## Compresses exactly ONE card out of the deck, paying the price for this visit's
+## next compression. Burned cards are removed for good, exactly as the BURN A CARD
+## reward does.
+## `card_id` is a single id from get_burnable_cards(). There is deliberately no
+## array parameter and no batch: passing more than one id is REFUSED, so no caller
+## can smuggle a multi-card compression past the UI.
+func shop_compress(card_id: Variant) -> Dictionary:
+	if not shop_open:
+		return {"ok": false, "reason": "shop is not open"}
+	# A batch is not a thing. If the caller hands over a list, or several ids, the
+	# request is rejected outright rather than silently compressed as one card.
+	if typeof(card_id) == TYPE_ARRAY or typeof(card_id) == TYPE_DICTIONARY:
+		return {"ok": false, "reason": "compression is one card at a time"}
+	var cost: int = shop_compress_cost()
+	if cost < 0:
+		return {"ok": false, "reason": "no compressions left this visit"}
+	if deck.size() - 1 < MIN_DECK_SIZE:
+		return {"ok": false, "reason": "deck would drop below %d cards" % MIN_DECK_SIZE}
+	if operation_points < cost:
+		return {"ok": false, "reason": "not enough OP"}
+
+	# Resolve and validate the single id before anything is removed or paid, so a
+	# bad id leaves the deck and the wallet untouched.
+	var parts: PackedStringArray = str(card_id).split(":")
+	if parts.size() != 2:
+		return {"ok": false, "reason": "bad card id: %s" % str(card_id)}
+	var source: String = parts[0]
+	var idx: int = int(parts[1])
+	var burned: Dictionary = {}
+	if source == "deck":
+		if idx < 0 or idx >= deck.size():
+			return {"ok": false, "reason": "card no longer available: %s" % str(card_id)}
+		burned = deck[idx]
+	elif source == "grave":
+		if idx < 0 or idx >= graveyard.size() or graveyard[idx] == null:
+			return {"ok": false, "reason": "card no longer available: %s" % str(card_id)}
+		burned = graveyard[idx]
+	elif source == "hand":
+		if idx < 0 or idx >= hand.size() or hand[idx] == null:
+			return {"ok": false, "reason": "card no longer available: %s" % str(card_id)}
+		burned = hand[idx]
+	else:
+		return {"ok": false, "reason": "unknown source: %s" % str(card_id)}
+
+	operation_points -= cost
+	if source == "deck":
+		deck.remove_at(idx)
+	elif source == "grave":
+		graveyard.remove_at(idx)
+	else:
+		hand[idx] = null
+	if not hand_redraw_pending:
+		_refill_hand()
+	# This purchase has consumed one of the visit's compressions, so the NEXT one
+	# is priced at the escalated rate. Counted only on success, so a refused
+	# purchase never burns an allowance.
+	shop_compress_count += 1
+	return {
+		"ok": true,
+		"count": 1,
+		"cost": cost,
+		"cards": [burned],
+		"compressions_left": shop_compresses_left(),
+		"next_multiplier": shop_compress_multiplier(),
+		"message": "Compressed 1 card for %d OP (deck: %d cards).%s" % [
+			cost, deck.size(),
+			("  %d compression(s) left this visit (next costs %d OP)." % [
+				shop_compresses_left(), maxi(shop_compress_cost(), 0)])
+				if shop_compresses_left() > 0
+				else "  That was your last compression this visit."]
+	}
+
+
+## The stock as the shop UI shows it: each entry flags whether it is still on
+## offer and whether the player can currently afford it, so the buttons can grey
+## themselves out without the UI re-deriving any of it.
+func get_shop_offers() -> Array:
+	var out: Array = []
+	for i in range(shop_stock.size()):
+		var card: Dictionary = shop_stock[i]
+		var sold: bool = i in shop_bought
+		out.append({
+			"index": i,
+			"card": card,
+			"cost": SHOP_CARD_COST,
+			"sold": sold,
+			"affordable": operation_points >= SHOP_CARD_COST and not sold
+		})
+	return out
+
+
 ## Adds one "gain a ★ SPECIAL" and one "burn a card" option when the deck size
 ## allows. The card you GAIN is rolled up front and shown face-up.
 func _build_deck_rewards() -> void:
@@ -1104,6 +1330,12 @@ func _relic_apply_kind(kind: String, amount: int) -> void:
 			relic_shield_bonus += amount
 		"hand_limit":
 			relic_hand_bonus += amount
+			# Deal the extra slot NOW, not on the next card play: the relic has to
+			# be visible the moment it is earned. _refill_hand() is the one place
+			# that sizes and fills the hand, so raising the limit and refilling
+			# here is what makes EXPANDED POCKET actually show an 8th card.
+			_reapply_relic_buffs()
+			_refill_hand()
 		"opening_draw":
 			# Tracked as a total, but SPENT by the opening deal of a fight. It is
 			# deliberately NOT folded into hand_limit: extra opening cards are not
@@ -1127,6 +1359,16 @@ func _reapply_relic_buffs() -> void:
 	# the live `hand_limit` afterwards exactly as before, and a stage clear
 	# re-derives it again — so the two effects compose instead of overwriting.
 	hand_limit = HAND_SIZE + relic_hand_bonus
+	# The hand ARRAY is deliberately NOT resized here. This runs on every reward
+	# claim and every stage clear, so growing the array from here appended a slot
+	# on each pass — and because the array only ever shrinks back during a refill,
+	# the hand crept upward over a run (7 -> 14 -> ...) instead of tracking the
+	# limit at all.
+	#
+	# Sizing the array is the job of the paths that actually build a hand:
+	# _reset_hand() and _refill_hand(). Both grow it to the limit, so a hand relic
+	# still takes effect on the next deal, and HAND DOWN still shrinks it through
+	# _trim_hand_to_limit() exactly as it always did.
 	# OP is deliberately NOT re-applied here: it is a one-time lump sum handed out
 	# by _relic_apply_kind(), not a floor, so re-deriving the totals must never
 	# pay it out a second time. relic_op_bonus is still tracked, for the UI.
@@ -1513,15 +1755,20 @@ func _reshuffle_graveyard() -> void:
 	graveyard.clear()
 
 func _refill_hand() -> void:
-	# The hand never grows past the current limit, so HAND DOWN keeps biting
-	# until the enemy that cast it is gone.
+	# Grow the hand ARRAY to the current limit before filling it. Without this a
+	# raised limit does nothing at all: the loop below only refills slots that
+	# already exist, so an EXPANDED POCKET that moves hand_limit from 7 to 8 left
+	# the array 7 long and the 8th card could never be dealt. The array is what
+	# the UI draws and what the hand/deck rules count, so the limit has to be
+	# reflected in it here.
 	#
-	# The bound is max(hand_limit, hand.size()) rather than plain hand_limit: the
-	# hand array is normally exactly hand_limit long, so this is identical — but
-	# an OPENING HAND relic deliberately deals a few cards beyond the limit, and
-	# those must keep refilling instead of being left as holes. _trim_hand_to_limit()
-	# still shrinks the array whenever the limit genuinely drops (HAND DOWN), so
-	# the extra slots cannot outlive the fight that earned them.
+	# HAND DOWN still bites, because _trim_hand_to_limit() shrinks the array again
+	# whenever the limit genuinely drops, exactly as it always did.
+	while hand.size() < hand_limit:
+		hand.append(null)
+	# The bound is max(hand_limit, hand.size()) rather than plain hand_limit: an
+	# OPENING HAND relic deliberately deals a few cards beyond the limit, and
+	# those must keep refilling instead of being left as holes.
 	for i in range(maxi(hand_limit, hand.size())):
 		if i < hand.size() and hand[i] == null:
 			hand[i] = _draw_card()

@@ -43,7 +43,26 @@ The enemy's name is also its **body**. It is sliced left to right into a few non
 - **OPENING HAND** adds 2 cards to the opening deal only. The standing hand limit is **not** raised: from turn 2 the hand behaves exactly as it always did, and the 2 bonus cards stay in hand as extra options
 - **EXPANDED POCKET** is a standing +1. It composes with the enemy skill `HAND DOWN` rather than fighting it: base 7 + EXPANDED POCKET +1 = 8, and `HAND DOWN` then takes it to 7. A stage clear wipes the enemy effect but keeps the relic
 
-The type is drawn at random from the catalogue each time, and duplicates stack. The **`RELICS` panel to the left of the HP bars is always on screen**, so you can check what you hold at any time — it lists every relic (collapsing a stack to `IRON CORE x2`) and hovering it shows each effect and which enemy it came from. The **FORMULAS** panel carries the same list in full, and the `RELIC OBTAINED!` message spells out what you just gained.
+The type is drawn at random from the catalogue each time, and duplicates stack.
+
+**Checking your relics.** The **`RELICS` panel to the left of the HP bars is always on screen**, so you can see what you hold at any time — it lists every relic (collapsing a stack to `IRON CORE x2`). **Click it to open the full viewer**, which gives each relic's name, its effect and which enemy it was torn from. It closes with the `CLOSE` button or `Esc`, and opens over the reward screen too. The **FORMULAS** panel carries the same list in text form.
+
+### Shop (every 3rd stage clear)
+
+Clearing **stage 3, 6, 9, …** opens a **SHOP instead of the reward choice**. It is paid for with **OP**, the same currency the word traits and the spin buttons use, so every purchase is a real trade-off against spending OP on the board.
+
+- **Cards for sale** — three ★ SPECIAL cards, **12 OP each**. You may buy as many as you can afford; a sold card is marked and cannot be bought twice
+- **Deck compression** — remove cards from your deck for good, **one card at a time**. There is no batch: compressing two cards together is simply not an option, so there is no discount for it to apply. You may compress **3 cards per visit**, and each one costs more than the last:
+
+  | | Price |
+  |---|---|
+  | 1st card | **18 OP** |
+  | 2nd card | **36 OP** (×2) |
+  | 3rd card | **72 OP** (×4) |
+
+  After the third the button reads `used up for this visit`. The price of the next card is always on the button before you commit (`COMPRESS 1 CARD — 36 OP (x2, was 18)   [2 left this visit]`), so the cost of coming back is never a surprise.
+
+Compression never takes the deck below the `MIN_DECK_SIZE` floor of 5 cards. A purchase you cannot afford — or a selection that is not exactly one card — is refused outright, costs nothing, and does not burn one of your three compressions. Leaving the shop (`LEAVE` / `Esc`) settles the stage's hand exactly as finishing a reward choice does, and the next shop starts the escalation over at 18 OP.
 
 ### Enemy Skills (one card out of the nine)
 Every enemy is built out of the letters of its own name, and **one of those letters carries a skill**. That letter is dealt to the shared reels as **exactly one card out of the nine**, and **the skill fires at NIGHT while that card sits in the BOTTOM row of a reel**.
@@ -121,7 +140,11 @@ Every game starts with **exactly these twenty cards**, five per colour. They are
 
 Rewards still add and burn cards from here on, so the deck is a starting point rather than a straitjacket.
 
-### Inspecting your deck
+### Inspecting your deck (any time)
+
+Press **`CARD PILES`** or **`D`** at any point — mid-fight, or during a reward or the shop — to see every card you own: the **draw pile**, your **hand**, and the **graveyard**. Every tile shows the letter, its damage, its colour and, for a ★ card, its **special name**; hover any tile for the full description and its OP cost. `Esc` closes it.
+
+The **shop's compression picker uses the same card tiles**, so you can see exactly what a ★ special does before deciding to compress it.
 - **CARD PILES** (bottom button) opens the deck viewer at any time during a fight
 - It splits your cards into three separately counted sections — **DRAW PILE**, **HAND** and **GRAVEYARD** — and draws **every card individually**, so you can see exactly what is still waiting to be drawn
 - The draw pile is listed sorted by letter so the contents are readable without revealing the order the cards will actually be dealt in

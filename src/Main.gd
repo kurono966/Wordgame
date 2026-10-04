@@ -65,6 +65,21 @@ var _low_time_played: bool = false
 @onready var relic_panel          : PanelContainer = $Scroll/Center/VBox/StatusBox/RelicBox
 @onready var relic_title_label    : Label          = $Scroll/Center/VBox/StatusBox/RelicBox/RelicVBox/RelicTitleLabel
 @onready var relic_list_label     : Label          = $Scroll/Center/VBox/StatusBox/RelicBox/RelicVBox/RelicListLabel
+# Relic viewer, opened by clicking the relic panel. Same overlay shape as the
+# deck viewer, so it can be opened over the reward screen too.
+@onready var relic_dialog         : Control        = $RelicDialog
+@onready var relic_dialog_panel   : PanelContainer = $RelicDialog/DialogPanel
+@onready var relic_subtitle_label : Label          = $RelicDialog/DialogPanel/DialogVBox/Subtitle
+@onready var relic_body           : VBoxContainer  = $RelicDialog/DialogPanel/DialogVBox/Scroll/RelicBody
+@onready var relic_close_button   : Button         = $RelicDialog/DialogPanel/DialogVBox/DialogHeader/CloseButton
+# Shop, opened INSTEAD of the reward choice on every 3rd stage clear.
+@onready var shop_dialog          : Control        = $ShopDialog
+@onready var shop_panel           : PanelContainer = $ShopDialog/DialogPanel
+@onready var shop_subtitle_label  : Label          = $ShopDialog/DialogPanel/DialogVBox/Subtitle
+@onready var shop_body            : VBoxContainer  = $ShopDialog/DialogPanel/DialogVBox/Scroll/ShopBody
+@onready var shop_close_button    : Button         = $ShopDialog/DialogPanel/DialogVBox/DialogHeader/CloseButton
+## Card ids ticked for the pending compression, in selection order.
+var _shop_compress_picks: Array = []
 # Cached stats text without the enemy-skill "DANGER" suffix.
 var _stats_line: String = ""
 @onready var turn_label            : Label          = $Scroll/Center/VBox/HeaderBox/TurnLabel
@@ -244,10 +259,16 @@ func _ready() -> void:
 	_style_hp_bars()
 	_style_op_panel()
 	_style_relic_panel()
+	_style_shop_panel()
 	_style_formula_panel()
 	_style_piles_panel()
 	_style_reward_panel()
 	_style_burn_panel()
+	shop_close_button.pressed.connect(_close_shop_dialog)
+	relic_close_button.pressed.connect(_close_relic_dialog)
+	relic_panel.gui_input.connect(_on_relic_panel_input)
+	relic_close_button.pressed.connect(_close_relic_dialog)
+	relic_panel.gui_input.connect(_on_relic_panel_input)
 	burn_cancel_button.pressed.connect(_on_burn_cancel_pressed)
 	_refresh_formula_panel()
 	_refresh_ui()
@@ -417,10 +438,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_toggle_fullscreen()
 		get_viewport().set_input_as_handled()
 		return
-	# D opens the deck viewer while choosing a reward, so the player can weigh
-	# "add this card" against what they already own without leaving the screen.
+	# D opens the deck viewer at ANY time, so the deck can be inspected mid-fight
+	# and not only while a reward is on screen — the player can weigh what to
+	# build or what to compress without waiting for the next stage.
 	if (event.is_pressed() and not event.is_echo() and event.keycode == KEY_D
-			and reward_dialog.visible and not piles_dialog.visible):
+			and not piles_dialog.visible):
 		_open_piles_dialog()
 		get_viewport().set_input_as_handled()
 		return
@@ -428,6 +450,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	if formula_dialog.visible:
 		_close_formula_dialog()
+		get_viewport().set_input_as_handled()
+	elif shop_dialog.visible:
+		_close_shop_dialog()
+		get_viewport().set_input_as_handled()
+	elif relic_dialog.visible:
+		_close_relic_dialog()
 		get_viewport().set_input_as_handled()
 	elif piles_dialog.visible:
 		_close_piles_dialog()
@@ -582,13 +610,17 @@ func _format_card_counts(cards: Array) -> String:
 		lines.append("  %s  x%d" % [entry, counts[entry]])
 	return "\n".join(lines)
 
-## Builds a visual card button for the Piles dialog (similar to burn card button)
+## Builds a visual card button for the Piles dialog. Read-only, but it carries the
+## SAME card readout as the shop's compression picker — letter, damage, colour and
+## the ★ SPECIAL name on the tile — so the deck can always be inspected in full,
+## at any time, from the CARD PILES button.
 func _build_piles_card_button(entry: Dictionary) -> Button:
 	var card: Dictionary = entry.get("card", {})
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(78, 100)
+	button.custom_minimum_size = Vector2(78, 112)
 	_style_burn_card_button(button, str(card.get("color", "red")))
 	button.disabled = true  # Cards in piles are read-only
+	button.tooltip_text = _card_detail_text(card)
 
 	var vbox := VBoxContainer.new()
 	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -619,6 +651,25 @@ func _build_piles_card_button(entry: Dictionary) -> Button:
 	dmg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 1.0))
 	dmg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(dmg)
+
+	# The special is named on the tile, so a ★ card is identifiable without
+	# hovering anything — the same information the shop shows.
+	if GameManager.has_special_ability(card):
+		var sp := Label.new()
+		sp.text = "★ SPECIAL"
+		sp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sp.add_theme_font_size_override("font_size", 9)
+		sp.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+		sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(sp)
+		var spn := Label.new()
+		spn.text = GameManager.get_special_name(card)
+		spn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		spn.add_theme_font_size_override("font_size", 9)
+		spn.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+		spn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		spn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(spn)
 	return button
 
 func _refresh_formula_panel() -> void:
@@ -2268,18 +2319,48 @@ func _flash_broken_parts() -> void:
 # what they hold without interrupting the fight. Styled after the OP gauge so it
 # reads as part of the same status strip.
 func _style_relic_panel() -> void:
+	# The viewer's own chrome, styled like the deck viewer but in the relic gold.
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.16, 0.14, 0.09, 0.85)
-	sb.border_color = Color(0.98, 0.80, 0.22, 0.55)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(8)
-	sb.content_margin_left = 6.0
-	sb.content_margin_right = 6.0
-	sb.content_margin_top = 4.0
-	sb.content_margin_bottom = 4.0
-	relic_panel.add_theme_stylebox_override("panel", sb)
+	sb.bg_color = Color(0.11, 0.13, 0.19, 1.0)
+	sb.border_color = Color(0.98, 0.80, 0.22, 0.95)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(14)
+	sb.shadow_color = Color(0.0, 0.0, 0.04, 0.72)
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2(0, 7)
+	sb.content_margin_left = 18.0
+	sb.content_margin_right = 18.0
+	sb.content_margin_top = 14.0
+	sb.content_margin_bottom = 14.0
+	relic_dialog_panel.add_theme_stylebox_override("panel", sb)
+
+	var panel_sb := StyleBoxFlat.new()
+	panel_sb.bg_color = Color(0.16, 0.14, 0.09, 0.85)
+	panel_sb.border_color = Color(0.98, 0.80, 0.22, 0.55)
+	panel_sb.set_border_width_all(1)
+	panel_sb.set_corner_radius_all(8)
+	panel_sb.content_margin_left = 6.0
+	panel_sb.content_margin_right = 6.0
+	panel_sb.content_margin_top = 4.0
+	panel_sb.content_margin_bottom = 4.0
+	relic_panel.add_theme_stylebox_override("panel", panel_sb)
 	relic_title_label.add_theme_color_override("font_color", REWARD_COLOR_TITLE)
 	relic_list_label.add_theme_color_override("font_color", Color(0.88, 0.90, 0.96, 1.0))
+	# The panel is the dialog's trigger, so it has to look clickable: a hover tint,
+	# matching how the board's buttons read.
+	var hover := StyleBoxFlat.new()
+	hover.bg_color = Color(0.24, 0.20, 0.11, 0.95)
+	hover.border_color = Color(0.98, 0.80, 0.22, 0.95)
+	hover.set_border_width_all(2)
+	hover.set_corner_radius_all(8)
+	hover.content_margin_left = 6.0
+	hover.content_margin_right = 6.0
+	hover.content_margin_top = 4.0
+	hover.content_margin_bottom = 4.0
+	relic_panel.add_theme_stylebox_override("hover", hover)
+	var click_hint: String = "Click to see every relic you hold."
+	relic_title_label.tooltip_text = click_hint
+	relic_list_label.tooltip_text = click_hint
 
 
 ## Rewrites the relic panel from the current relics: the header carries the
@@ -2321,6 +2402,8 @@ func _refresh_relic_panel() -> void:
 	tips.append("")
 	tips.append("  Active total: %s" % GameManager.get_relic_bonus_text())
 	tips.append("  Earned only by destroying every part of an enemy.")
+	tips.append("")
+	tips.append("  Click this panel to open the full relic viewer.")
 	relic_list_label.tooltip_text = "\n".join(tips)
 
 
@@ -2330,6 +2413,460 @@ func _flash_relic_panel() -> void:
 	var tween := create_tween()
 	tween.tween_property(relic_panel, "modulate", Color(1.7, 1.5, 0.9, 1.0), 0.12)
 	tween.tween_property(relic_panel, "modulate", Color.WHITE, 0.45)
+
+
+# ─── Shop ─────────────────────────────────────────────────────────────────────
+# Every 3rd stage clear the reward choice is REPLACED by this shop: buy cards
+# with OP, or compress the deck by paying OP for a batch removal. The batch
+# pricing is the point — 2 cards cost 3x and 3 cards cost 6x the single price, so
+# a big trim is possible but has to be earned.
+func _style_shop_panel() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.12, 0.08, 1.0)
+	sb.border_color = Color(1.0, 0.85, 0.35, 0.95)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(14)
+	sb.shadow_color = Color(0.0, 0.0, 0.04, 0.72)
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2(0, 7)
+	sb.content_margin_left = 18.0
+	sb.content_margin_right = 18.0
+	sb.content_margin_top = 14.0
+	sb.content_margin_bottom = 14.0
+	shop_panel.add_theme_stylebox_override("panel", sb)
+
+
+## Opens the shop for the stage just cleared. Called INSTEAD of show_reward_choice()
+## on a shop stage, which is why no reward is pending while it is open.
+func _open_shop_dialog() -> void:
+	GameManager.open_shop()
+	_shop_compress_picks = []
+	_refresh_shop_dialog()
+	shop_dialog.visible = true
+	shop_close_button.grab_focus()
+
+
+func _close_shop_dialog() -> void:
+	GameManager.close_shop()
+	_shop_compress_picks = []
+	shop_dialog.visible = false
+	# Leaving the shop settles the fight's hand, exactly as finishing a reward
+	# choice does, so the new stage starts with a fresh hand either way.
+	GameManager.flush_pending_hand_redraw()
+	_refresh_ui()
+	_refresh_formula_panel()
+
+
+## Rebuilds the shop: the subtitle states the balance and the rules, then the
+## stock rows, then the compression section.
+func _refresh_shop_dialog() -> void:
+	for child in shop_body.get_children():
+		shop_body.remove_child(child)
+		child.queue_free()
+
+	var op: int = GameManager.get_operation_points()
+	shop_subtitle_label.text = "You have %d OP   |   deck: %d cards   |   opens on every %drd stage clear instead of a reward" % [
+		op, GameManager.get_deck_size(), GameManager.SHOP_STAGE_EVERY]
+
+	_add_shop_header("CARDS FOR SALE", "%d OP each — buy as many as you can afford." % GameManager.SHOP_CARD_COST)
+	var offers: Array = GameManager.get_shop_offers()
+	if offers.is_empty():
+		_shop_note("  (nothing in stock)")
+	for offer: Dictionary in offers:
+		shop_body.add_child(_build_shop_card_row(offer))
+
+	_add_shop_header("DECK COMPRESSION", "Remove cards from your deck for good — one card at a time. Each further compression this visit costs more.")
+	shop_body.add_child(_build_shop_compress_section())
+
+
+func _add_shop_header(title: String, hint: String) -> void:
+	var header := Label.new()
+	header.text = title
+	header.add_theme_font_size_override("font_size", 16)
+	header.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35, 1.0))
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_body.add_child(header)
+	_shop_note("  " + hint)
+
+
+func _shop_note(text: String) -> void:
+	var note := Label.new()
+	note.text = text
+	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_color_override("font_color", Color(0.62, 0.68, 0.78, 1.0))
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_body.add_child(note)
+
+
+## One card on sale: the card itself, its price, and a BUY button that greys
+## itself out once the card is sold or the OP is gone.
+func _build_shop_card_row(offer: Dictionary) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var index: int = int(offer.get("index", 0))
+	row.add_child(_build_shop_card_view(offer.get("card", {})))
+
+	var buy := Button.new()
+	buy.custom_minimum_size = Vector2(150, 46)
+	buy.text = "%d OP" % int(offer.get("cost", 0))
+	if bool(offer.get("sold", false)):
+		buy.text = "SOLD"
+		buy.disabled = true
+	elif not bool(offer.get("affordable", false)):
+		buy.text = "%d OP (need more)" % int(offer.get("cost", 0))
+		buy.disabled = true
+	buy.pressed.connect(_on_shop_buy.bind(index))
+	_style_shop_button(buy)
+	row.add_child(buy)
+	return row
+
+## A miniature game card, drawn the same way the reward buttons draw theirs, so
+## the player compares shop stock against rewards on equal terms.
+func _build_shop_card_view(card: Dictionary) -> Control:
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var panel := PanelContainer.new()
+	var colors: Dictionary = get_card_color_constants(str(card.get("color", "red")))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = colors.get("bg", Color(0.2, 0.2, 0.2))
+	sb.border_color = colors.get("border", Color.WHITE)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 8.0
+	sb.content_margin_right = 8.0
+	sb.content_margin_top = 4.0
+	sb.content_margin_bottom = 4.0
+	panel.add_theme_stylebox_override("panel", sb)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var letter := Label.new()
+	letter.text = str(card.get("letter", "?"))
+	letter.add_theme_font_size_override("font_size", 22)
+	letter.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(letter)
+	var dmg := Label.new()
+	dmg.text = "%d dmg" % int(card.get("damage", 0))
+	dmg.add_theme_font_size_override("font_size", 12)
+	dmg.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0, 1.0))
+	dmg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(dmg)
+	if GameManager.has_special_ability(card):
+		var sp := Label.new()
+		sp.text = "★ %s" % GameManager.get_special_name(card)
+		sp.add_theme_font_size_override("font_size", 11)
+		sp.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+		sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(sp)
+	panel.add_child(box)
+	center.add_child(panel)
+	return center
+
+
+func _style_shop_button(button: Button) -> void:
+	var normal := _make_button_style(Color("2a2233"), Color("f0cf7e"))
+	var hover := _make_button_style(Color("3a2f47"), Color("ffe6a8"))
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", _make_button_style(Color("1f1a28"), Color("d8b45f")))
+	button.add_theme_stylebox_override("disabled", _make_button_style(Color("1c1a20"), Color("4a4438")))
+	button.add_theme_color_override("font_color", Color.WHITE)
+	button.add_theme_color_override("font_disabled_color", Color(0.55, 0.55, 0.6, 1.0))
+
+
+func _on_shop_buy(index: int) -> void:
+	var result: Dictionary = GameManager.shop_buy_card(index)
+	if not bool(result.get("ok", false)):
+		_show_step_message("SHOP: %s" % str(result.get("reason", "cannot buy that.")), Color(1.0, 0.5, 0.4, 1.0))
+	else:
+		_play_score_up_sound()
+		_show_step_message("SHOP: %s" % str(result.get("message", "")), OP_COLOR_GAIN)
+	# The OP gauge and the stock row both change, so refresh both.
+	_refresh_op_display()
+	_refresh_shop_dialog()
+	_refresh_formula_panel()
+
+# SHOP_COMPRESS_SECTION
+
+
+## The compression half of the shop: a grid of the player's own cards to tick,
+## and ONE button. There is no batch — compression is one card at a time — and the
+## button shows the price the NEXT card costs, so the repeat escalation is visible
+## before the player commits rather than revealed on the charge.
+func _build_shop_compress_section() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+
+	box.add_child(_build_shop_compress_button())
+
+	var selected := Label.new()
+	selected.text = "  selected: %d card(s)" % _shop_compress_picks.size()
+	selected.add_theme_font_size_override("font_size", 12)
+	selected.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95, 1.0))
+	selected.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(selected)
+
+	# Fewer columns than the deck viewer's twelve: these tiles are wider (they
+	# carry the SPECIAL name), and ten across still fits the dialog width.
+	var grid := GridContainer.new()
+	grid.columns = 8
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	for entry: Dictionary in GameManager.get_burnable_cards():
+		grid.add_child(_build_shop_compress_card_button(entry))
+	box.add_child(grid)
+	return box
+
+
+## The single compress button. Its label carries the escalating price of the NEXT
+## card in this visit — x1, then x2, then x4 — so coming back to the counter is
+## visibly the expensive route.
+func _build_shop_compress_button() -> Button:
+	var cost: int = GameManager.shop_compress_cost()
+	var mult: int = GameManager.shop_compress_multiplier()
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(400, 46)
+	if mult < 0:
+		btn.text = "COMPRESS  —  used up for this visit"
+		btn.disabled = true
+	elif mult > 1:
+		btn.text = "COMPRESS 1 CARD  —  %d OP  (x%d, was %d)   [%d left this visit]" % [
+			cost, mult, GameManager.SHOP_COMPRESS_COST, GameManager.shop_compresses_left()]
+		btn.disabled = not GameManager.can_compress()
+	else:
+		btn.text = "COMPRESS 1 CARD  —  %d OP   [%d left this visit]" % [
+			cost, GameManager.shop_compresses_left()]
+		btn.disabled = not GameManager.can_compress()
+	_style_shop_button(btn)
+	btn.pressed.connect(_on_shop_compress)
+	return btn
+
+
+## One of the player's cards, as a tick target for compression.
+##
+## This draws the card the same way the deck viewer does — letter, damage and,
+## crucially, the ★ SPECIAL name — because deciding which card to throw away is
+## pointless if you cannot see what it does. The full special description and its
+## OP cost live in the tooltip, and a ★ marks a special card at a glance so it
+## can be found without reading every tile.
+func _build_shop_compress_card_button(entry: Dictionary) -> Control:
+	var card: Dictionary = entry.get("card", {})
+	var id: String = str(entry.get("id", ""))
+	var is_special: bool = GameManager.has_special_ability(card)
+	var btn := Button.new()
+	# Tall enough for letter + damage + the two SPECIAL lines. Measured, not
+	# guessed: the assertion below fails the build if the content ever outgrows it.
+	btn.custom_minimum_size = Vector2(74, 104)
+	btn.toggle_mode = true
+	btn.button_pressed = id in _shop_compress_picks
+	var colors: Dictionary = get_card_color_constants(str(card.get("color", "red")))
+	var normal := _make_button_style(
+		colors.get("bg", Color("2a2233")), colors.get("border", Color("f0cf7e")))
+	btn.add_theme_stylebox_override("normal", normal)
+	btn.add_theme_stylebox_override("hover", normal)
+	# Ticked cards go green, so the pending selection is obvious before paying.
+	btn.add_theme_stylebox_override("pressed", _make_button_style(Color("1f5a34"), Color("8ce99a")))
+	btn.add_theme_stylebox_override("focus", normal)
+	btn.tooltip_text = _card_detail_text(card)
+
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vbox.offset_left = 3.0
+	vbox.offset_top = 5.0
+	vbox.offset_right = -3.0
+	vbox.offset_bottom = -5.0
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 0)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(vbox)
+
+	var letter := Label.new()
+	letter.text = str(card.get("letter", "?"))
+	letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	letter.add_theme_font_size_override("font_size", 26)
+	letter.add_theme_color_override("font_color", colors.get("border", Color.WHITE))
+	letter.add_theme_color_override("font_outline_color", Color("080d17"))
+	letter.add_theme_constant_override("outline_size", 2)
+	letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(letter)
+
+	var dmg := Label.new()
+	dmg.text = "%d dmg" % int(card.get("damage", 0))
+	dmg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dmg.add_theme_font_size_override("font_size", 11)
+	dmg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 1.0))
+	dmg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(dmg)
+
+	# A special card says so on the tile itself, not only in the tooltip.
+	if is_special:
+		var sp := Label.new()
+		sp.text = "★ SPECIAL"
+		sp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sp.add_theme_font_size_override("font_size", 9)
+		sp.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+		sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(sp)
+		var spn := Label.new()
+		spn.text = GameManager.get_special_name(card)
+		spn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		spn.add_theme_font_size_override("font_size", 9)
+		spn.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 1.0))
+		spn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		spn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(spn)
+
+	btn.pressed.connect(_on_shop_pick_card.bind(id, btn))
+	return btn
+
+
+## The full readout of a card: colour, damage, and for a special its name, OP
+## cost and description. Used as the tooltip on every card tile, in the shop and
+## in the deck viewer alike, so one card always reads the same way everywhere.
+func _card_detail_text(card: Dictionary) -> String:
+	var lines: Array = ["%s  —  %d dmg  (%s)" % [
+		str(card.get("letter", "?")), int(card.get("damage", 0)),
+		str(card.get("color", "red")).to_upper()]]
+	if GameManager.has_special_ability(card):
+		lines.append("")
+		lines.append("★ %s  —  %d OP" % [
+			GameManager.get_special_name(card), GameManager.get_special_cost(card)])
+		lines.append("  %s" % GameManager.get_special_desc(card))
+	else:
+		lines.append("")
+		lines.append("No special. Cost is its damage value, and it has no active power.")
+	return "\n".join(lines)
+
+
+## Ticking a card adds or removes it from the pending selection, then rebuilds so
+## the batch buttons re-enable or disable themselves for the new count.
+func _on_shop_pick_card(card_id: String, button: Button) -> void:
+	if button.button_pressed:
+		if not _shop_compress_picks.has(card_id):
+			_shop_compress_picks.append(card_id)
+	else:
+		_shop_compress_picks.erase(card_id)
+	_refresh_shop_dialog()
+
+
+## Compresses the selected card. Compression is ONE card at a time, so exactly one
+## selection is required: more than one is refused outright rather than paying
+## for the first and ignoring the rest, which would make the batch path reachable
+## through the UI after all.
+func _on_shop_compress() -> void:
+	var picks: Array = _shop_compress_picks.duplicate()
+	if picks.size() != 1:
+		_show_step_message("SHOP: select exactly ONE card to compress (you picked %d)." % [
+			picks.size()], Color(1.0, 0.6, 0.35, 1.0))
+		return
+	var result: Dictionary = GameManager.shop_compress(picks[0])
+	if not bool(result.get("ok", false)):
+		_show_step_message("SHOP: %s" % str(result.get("reason", "cannot compress.")), Color(1.0, 0.5, 0.4, 1.0))
+	else:
+		_play_score_up_sound()
+		_show_step_message("SHOP: %s" % str(result.get("message", "")), OP_COLOR_GAIN)
+	_shop_compress_picks = []
+	_refresh_op_display()
+	_refresh_shop_dialog()
+	_refresh_ui()
+	_refresh_formula_panel()
+
+
+## Clicking the relic panel opens the viewer. Only a LEFT click counts — a right
+## click opens the Godot input map menu on some platforms, and the panel has no
+## other use for it.
+func _on_relic_panel_input(event: InputEvent) -> void:
+	var click := event as InputEventMouseButton
+	if click == null:
+		return
+	if click.button_index == MOUSE_BUTTON_LEFT and click.pressed:
+		_on_relic_pressed()
+
+
+func _on_relic_pressed() -> void:
+	if relic_dialog.visible:
+		_close_relic_dialog()
+		return
+	_open_relic_dialog()
+
+
+## Opens the relic viewer. Like the deck viewer it is a plain overlay, so it can
+## be opened over the reward screen without closing that first.
+func _open_relic_dialog() -> void:
+	_refresh_relic_dialog()
+	relic_dialog.visible = true
+	relic_close_button.grab_focus()
+
+
+func _close_relic_dialog() -> void:
+	relic_dialog.visible = false
+	# Focus goes back to the panel that opened it, matching the deck viewer's
+	# behaviour of returning focus to whatever the player came from.
+	if reward_dialog.visible:
+		reward_deck_button.grab_focus()
+	else:
+		relic_panel.grab_focus()
+
+
+## Rebuilds the viewer: the subtitle states the running total, then every relic
+## held gets its own block with its name, its effect and the enemy it came from.
+## Duplicates are listed as separate entries so the count is obvious.
+func _refresh_relic_dialog() -> void:
+	for child in relic_body.get_children():
+		relic_body.remove_child(child)
+		child.queue_free()
+
+	var held: Array = GameManager.get_relics()
+	relic_subtitle_label.text = "%d relic(s) held   |   active bonus: %s" % [
+		held.size(), GameManager.get_relic_bonus_text()]
+
+	if held.is_empty():
+		var empty := Label.new()
+		empty.text = "  You hold no relics yet.\n\n  Destroy EVERY part of an enemy to tear it apart —\n  the enemy falls whatever HP it has left, and pays one relic."
+		empty.add_theme_font_size_override("font_size", 14)
+		empty.add_theme_color_override("font_color", Color(0.62, 0.68, 0.78, 1.0))
+		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		relic_body.add_child(empty)
+		return
+
+	for relic: Dictionary in held:
+		relic_body.add_child(_build_relic_row(relic))
+
+
+## One relic's block in the viewer: name (with a stack count), the effect, and
+## the enemy it was torn from. Built in code so the layout always matches the
+## data, exactly like the deck viewer's card sections.
+func _build_relic_row(relic: Dictionary) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 1)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var n: int = GameManager.get_relic_count_of(str(relic.get("id", "")))
+	var title := Label.new()
+	title.text = "%s%s" % [str(relic.get("name", "RELIC")), "  x%d" % n if n > 1 else ""]
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", REWARD_COLOR_TITLE)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(title)
+
+	var desc := Label.new()
+	desc.text = "  %s" % str(relic.get("desc", ""))
+	desc.add_theme_font_size_override("font_size", 13)
+	desc.add_theme_color_override("font_color", Color(0.86, 0.90, 0.98, 1.0))
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(desc)
+
+	var from := Label.new()
+	from.text = "  torn from %s at stage %d" % [
+		str(relic.get("from_enemy", "?")), int(relic.get("stage", 0))]
+	from.add_theme_font_size_override("font_size", 11)
+	from.add_theme_color_override("font_color", Color(0.60, 0.66, 0.76, 0.9))
+	from.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(from)
+	return box
 
 
 # ── Enemy skills ─────────────────────────────────────────────────────────────
@@ -2847,9 +3384,17 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 	var cleared_enemy: bool = result.get("enemies_defeated_delta", 0) > 0
 	var turn_limit_reached: bool = GameManager.get_turn() >= GameManager.MAX_TURNS
 	var player_defeated: bool = GameManager.is_game_over() and GameManager.get_game_outcome() == "DEFEAT"
+	# Every 3rd stage clear the SHOP opens instead of the reward choice. The stage
+	# just finished is stage_before, which is one below the new stage number
+	# because _advance_stage() has already run by this point.
+	var shop_stage: bool = GameManager.is_shop_stage(stage_before)
 	if cleared_enemy and not turn_limit_reached and not player_defeated:
-		_show_step_message("Enemy defeated! Choose your reward.", Color(1.0, 0.88, 0.45, 1.0))
-		show_reward_choice()
+		if shop_stage:
+			_show_step_message("Enemy defeated! A merchant is waiting — the SHOP opens every %drd stage." % GameManager.SHOP_STAGE_EVERY, Color(1.0, 0.85, 0.35, 1.0))
+			_open_shop_dialog()
+		else:
+			_show_step_message("Enemy defeated! Choose your reward.", Color(1.0, 0.88, 0.45, 1.0))
+			show_reward_choice()
 	else:
 		# No reward is coming, so the stage hand is drawn right away instead of
 		# being left owed forever.
@@ -2860,6 +3405,8 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 	if GameManager.is_game_over() and GameManager.get_game_outcome() == "DEFEAT":
 		reward_dialog.visible = false
 		burn_dialog.visible = false
+		shop_dialog.visible = false
+		relic_dialog.visible = false
 		_show_game_over()
 		return
 
@@ -2869,6 +3416,8 @@ func _finalize(result: Dictionary, penalty_result: Dictionary) -> void:
 		_show_game_over()
 		reward_dialog.visible = false
 		burn_dialog.visible = false
+		shop_dialog.visible = false
+		relic_dialog.visible = false
 
 # ── Reward choice (three options after every enemy defeat) ───────────────────
 # Buttons are built in code so the option count and wording always match the
@@ -3275,6 +3824,10 @@ func _show_game_over() -> void:
 	meaning_label.visible                              = false
 	definition_label.visible                           = false
 	burn_dialog.visible                               = false
+	# Every overlay is dismissed here rather than at each call site, so no dialog
+	# can survive into the game-over screen (the shop and relic viewers included).
+	shop_dialog.visible                               = false
+	relic_dialog.visible                              = false
 	$Scroll/Center/VBox/GameOverButtonRow.visible      = true
 
 	var outcome: String = GameManager.get_game_outcome()

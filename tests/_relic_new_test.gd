@@ -23,6 +23,7 @@ func _ready() -> void:
 	fails += _check_iron_core(gm)
 	fails += _check_opening_hand(gm)
 	fails += _check_expanded_pocket(gm)
+	fails += _check_expanded_pocket_is_dealt(gm)
 	fails += _check_hand_down_composes(gm)
 	fails += _check_grant_flow_works(gm)
 
@@ -198,6 +199,83 @@ func _check_expanded_pocket(gm: Node) -> int:
 	gm._reapply_relic_buffs()
 	fails += _check(gm.get_hand_limit() == 9, "two EXPANDED POCKETs give 9 (%d)" % gm.get_hand_limit())
 	return fails
+
+
+## EXPANDED POCKET must not just raise the NUMBER — the extra card has to be
+## actually dealt. A raised `hand_limit` with an unchanged hand array is
+## invisible to the player: the board draws `hand`, and every hand rule counts
+## `hand`, so the relic would silently do nothing. This is the regression that
+## made the relic look broken.
+func _check_expanded_pocket_is_dealt(gm: Node) -> int:
+	var fails: int = 0
+	# Baseline.
+	gm.reset_game()
+	fails += _check(gm.get_hand().size() == gm.HAND_SIZE,
+		"a fresh game holds exactly HAND_SIZE cards (%d)" % gm.get_hand().size())
+
+	# Granting the relic for real must deal the extra card immediately.
+	# grant_relic() rolls at random, so this retries until the hand relic actually
+	# comes up — the assertion is about what happens WHEN it does, not about the
+	# odds of the roll.
+	gm.reset_game()
+	var got_hand_relic: bool = false
+	for _try in range(60):
+		if gm.relic_hand_bonus > 0:
+			got_hand_relic = true
+			break
+		gm.grant_relic("DRAGON", ["DR", "AG", "ON"])
+	fails += _check(got_hand_relic, "the hand relic is reachable by rolling")
+	if got_hand_relic:
+		fails += _check(gm.get_hand_limit() == gm.HAND_SIZE + gm.RELIC_HAND * gm.relic_hand_bonus,
+			"a hand relic raises the limit to %d" % gm.get_hand_limit())
+		fails += _check(gm.get_hand().size() == gm.HAND_SIZE + gm.relic_hand_bonus,
+			"AND deals the extra card at once (%d cards)" % gm.get_hand().size())
+		fails += _check(_filled(gm) == gm.get_hand().size(),
+			"every held slot holds a real card, none are holes")
+
+	# Seeding the total and going through the real path must do the same, and
+	# must NOT creep upward over repeated calls — the array is sized by the hand
+	# builders, not by every re-apply.
+	for i in range(5):
+		gm.reset_game()
+		gm.relic_hand_bonus = 1
+		gm._relic_apply_kind("hand_limit", 0)
+		fails += _check(gm.get_hand().size() == gm.HAND_SIZE + 1,
+			"run %d: the hand is %d, not creeping" % [i, gm.get_hand().size()])
+
+	# And it survives the paths that reset the limit.
+	gm.reset_game()
+	gm.relic_hand_bonus = 1
+	gm._reapply_relic_buffs()
+	gm._refill_hand()
+	fails += _check(gm.get_hand().size() == 8, "the hand holds 8 with the relic")
+	for _i in range(3):
+		gm._advance_stage()
+		gm.flush_pending_hand_redraw()
+	fails += _check(gm.get_hand_limit() == 8, "the limit is still 8 after 3 stage clears")
+	fails += _check(gm.get_hand().size() == 8,
+		"and the hand still holds 8 (%d)" % gm.get_hand().size())
+
+	# HAND DOWN must still be able to shrink it back.
+	gm.reset_game()
+	gm.relic_hand_bonus = 1
+	gm._reapply_relic_buffs()
+	gm._refill_hand()
+	gm.hand_limit = maxi(gm.ENEMY_MIN_HAND_LIMIT, gm.hand_limit - 1)
+	gm._trim_hand_to_limit()
+	fails += _check(gm.get_hand_limit() == 7, "HAND DOWN takes it back to 7")
+	fails += _check(gm.get_hand().size() == 7,
+		"and trims the hand to 7 (%d)" % gm.get_hand().size())
+	return fails
+
+
+## How many hand slots actually hold a card (rather than being null).
+func _filled(gm: Node) -> int:
+	var n: int = 0
+	for card: Variant in gm.get_hand():
+		if card != null:
+			n += 1
+	return n
 
 
 ## The spec's exact composition case:

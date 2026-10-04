@@ -602,3 +602,141 @@ horizontal_scroll_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
+
+[node name="RelicDialog" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dimmer" type="ColorRect" parent="RelicDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.03, 0.06, 0.78)
+
+[node name="DialogPanel" type="PanelContainer" parent="RelicDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.22
+anchor_top = 0.12
+anchor_right = 0.78
+anchor_bottom = 0.88
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="DialogVBox" type="VBoxContainer" parent="RelicDialog/DialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DialogHeader" type="HBoxContainer" parent="RelicDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="RelicDialog/DialogPanel/DialogVBox/DialogHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.88, 0.45, 1)
+theme_override_font_sizes/font_size = 20
+text = "RELICS"
+
+[node name="CloseButton" type="Button" parent="RelicDialog/DialogPanel/DialogVBox/DialogHeader"]
+custom_minimum_size = Vector2(105, 34)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "CLOSE  (Esc)"
+
+[node name="Subtitle" type="Label" parent="RelicDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="RelicDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RelicBody" type="VBoxContainer" parent="RelicDialog/DialogPanel/DialogVBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ShopDialog" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dimmer" type="ColorRect" parent="ShopDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.03, 0.06, 0.82)
+
+[node name="DialogPanel" type="PanelContainer" parent="ShopDialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.14
+anchor_top = 0.09
+anchor_right = 0.86
+anchor_bottom = 0.91
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="DialogVBox" type="VBoxContainer" parent="ShopDialog/DialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DialogHeader" type="HBoxContainer" parent="ShopDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="ShopDialog/DialogPanel/DialogVBox/DialogHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+theme_override_font_sizes/font_size = 20
+text = "SHOP"
+
+[node name="CloseButton" type="Button" parent="ShopDialog/DialogPanel/DialogVBox/DialogHeader"]
+custom_minimum_size = Vector2(150, 34)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "LEAVE  (Esc)"
+
+[node name="Subtitle" type="Label" parent="ShopDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="ShopDialog/DialogPanel/DialogVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ShopBody" type="VBoxContainer" parent="ShopDialog/DialogPanel/DialogVBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
