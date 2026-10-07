@@ -1,35 +1,31 @@
 extends PanelContainer
 
-# DraggableCard.gd - Click, hold and drag-and-drop on card panels.
+# DraggableCard.gd - Click, hold, flick and drag-and-drop on card panels.
 #
-# The three gestures used to fight each other:
-#   * `clicked` fired on mouse-PRESS, so simply touching a card dropped it on the
-#     Workbench. A drag then started from an already-placed card, and the drop was
-#     swallowed by _is_card_in_workbench(), which is why dragging did nothing.
-#   * The long-press fired `special_used` while `clicked` had already fired, so a
-#     hold did BOTH at once.
-#   * Holding never released `_pressing`, so the special could re-fire later.
-#
-# Now: a click is only a click if the pointer barely moved and the button was
-# released quickly. Real movement hands the gesture over to Godot's drag system,
-# and a completed drag is never also treated as a click.
+# Supports desktop and mobile touch gestures:
+#   * Click / Tap: Quick press and release in place -> clicked(card_data) (drops to workbench)
+#   * Drag & Drop: Drag downwards/sideways past threshold -> Godot drag to workbench/slots
+#   * Hold (Long Press): Hold pointer still for SPECIAL_HOLD_TIME -> special_used(card_data)
+#   * Flick / Swipe Up: Flick or drag upward by FLICK_UP_DISTANCE -> special_used(card_data)
+#   * Right Click: Instant special activation (desktop right-click shortcut)
 
 signal clicked(card_data: Dictionary)
 signal special_used(card_data: Dictionary)
 
-const SPECIAL_HOLD_TIME: float = 0.8   # Seconds to hold for special ability
-## Pointer travel (px) that turns a press into a drag. Godot's own drag threshold
-## is 10px, so anything past this is unambiguously a drag and not a click.
-const DRAG_START_DISTANCE: float = 8.0
+const SPECIAL_HOLD_TIME: float = 0.6   # Seconds to hold for special ability
+const DRAG_START_DISTANCE: float = 10.0 # Pointer travel (px) that turns a press into standard drag
+const FLICK_UP_DISTANCE: float = 28.0   # Upward travel (px) to activate special ability
+const FLICK_VELOCITY_Y: float = -180.0  # Upward velocity (px/s) for quick flick
 
 var card_data: Dictionary = {}
 var _pressing: bool = false
 var _press_time: float = 0.0
 var _press_origin: Vector2 = Vector2.ZERO
-## Set once the pointer has travelled far enough to be a drag. From then on the
-## gesture belongs to the drag system, never to the click/hold handlers.
+var _current_pos: Vector2 = Vector2.ZERO
+var _velocity: Vector2 = Vector2.ZERO
 var _dragging: bool = false
 var _special_fired: bool = false
+var _press_tween: Tween = null
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -39,61 +35,120 @@ func _gui_input(event: InputEvent) -> void:
 			if mb.pressed:
 				_begin_press(mb.position)
 			else:
-				_end_press()
+				_end_press(mb.position)
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
-			special_used.emit(card_data)
+			_trigger_special()
+	elif event is InputEventScreenTouch:
+		var st := event as InputEventScreenTouch
+		if st.pressed:
+			_begin_press(st.position)
+		else:
+			_end_press(st.position)
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
-		if _pressing and not _dragging:
-			if _press_origin.distance_to(mm.position) > DRAG_START_DISTANCE:
-				# The player is dragging, so the press no longer owes a click.
-				_dragging = true
-				_special_fired = true
+		_handle_motion(mm.position, mm.velocity)
+	elif event is InputEventScreenDrag:
+		var sd := event as InputEventScreenDrag
+		_handle_motion(sd.position, sd.velocity)
 
 
 func _process(delta: float) -> void:
 	if _pressing and not _special_fired and not _dragging:
 		_press_time += delta
+		# Visual cue: slight scale-up during hold so player knows it is charging
+		if is_inside_tree() and _press_time > 0.08:
+			var t: float = clampf((_press_time - 0.08) / (SPECIAL_HOLD_TIME - 0.08), 0.0, 1.0)
+			pivot_offset = size * 0.5
+			scale = Vector2.ONE.lerp(Vector2(1.08, 1.08), t)
 		if _press_time >= SPECIAL_HOLD_TIME:
-			_special_fired = true
-			special_used.emit(card_data)
+			_trigger_special()
 
 
 func _begin_press(at_position: Vector2) -> void:
 	_pressing = true
 	_press_time = 0.0
 	_press_origin = at_position
+	_current_pos = at_position
+	_velocity = Vector2.ZERO
 	_dragging = false
 	_special_fired = false
+	pivot_offset = size * 0.5
 
 
-func _end_press() -> void:
+func _handle_motion(pos: Vector2, vel: Vector2) -> void:
+	_current_pos = pos
+	_velocity = vel
+	if _pressing and not _dragging and not _special_fired:
+		var delta_pos := pos - _press_origin
+		# 1. Flick Up detection (upward swipe/flick for special ability)
+		var is_upward: bool = delta_pos.y < 0.0 and abs(delta_pos.y) >= abs(delta_pos.x) * 0.5
+		if is_upward:
+			if delta_pos.y <= -FLICK_UP_DISTANCE or (delta_pos.y <= -14.0 and vel.y <= FLICK_VELOCITY_Y):
+				_trigger_special()
+				return
+
+		# 2. Regular drag detection (moving sideways or downward towards workbench)
+		if delta_pos.length() > DRAG_START_DISTANCE:
+			_dragging = true
+			_special_fired = true
+			_reset_visual()
+
+
+func _trigger_special() -> void:
+	_special_fired = true
+	_pressing = false
+	_dragging = false
+	if is_inside_tree():
+		if _press_tween and _press_tween.is_valid():
+			_press_tween.kill()
+		pivot_offset = size * 0.5
+		_press_tween = create_tween()
+		_press_tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.08)
+		_press_tween.tween_property(self, "scale", Vector2.ONE, 0.12)
+	special_used.emit(card_data)
+
+
+func _reset_visual() -> void:
+	if is_inside_tree():
+		if _press_tween and _press_tween.is_valid():
+			_press_tween.kill()
+		_press_tween = create_tween()
+		_press_tween.tween_property(self, "scale", Vector2.ONE, 0.1)
+
+
+func _end_press(release_pos: Vector2 = Vector2.ZERO) -> void:
 	if not _pressing:
 		return
 	_pressing = false
-	# A drag, or a hold that already spent the gesture on the special, is not a
-	# click. Emitting here is what used to double up with the hold.
+	_reset_visual()
 	if _dragging or _special_fired:
 		return
+
+	# Check for quick flick released before distance threshold was reached in motion
+	if release_pos != Vector2.ZERO:
+		var delta_pos := release_pos - _press_origin
+		var is_upward: bool = delta_pos.y < 0.0 and abs(delta_pos.y) >= abs(delta_pos.x) * 0.5
+		if is_upward and (delta_pos.y <= -FLICK_UP_DISTANCE or _velocity.y <= FLICK_VELOCITY_Y or (delta_pos.y <= -14.0 and _press_time < 0.35)):
+			_trigger_special()
+			return
+
 	clicked.emit(card_data)
 
 
 func _notification(what: int) -> void:
-	# Losing the pointer (window focus, mouse left the screen) must not leave a
-	# press pending, or the special would fire on a timer with nobody holding.
 	if what == NOTIFICATION_DRAG_END:
 		_pressing = false
 		_dragging = false
+		_reset_visual()
 
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
 	if card_data.is_empty():
 		return null
 
-	# Godot only calls this once the drag threshold is passed, so reaching here
-	# means the gesture is definitively a drag.
 	_dragging = true
 	_special_fired = true
+	_reset_visual()
 
 	# Create drag preview widget
 	var preview := PanelContainer.new()

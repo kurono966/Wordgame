@@ -35,3 +35,8 @@ window/stretch/aspect="expand"
 [gui]
 
 theme/custom_font="uid://dbicpa5p7po4b"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+pointing/emulate_mouse_from_touch=true

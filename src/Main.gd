@@ -83,6 +83,7 @@ var _shop_compress_picks: Array = []
 # Cached stats text without the enemy-skill "DANGER" suffix.
 var _stats_line: String = ""
 @onready var turn_label            : Label          = $Scroll/Center/VBox/HeaderBox/TurnLabel
+@onready var fullscreen_button     : Button         = $Scroll/Center/VBox/HeaderBox/FullscreenButton
 # Operation points (YELLOW trait) — dedicated gauge next to the two HP bars
 @onready var op_panel              : PanelContainer = $Scroll/Center/VBox/StatusBox/OPBox
 @onready var op_title_label        : Label          = $Scroll/Center/VBox/StatusBox/OPBox/OPVBox/OPTitleLabel
@@ -249,6 +250,9 @@ func _ready() -> void:
 	piles_close_button.pressed.connect(_close_piles_dialog)
 	reward_deck_button.pressed.connect(_open_piles_dialog)
 	retry_button.pressed.connect(_on_retry_pressed)
+	if fullscreen_button:
+		fullscreen_button.pressed.connect(_toggle_fullscreen)
+		_update_fullscreen_button()
 
 	_setup_workbench_drop_target()
 	JishoClient.lookup_finished.connect(_on_jisho_lookup_finished)
@@ -265,8 +269,6 @@ func _ready() -> void:
 	_style_reward_panel()
 	_style_burn_panel()
 	shop_close_button.pressed.connect(_close_shop_dialog)
-	relic_close_button.pressed.connect(_close_relic_dialog)
-	relic_panel.gui_input.connect(_on_relic_panel_input)
 	relic_close_button.pressed.connect(_close_relic_dialog)
 	relic_panel.gui_input.connect(_on_relic_panel_input)
 	burn_cancel_button.pressed.connect(_on_burn_cancel_pressed)
@@ -295,6 +297,7 @@ func _fit_ui_to_viewport() -> void:
 	var main_layout: VBoxContainer = $Scroll/Center/VBox
 	main_layout.pivot_offset = main_layout.size * 0.5
 	main_layout.scale = Vector2.ONE
+	_update_fullscreen_button()
 
 
 func _process(_delta: float) -> void:
@@ -341,6 +344,8 @@ func _style_global_ui() -> void:
 	_style_button(formula_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
 	_style_button(piles_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
 	_style_button(retry_button, Color("3b2c67"), Color("a88cff"), Color("f0eaff"))
+	if fullscreen_button:
+		_style_button(fullscreen_button, Color("273650"), Color("7695c3"), Color("e6efff"))
 
 	message_label.add_theme_color_override("font_outline_color", Color("07101f"))
 	message_label.add_theme_constant_override("outline_size", 3)
@@ -462,11 +467,22 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _toggle_fullscreen() -> void:
-	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN:
+	var mode := DisplayServer.window_get_mode()
+	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		call_deferred("_restore_windowed_size")
 	else:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	_update_fullscreen_button()
+
+func _update_fullscreen_button() -> void:
+	if not fullscreen_button:
+		return
+	var mode := DisplayServer.window_get_mode()
+	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		fullscreen_button.text = "🗗 WINDOW"
+	else:
+		fullscreen_button.text = "⛶ FULLSCREEN"
 
 func _restore_windowed_size() -> void:
 	DisplayServer.window_set_size(WINDOWED_SIZE)

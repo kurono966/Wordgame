@@ -20,6 +20,8 @@ func _ready() -> void:
 	fails += _check_drag_data_disarms_click(main_free_card())
 	fails += _check_drag_end_clears_press(main_free_card())
 	fails += _check_right_click_fires_special(main_free_card())
+	fails += _check_flick_up_fires_special(main_free_card())
+	fails += _check_touch_events(main_free_card())
 
 	print("FAILURES=%d" % fails)
 	print("TEST_EXIT=%d" % fails)
@@ -144,6 +146,38 @@ func _check_right_click_fires_special(c: Dictionary) -> int:
 	panel._gui_input(e)
 	return _check(t["specials"] == 1 and t["clicks"] == 0,
 		"a right click fires the special and is not a click (%s)" % str(t))
+
+
+## Swiping upward past FLICK_UP_DISTANCE triggers the special immediately.
+func _check_flick_up_fires_special(c: Dictionary) -> int:
+	var panel = c["panel"]
+	var t = c["tally"]
+	_press(panel, Vector2(50, 50))
+	_move(panel, Vector2(50, 50 - panel.FLICK_UP_DISTANCE - 4.0))
+	_release(panel, Vector2(50, 50 - panel.FLICK_UP_DISTANCE - 4.0))
+	return _check(t["specials"] == 1 and t["clicks"] == 0,
+		"flicking upward fires the special and is not a click (%s)" % str(t))
+
+
+## Screen touch and drag events behave identically to mouse on mobile.
+func _check_touch_events(c: Dictionary) -> int:
+	var panel = c["panel"]
+	var t = c["tally"]
+	var st_press := InputEventScreenTouch.new()
+	st_press.pressed = true
+	st_press.position = Vector2(50, 50)
+	panel._gui_input(st_press)
+
+	var sd := InputEventScreenDrag.new()
+	sd.position = Vector2(50, 50 - panel.FLICK_UP_DISTANCE - 4.0)
+	panel._gui_input(sd)
+
+	var st_release := InputEventScreenTouch.new()
+	st_release.pressed = false
+	st_release.position = Vector2(50, 50 - panel.FLICK_UP_DISTANCE - 4.0)
+	panel._gui_input(st_release)
+	return _check(t["specials"] == 1 and t["clicks"] == 0,
+		"screen touch and drag upward fires special (%s)" % str(t))
 
 
 func _check(ok: bool, label: String) -> int:
