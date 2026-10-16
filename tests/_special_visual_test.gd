@@ -67,7 +67,7 @@ func _check_one(main: Node, def: Dictionary) -> int:
 ## Puts a card on top of the draw pile whose letter/colour/damage match `def`,
 ## so the refill after the special is visually identical to the used card.
 func _force_next_draw_like(def: Dictionary) -> void:
-	if str(def.get("special_id", "")) in ["royal_summon", "jack_in_the_box", "vowel_shift"]:
+	if str(def.get("special_id", "")) in ["royal_summon", "jack_in_the_box", "vowel_shift", "universal"]:
 		# These replace the card with a fixed card, not a draw.
 		return
 	GameManager.deck.append({

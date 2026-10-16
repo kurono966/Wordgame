@@ -211,14 +211,101 @@ const CARD_DEFS: Array = [
 ]
 
 # ── SPECIAL CARD POOL: Available via rewards, NEVER in the initial deck ──
+# Balanced 28-card pool covering all letters A-Z across all 4 colors (7 cards each).
 const SPECIAL_CARD_DEFS: Array = [
-	# ── 高難度文字（固有大技） ──
+	# ── RED (Damage / Offense) ──
+	{
+		"letter": "E", "damage": 1, "color": "red",
+		"special_id": "spark",
+		"special_name": "SPARK",
+		"special_cost": 2,
+		"special_desc": "Deal 4 direct damage to the enemy."
+	},
+	{
+		"letter": "R", "damage": 1, "color": "red",
+		"special_id": "ignite",
+		"special_name": "IGNITE",
+		"special_cost": 3,
+		"special_desc": "Deal 6 direct damage to the enemy."
+	},
+	{
+		"letter": "C", "damage": 3, "color": "red",
+		"special_id": "cleave",
+		"special_name": "CLEAVE",
+		"special_cost": 3,
+		"special_desc": "Deal 8 direct damage to the enemy."
+	},
+	{
+		"letter": "B", "damage": 3, "color": "red",
+		"special_id": "bomb",
+		"special_name": "BOMB",
+		"special_cost": 4,
+		"special_desc": "Deal 10 direct damage to the enemy."
+	},
+	{
+		"letter": "W", "damage": 4, "color": "red",
+		"special_id": "war_cry",
+		"special_name": "WAR CRY",
+		"special_cost": 4,
+		"special_desc": "Deal 5 direct damage and draw a card."
+	},
+	{
+		"letter": "K", "damage": 5, "color": "red",
+		"special_id": "knockout",
+		"special_name": "KNOCKOUT",
+		"special_cost": 5,
+		"special_desc": "Deal 13 direct damage to the enemy."
+	},
 	{
 		"letter": "Q", "damage": 10, "color": "red",
 		"special_id": "royal_summon",
 		"special_name": "ROYAL SUMMON",
 		"special_cost": 6,
 		"special_desc": "Add a 'U' (1 dmg, red) card to your hand."
+	},
+
+	# ── BLUE (Shield / Defense) ──
+	{
+		"letter": "S", "damage": 1, "color": "blue",
+		"special_id": "guard",
+		"special_name": "GUARD",
+		"special_cost": 2,
+		"special_desc": "Gain 4 shield."
+	},
+	{
+		"letter": "L", "damage": 1, "color": "blue",
+		"special_id": "light_wall",
+		"special_name": "LIGHT WALL",
+		"special_cost": 3,
+		"special_desc": "Gain 7 shield."
+	},
+	{
+		"letter": "I", "damage": 1, "color": "blue",
+		"special_id": "ice_barrier",
+		"special_name": "ICE BARRIER",
+		"special_cost": 3,
+		"special_desc": "Gain 6 shield and nullify night penalty this turn."
+	},
+	{
+		"letter": "P", "damage": 3, "color": "blue",
+		"special_id": "protection",
+		"special_name": "PROTECTION",
+		"special_cost": 3,
+		"special_desc": "Gain 8 shield."
+	},
+	{
+		"letter": "H", "damage": 4, "color": "blue",
+		"special_id": "harden",
+		"special_name": "HARDEN",
+		"special_cost": 4,
+		"special_desc": "Gain 8 shield and draw a card."
+	},
+	{
+		"letter": "F", "damage": 4, "color": "blue",
+		"special_id": "fortify",
+		"special_name": "FORTIFY",
+		"special_cost": 4,
+		"special_desc": "Gain 12 shield."
 	},
 	{
 		"letter": "Z", "damage": 10, "color": "blue",
@@ -227,12 +314,49 @@ const SPECIAL_CARD_DEFS: Array = [
 		"special_cost": 6,
 		"special_desc": "Gain 10 shield and nullify night penalty this turn."
 	},
+
+	# ── GREEN (Healing / Flexibility) ──
 	{
-		"letter": "X", "damage": 8, "color": "yellow",
-		"special_id": "cross_multiply",
-		"special_name": "CROSS MULTIPLY",
-		"special_cost": 6,
-		"special_desc": "Double all effects (dmg, shield, heal, OP) of next word."
+		"letter": "A", "damage": 1, "color": "green",
+		"special_id": "mini_heal",
+		"special_name": "MINI HEAL",
+		"special_cost": 2,
+		"special_desc": "Restore 4 HP."
+	},
+	{
+		"letter": "O", "damage": 1, "color": "green",
+		"special_id": "vowel_shift",
+		"special_name": "VOWEL SHIFT",
+		"special_cost": 1,
+		"special_desc": "Shift this card to a random vowel (A, E, I, U)."
+	},
+	{
+		"letter": "U", "damage": 1, "color": "green",
+		"special_id": "universal",
+		"special_name": "UNIVERSAL",
+		"special_cost": 4,
+		"special_desc": "Transform this card into a wildcard (?) for this fight."
+	},
+	{
+		"letter": "G", "damage": 2, "color": "green",
+		"special_id": "growth",
+		"special_name": "GROWTH",
+		"special_cost": 3,
+		"special_desc": "Restore 6 HP."
+	},
+	{
+		"letter": "M", "damage": 3, "color": "green",
+		"special_id": "meditate",
+		"special_name": "MEDITATE",
+		"special_cost": 3,
+		"special_desc": "Restore 8 HP."
+	},
+	{
+		"letter": "V", "damage": 4, "color": "green",
+		"special_id": "vital_surge",
+		"special_name": "VITAL SURGE",
+		"special_cost": 4,
+		"special_desc": "Restore 10 HP."
 	},
 	{
 		"letter": "J", "damage": 8, "color": "green",
@@ -242,34 +366,34 @@ const SPECIAL_CARD_DEFS: Array = [
 		"special_desc": "Transform this card into a wildcard (?) for this fight."
 	},
 
-	# ── 汎用文字（弱くてシンプルなプチ効果） ──
-	{
-		"letter": "E", "damage": 1, "color": "red",
-		"special_id": "spark",
-		"special_name": "SPARK",
-		"special_cost": 2,
-		"special_desc": "Deal 4 direct damage to the enemy."
-	},
-	{
-		"letter": "S", "damage": 1, "color": "blue",
-		"special_id": "guard",
-		"special_name": "GUARD",
-		"special_cost": 2,
-		"special_desc": "Gain 4 shield."
-	},
-	{
-		"letter": "A", "damage": 1, "color": "green",
-		"special_id": "mini_heal",
-		"special_name": "MINI HEAL",
-		"special_cost": 2,
-		"special_desc": "Restore 4 HP."
-	},
+	# ── YELLOW (OP / Card Draw / Multipliers) ──
 	{
 		"letter": "T", "damage": 1, "color": "yellow",
 		"special_id": "cycle",
 		"special_name": "CYCLE",
 		"special_cost": 2,
 		"special_desc": "Discard this card and draw a new card."
+	},
+	{
+		"letter": "N", "damage": 1, "color": "yellow",
+		"special_id": "network",
+		"special_name": "NETWORK",
+		"special_cost": 2,
+		"special_desc": "Discard N and draw 2 new cards."
+	},
+	{
+		"letter": "E", "damage": 1, "color": "yellow",
+		"special_id": "energize",
+		"special_name": "ENERGIZE",
+		"special_cost": 2,
+		"special_desc": "Gain 5 OP."
+	},
+	{
+		"letter": "A", "damage": 1, "color": "yellow",
+		"special_id": "alchemy",
+		"special_name": "ALCHEMY",
+		"special_cost": 3,
+		"special_desc": "Gain 4 OP and draw a card."
 	},
 	{
 		"letter": "D", "damage": 2, "color": "yellow",
@@ -279,11 +403,18 @@ const SPECIAL_CARD_DEFS: Array = [
 		"special_desc": "Discard D + 1 random card from hand, then draw 2 new cards."
 	},
 	{
-		"letter": "O", "damage": 1, "color": "green",
-		"special_id": "vowel_shift",
-		"special_name": "VOWEL SHIFT",
-		"special_cost": 1,
-		"special_desc": "Shift this card to a random vowel (A, E, I, U)."
+		"letter": "Y", "damage": 4, "color": "yellow",
+		"special_id": "yield_op",
+		"special_name": "YIELD",
+		"special_cost": 3,
+		"special_desc": "Gain 6 OP."
+	},
+	{
+		"letter": "X", "damage": 8, "color": "yellow",
+		"special_id": "cross_multiply",
+		"special_name": "CROSS MULTIPLY",
+		"special_cost": 6,
+		"special_desc": "Double all effects (dmg, shield, heal, OP) of next word."
 	}
 ]
 
@@ -464,8 +595,11 @@ func open_shop() -> Array:
 	shop_bought = []
 	# A new visit always starts on the cheapest compression again.
 	shop_compress_count = 0
+	var chosen_ids: Array = []
 	for _i in range(SHOP_STOCK):
-		shop_stock.append(_pick_reward_card())
+		var card: Dictionary = _pick_reward_card(chosen_ids)
+		chosen_ids.append(str(card.get("special_id", "")))
+		shop_stock.append(card)
 	shop_open = true
 	pending_reward_choice = false
 	return shop_stock
@@ -715,13 +849,75 @@ func is_burning() -> bool:
 ## deck with filler that plays no differently from the fixed 20 the player
 ## started with, so the interesting decision is WHICH power to take rather than
 ## whether the roll happened to be interesting.
-func _pick_reward_card() -> Dictionary:
+##
+## Balances letter, color, and ability distribution:
+##   * Strongly prefers specials the player does NOT already have in deck/hand/grave.
+##   * Favors colors under-represented in the player's deck so colors stay balanced.
+##   * Supports exclude_ids to prevent duplicates in simultaneous shop offers.
+func _pick_reward_card(exclude_ids: Array = []) -> Dictionary:
 	if SPECIAL_CARD_DEFS.is_empty():
 		# No specials defined at all: fall back to the plain pool rather than crash.
 		if CARD_DEFS.is_empty():
 			return {"letter": "E", "damage": 1, "color": "red"}
 		return CARD_DEFS[randi() % CARD_DEFS.size()].duplicate()
-	return SPECIAL_CARD_DEFS[randi() % SPECIAL_CARD_DEFS.size()].duplicate()
+
+	# Count colors and existing specials across deck, hand, and graveyard
+	var color_counts := {"red": 0, "blue": 0, "green": 0, "yellow": 0}
+	var existing_special_ids := {}
+	for c in deck + hand + graveyard:
+		if c != null and typeof(c) == TYPE_DICTIONARY:
+			var col: String = str(c.get("color", "red"))
+			color_counts[col] = color_counts.get(col, 0) + 1
+			if has_special_ability(c):
+				existing_special_ids[str(c.get("special_id", ""))] = true
+
+	# Filter pool by exclude_ids (e.g. other items currently rolled in shop)
+	var available: Array = []
+	for def: Dictionary in SPECIAL_CARD_DEFS:
+		var s_id: String = str(def.get("special_id", ""))
+		if s_id in exclude_ids:
+			continue
+		available.append(def)
+
+	if available.is_empty():
+		available = SPECIAL_CARD_DEFS.duplicate()
+
+	# Weighted candidate scoring
+	var total_cards: int = deck.size() + hand.size() + graveyard.size()
+	var avg_per_color: float = float(total_cards) / 4.0
+
+	var candidates: Array = []
+	var weights: Array = []
+	for def: Dictionary in available:
+		var s_id: String = str(def.get("special_id", ""))
+		var col: String = str(def.get("color", "red"))
+		var w: float = 10.0
+
+		# 1. Prefer unowned abilities so player gets new, varied specials
+		if not existing_special_ids.has(s_id):
+			w += 30.0
+
+		# 2. Prefer under-represented colors in deck
+		var count: int = int(color_counts.get(col, 0))
+		if float(count) < avg_per_color:
+			w += (avg_per_color - float(count)) * 5.0
+
+		candidates.append(def)
+		weights.append(maxf(w, 1.0))
+
+	# Weighted random choice
+	var total_weight: float = 0.0
+	for wt: float in weights:
+		total_weight += wt
+
+	var roll_val: float = randf() * total_weight
+	var acc: float = 0.0
+	for i in range(candidates.size()):
+		acc += weights[i]
+		if roll_val <= acc:
+			return candidates[i].duplicate()
+
+	return candidates[randi() % candidates.size()].duplicate()
 
 
 ## A wildcard from the pool: 0 damage, a colour so it still counts toward that
@@ -1970,6 +2166,99 @@ func use_special_ability(hand_index: int) -> Dictionary:
 			var new_l: String = vowels[0]
 			hand[hand_index] = {"letter": new_l, "damage": 1, "color": "green", "ephemeral": true}
 			result["message"] = "VOWEL SHIFT! O was sent to graveyard, generated '%s' in hand. It vanishes once used." % new_l
+
+		"ignite":
+			_apply_damage(6)
+			_refill_hand()
+			result["message"] = "IGNITE! R was sent to graveyard. Dealt 6 direct damage to the enemy."
+
+		"cleave":
+			_apply_damage(8)
+			_refill_hand()
+			result["message"] = "CLEAVE! C was sent to graveyard. Dealt 8 direct damage to the enemy."
+
+		"bomb":
+			_apply_damage(10)
+			_refill_hand()
+			result["message"] = "BOMB! B was sent to graveyard. Dealt 10 direct damage to the enemy."
+
+		"war_cry":
+			_apply_damage(5)
+			_refill_hand()
+			result["message"] = "WAR CRY! W was sent to graveyard. Dealt 5 direct damage and drew a card."
+
+		"knockout":
+			_apply_damage(13)
+			_refill_hand()
+			result["message"] = "KNOCKOUT! K was sent to graveyard. Dealt 13 direct damage to the enemy."
+
+		"light_wall":
+			shield += 7
+			_refill_hand()
+			result["message"] = "LIGHT WALL! L was sent to graveyard. Gained 7 shield."
+
+		"ice_barrier":
+			shield += 6
+			night_penalty_immune = true
+			_refill_hand()
+			result["message"] = "ICE BARRIER! I was sent to graveyard. Gained 6 shield and nullified night penalty."
+
+		"protection":
+			shield += 8
+			_refill_hand()
+			result["message"] = "PROTECTION! P was sent to graveyard. Gained 8 shield."
+
+		"harden":
+			shield += 8
+			_refill_hand()
+			result["message"] = "HARDEN! H was sent to graveyard. Gained 8 shield and drew a card."
+
+		"fortify":
+			shield += 12
+			_refill_hand()
+			result["message"] = "FORTIFY! F was sent to graveyard. Gained 12 shield."
+
+		"universal":
+			hand[hand_index] = {"letter": "?", "damage": 1, "color": "green",
+				"is_wildcard": true, "ephemeral": true}
+			result["message"] = "UNIVERSAL! U was sent to graveyard, generated a wildcard (?) in hand. It vanishes once used."
+
+		"growth":
+			var healed_g: int = mini(6, player_max_hp - player_hp)
+			player_hp += healed_g
+			_refill_hand()
+			result["message"] = "GROWTH! G was sent to graveyard. Restored %d HP." % healed_g
+
+		"meditate":
+			var healed_m: int = mini(8, player_max_hp - player_hp)
+			player_hp += healed_m
+			_refill_hand()
+			result["message"] = "MEDITATE! M was sent to graveyard. Restored %d HP." % healed_m
+
+		"vital_surge":
+			var healed_v: int = mini(10, player_max_hp - player_hp)
+			player_hp += healed_v
+			_refill_hand()
+			result["message"] = "VITAL SURGE! V was sent to graveyard. Restored %d HP." % healed_v
+
+		"network":
+			_refill_hand()
+			result["message"] = "NETWORK! N was sent to graveyard and drew cards."
+
+		"energize":
+			operation_points += 5
+			_refill_hand()
+			result["message"] = "ENERGIZE! E was sent to graveyard. Gained 5 OP."
+
+		"alchemy":
+			operation_points += 4
+			_refill_hand()
+			result["message"] = "ALCHEMY! A was sent to graveyard. Gained 4 OP and drew a card."
+
+		"yield_op":
+			operation_points += 6
+			_refill_hand()
+			result["message"] = "YIELD! Y was sent to graveyard. Gained 6 OP."
 
 		_:
 			# Fallback

@@ -25,6 +25,8 @@ func _ready() -> void:
 	fails += _check_wildcards_respect_the_deck_ceiling(gm)
 	fails += _check_wildcards_actually_work(gm)
 	fails += _check_option_count_is_still_three(gm)
+	fails += _check_reward_pool_variety(gm)
+	fails += _check_shop_offers_diverse_specials(gm)
 
 	print("FAILURES=%d" % fails)
 	print("TEST_EXIT=%d" % fails)
@@ -178,6 +180,40 @@ func _check_option_count_is_still_three(gm: Node) -> int:
 		if options.size() != 3:
 			return _check(false, "each roll offers three options (got %d)" % options.size())
 	return _check(true, "every roll offers exactly three options")
+
+
+## Checks that rewards offer all 4 colors and a diverse set of letters across rolls.
+func _check_reward_pool_variety(gm: Node) -> int:
+	var colors_seen := {}
+	var letters_seen := {}
+	for _i in range(120):
+		for reward in gm.roll_rewards():
+			if str(reward.get("type", "")) == "add_card":
+				var c: Dictionary = reward.get("card", {})
+				colors_seen[str(c.get("color", ""))] = true
+				letters_seen[str(c.get("letter", ""))] = true
+	var fails: int = 0
+	fails += _check(colors_seen.size() == 4,
+		"rewards offer all 4 colors (seen: %s)" % str(colors_seen.keys()))
+	fails += _check(letters_seen.size() >= 15,
+		"rewards offer diverse letters (seen %d distinct letters: %s)" % [letters_seen.size(), str(letters_seen.keys())])
+	return fails
+
+
+## Checks that shop offers distinct specials without duplicates.
+func _check_shop_offers_diverse_specials(gm: Node) -> int:
+	var fails: int = 0
+	gm.open_shop()
+	var offers: Array = gm.get_shop_offers()
+	var ids := {}
+	for offer in offers:
+		var c: Dictionary = offer.get("card", {})
+		var s_id: String = str(c.get("special_id", ""))
+		ids[s_id] = true
+	fails += _check(ids.size() == offers.size(),
+		"shop offers %d distinct special cards without duplicates" % offers.size())
+	gm.close_shop()
+	return fails
 
 
 func _index_of(options: Array, type: String) -> int:
