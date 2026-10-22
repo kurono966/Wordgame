@@ -1,0 +1,15 @@
+{
+  "scowl_max_size": 70,
+  "accept_zipf": 3.0,
+  "candidate_max_zipf_exclusive": 1.0,
+  "minimum_dictionary_votes": 2,
+  "scowl_regions": ["english", "american", "british", "british_z", "canadian", "australian"],
+  "scowl_max_variant": 1,
+  "hold_existing_translations": true,
+  "sample_limit": 8,
+  "simulation_samples": 2000,
+  "simulation_seed": 20261022,
+  "manual_accept": [],
+  "manual_hold": [],
+  "manual_candidate": []
+}

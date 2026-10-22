@@ -18,6 +18,11 @@ def main():
     report = build.load(ROOT / 'data/translation_coverage.json')
     accepted = set(baseline['words']) | set(baseline['translations'])
     assert len(accepted) == 397561
+    exclusions_path = ROOT / 'tools/filter_sources/applied_exclusions.txt'
+    if exclusions_path.exists():
+        exclusions = set(exclusions_path.read_text(encoding='utf-8').splitlines())
+        assert len(exclusions) == 20268 and not exclusions & set(baseline['translations'])
+        accepted -= exclusions
     assert set(output['words']) | set(output['translations']) == accepted
     assert not set(output['words']) & set(output['translations'])
     assert all(output['translations'][w] == v for w, v in baseline['translations'].items())
@@ -72,6 +77,7 @@ def check_pack(expected):
         assert hashlib.md5(data).digest() == digest, path
         files[path] = data
     assert json.loads(files['data/word_dictionary.json']) == expected
+    assert files['data/dictionary.txt'] == (ROOT / 'data/dictionary.txt').read_bytes()
     for path in (ROOT / 'data/licenses').iterdir():
         assert files['data/licenses/' + path.name] == path.read_bytes(), path.name
     assert files['data/DICTIONARY_LICENSES.txt'] == (ROOT / 'data/DICTIONARY_LICENSES.txt').read_bytes()

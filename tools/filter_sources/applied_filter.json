@@ -1,0 +1,13 @@
+{
+  "before": 397561,
+  "removed": 20268,
+  "after": 377293,
+  "translations_preserved": 101957,
+  "before_sha256": "6a6f1306ea06ad755da4b6cea431a3969908d1e6d5404ad7fa19c9695558669a",
+  "after_sha256": "ecdf3c5332aa01bd03e7f9a067533e86cbbb099aefd0766a856a369d9f4b0d23",
+  "legacy_after_sha256": "6bf1f1b2b795d5b76b5e8bd9c506cdb74d97ec2cc99bc61052b9bdc5246ffca6",
+  "candidate_sha256": "499742f5979aa5af6b85795e86161cc610031c39e59c37dfd71573636cd2ef7e",
+  "accepted_set_sha256": "5b7dc8395ebd1d2e5aa31e45c9ddf08d3065b0ab7e158b26fe48895342ca39c2",
+  "backup_directory": "tools/filter_backups",
+  "note": "JSON minus reviewed candidates; legacy fallback synchronized to the same accepted set."
+}

@@ -43,7 +43,7 @@ def load(path):
 
 
 def save(path, obj):
-    path.write_text(json.dumps(obj, ensure_ascii=False, indent='\t') + '\n', encoding='utf-8')
+    path.write_text(json.dumps(obj, ensure_ascii=False, indent='\t') + '\n', encoding='utf-8', newline='\n')
 
 
 def senses(raw):
@@ -187,6 +187,13 @@ def main():
     previous = data['translations']
     accepted = set(data['words']) | set(previous)
     assert not set(data['words']) & set(previous)
+    exclusions_path = ROOT / 'tools/filter_sources/applied_exclusions.txt'
+    if exclusions_path.exists():
+        applied = load(ROOT / 'tools/filter_sources/applied_filter.json')
+        assert hashlib.sha256(exclusions_path.read_bytes()).hexdigest() == applied['candidate_sha256'], 'approved exclusion list changed'
+        exclusions = set(exclusions_path.read_text(encoding='utf-8').splitlines())
+        assert not exclusions & set(previous), 'approved exclusions conflict with existing translations'
+        accepted -= exclusions
     frequency = {w: zipf_frequency(w, 'en') for w in accepted}
     targets = sorted(accepted - set(previous), key=lambda w: (-frequency[w], w))
     if args.sample:

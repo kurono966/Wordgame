@@ -15,6 +15,7 @@ tools/optimized_deck.txt
 __pycache__/
 *.pyc
 tools/_translation_deps/
+tools/_filter_sample/
 tests/translation_web_build/
 tests/translation_godot.log
 tests/translation_web_export.log

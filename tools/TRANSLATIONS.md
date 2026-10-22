@@ -18,7 +18,9 @@ The sample is a dry run on the most frequent missing words, never a write.
 Full builds use the immutable `translation_sources/baseline.json.gz` snapshot
 (397,561 accepted words; 99,466 translations), not dictionary.txt, whose
 vocabulary differs. Existing translations are preserved byte-for-byte as
-strings; words and translation keys remain disjoint and their union identical.
+strings; words and translation keys remain disjoint. The approved exclusions in
+`filter_sources/applied_exclusions.txt` are subtracted from the baseline, leaving
+377,293 accepted words; these 20,268 exclusions have no existing translations.
 `--input` accepts a different JSON/gz baseline; `--output` selects a JSON output.
 When adopting later hand edits, explicitly create a new baseline first.
 The old build_word_json.py is a separate legacy vocabulary generator; do not

@@ -1,7 +1,9 @@
 Wordgame dictionary sources and licenses
 
-Existing accepted vocabulary and 99,466 Japanese translations are preserved
-unchanged from the project baseline. Their pre-existing rights remain unchanged.
+Existing 99,466 Japanese translations are preserved unchanged from the project
+baseline. Vocabulary filtering removes 20,268 approved deletion candidates;
+the resulting dictionary contains 377,293 valid words and 101,957 translations.
+Pre-existing rights remain unchanged.
 
 EJDict / ejdict-hand, maintained by kujirahand:
 https://github.com/kujirahand/EJDict
