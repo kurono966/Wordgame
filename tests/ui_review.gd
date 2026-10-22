@@ -13,6 +13,8 @@ func _ready() -> void:
 	add_child(main)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	for frame in range(8):
+		await get_tree().process_frame
 	assert(not main.get_node("Scroll/Center/VBox/GameOverButtonRow").visible, "Retry controls must stay hidden during play")
 	var layout: VBoxContainer = main.get_node("Scroll/Center/VBox")
 	assert(layout.get_global_rect().position.y >= 0 and layout.get_global_rect().end.y <= get_viewport().get_visible_rect().size.y, "Gameplay controls must fit the viewport")

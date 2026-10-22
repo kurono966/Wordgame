@@ -21,21 +21,19 @@ grow_vertical = 2
 expand_mode = 1
 stretch_mode = 0
 
-[node name="Scroll" type="Control" parent="."]
+[node name="Scroll" type="ScrollContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+horizontal_scroll_mode = 0
 
 [node name="Center" type="CenterContainer" parent="Scroll"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
 [node name="VBox" type="VBoxContainer" parent="Scroll/Center"]
 custom_minimum_size = Vector2(900, 0)
@@ -222,14 +220,15 @@ text = "PLAYER HAND (Click/Drag to Workbench | Hold or Flick up for ★Special)"
 custom_minimum_size = Vector2(0, 92)
 layout_mode = 2
 follow_focus = true
-horizontal_scroll_mode = 1
+horizontal_scroll_mode = 0
 vertical_scroll_mode = 0
 
-[node name="HandContainer" type="HBoxContainer" parent="Scroll/Center/VBox/HandScroll"]
+[node name="HandContainer" type="HFlowContainer" parent="Scroll/Center/VBox/HandScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 alignment = 1
-theme_override_constants/separation = 12
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 10
 
 [node name="DeckGraveLabel" type="Label" parent="Scroll/Center/VBox"]
 unique_name_in_owner = true

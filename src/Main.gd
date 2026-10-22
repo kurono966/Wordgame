@@ -4,7 +4,7 @@ extends Control
 
 @onready var slot_container        : HBoxContainer  = $Scroll/Center/VBox/SlotContainer
 @onready var background            : TextureRect    = $Background
-@onready var hand_container        : HBoxContainer  = $Scroll/Center/VBox/HandScroll/HandContainer
+@onready var hand_container        : HFlowContainer = $Scroll/Center/VBox/HandScroll/HandContainer
 @onready var deck_grave_label      : Label          = $Scroll/Center/VBox/DeckGraveLabel
 @onready var workbench_panel       : PanelContainer = $Scroll/Center/VBox/WorkbenchPanel
 @onready var workbench_container   : HBoxContainer  = $Scroll/Center/VBox/WorkbenchPanel/WorkbenchContainer
@@ -307,8 +307,10 @@ func _fit_ui_to_viewport() -> void:
 	if not is_inside_tree():
 		return
 
-	# Disable automatic scaling to keep layout size constant during gameplay
+	# Use the spare side margins before wrapping the hand. Keep card/font sizes
+	# stable, and let the outer vertical scroll handle unusually large hands.
 	var main_layout: VBoxContainer = $Scroll/Center/VBox
+	main_layout.custom_minimum_size.x = clampf(size.x - 48.0, 900.0, 1280.0)
 	main_layout.pivot_offset = main_layout.size * 0.5
 	main_layout.scale = Vector2.ONE
 	_update_fullscreen_button()
