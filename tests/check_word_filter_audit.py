@@ -30,10 +30,11 @@ def main():
         baseline = json.loads(before)
         removed = set((ROOT / 'tools/filter_sources/applied_exclusions.txt').read_text(encoding='utf-8').splitlines())
         assert len(removed) == record['removed'] == 20268
-        assert data['translations'] == baseline['translations']
+        assert all(data['translations'].get(w) == value for w, value in baseline['translations'].items())
         assert set(data['words']) | set(data['translations']) == (set(baseline['words']) | set(baseline['translations'])) - removed
-        assert sha(source) == record['after_sha256']
-        assert set((ROOT / 'data/dictionary.txt').read_text(encoding='utf-8').splitlines()) == set(data['words']) | set(data['translations'])
+        current_words = set(data['words']) | set(data['translations'])
+        assert hashlib.sha256('\n'.join(sorted(current_words)).encode()).hexdigest() == record['accepted_set_sha256']
+        assert {w.strip().lower() for w in (ROOT / 'data/dictionary.txt').read_text(encoding='utf-8').splitlines()} == current_words
         data = baseline
     words = set(data['words']) | set(data['translations'])
     report = json.loads((REPORT / 'summary.json').read_text(encoding='utf-8'))

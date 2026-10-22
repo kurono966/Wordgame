@@ -16603,5 +16603,3310 @@
 			"VBG"
 		],
 		"source": "ejdict"
+	},
+	"fu": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fu",
+		"url": "https://en.wiktionary.org/wiki/fu"
+	},
+	"om": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "om",
+		"url": "https://en.wiktionary.org/wiki/om"
+	},
+	"ef": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ef",
+		"url": "https://en.wiktionary.org/wiki/ef"
+	},
+	"app": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "app",
+		"url": "https://en.wiktionary.org/wiki/app"
+	},
+	"bro": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bro",
+		"url": "https://en.wiktionary.org/wiki/bro"
+	},
+	"yup": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "yup",
+		"url": "https://en.wiktionary.org/wiki/yup"
+	},
+	"kay": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kay",
+		"url": "https://en.wiktionary.org/wiki/kay"
+	},
+	"dee": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "dee",
+		"url": "https://en.wiktionary.org/wiki/dee"
+	},
+	"tex": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tex",
+		"url": "https://en.wiktionary.org/wiki/tex"
+	},
+	"sal": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sal",
+		"url": "https://en.wiktionary.org/wiki/sal"
+	},
+	"yum": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "yum",
+		"url": "https://en.wiktionary.org/wiki/yum"
+	},
+	"wat": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "wat",
+		"url": "https://en.wiktionary.org/wiki/wat"
+	},
+	"nom": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "nom",
+		"url": "https://en.wiktionary.org/wiki/nom"
+	},
+	"lev": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "lev",
+		"url": "https://en.wiktionary.org/wiki/lev"
+	},
+	"bao": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bao",
+		"url": "https://en.wiktionary.org/wiki/bao"
+	},
+	"sho": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sho",
+		"url": "https://en.wiktionary.org/wiki/sho"
+	},
+	"dah": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "dah",
+		"url": "https://en.wiktionary.org/wiki/dah"
+	},
+	"koi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "koi",
+		"url": "https://en.wiktionary.org/wiki/koi"
+	},
+	"ska": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ska",
+		"url": "https://en.wiktionary.org/wiki/ska"
+	},
+	"vee": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "vee",
+		"url": "https://en.wiktionary.org/wiki/vee"
+	},
+	"orc": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "orc",
+		"url": "https://en.wiktionary.org/wiki/orc"
+	},
+	"cee": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "cee",
+		"url": "https://en.wiktionary.org/wiki/cee"
+	},
+	"loa": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "loa",
+		"url": "https://en.wiktionary.org/wiki/loa"
+	},
+	"pho": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pho",
+		"url": "https://en.wiktionary.org/wiki/pho"
+	},
+	"ess": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ess",
+		"url": "https://en.wiktionary.org/wiki/ess"
+	},
+	"pon": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pon",
+		"url": "https://en.wiktionary.org/wiki/pon"
+	},
+	"tui": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tui",
+		"url": "https://en.wiktionary.org/wiki/tui"
+	},
+	"wye": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "wye",
+		"url": "https://en.wiktionary.org/wiki/wye"
+	},
+	"ney": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ney",
+		"url": "https://en.wiktionary.org/wiki/ney"
+	},
+	"ket": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ket",
+		"url": "https://en.wiktionary.org/wiki/ket"
+	},
+	"oud": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "oud",
+		"url": "https://en.wiktionary.org/wiki/oud"
+	},
+	"kir": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kir",
+		"url": "https://en.wiktionary.org/wiki/kir"
+	},
+	"haha": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "haha",
+		"url": "https://en.wiktionary.org/wiki/haha"
+	},
+	"kong": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kong",
+		"url": "https://en.wiktionary.org/wiki/kong"
+	},
+	"dana": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "dana",
+		"url": "https://en.wiktionary.org/wiki/dana"
+	},
+	"yuri": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "yuri",
+		"url": "https://en.wiktionary.org/wiki/yuri"
+	},
+	"geez": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "geez",
+		"url": "https://en.wiktionary.org/wiki/geez"
+	},
+	"shea": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "shea",
+		"url": "https://en.wiktionary.org/wiki/shea"
+	},
+	"hehe": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "hehe",
+		"url": "https://en.wiktionary.org/wiki/hehe"
+	},
+	"mora": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "mora",
+		"url": "https://en.wiktionary.org/wiki/mora"
+	},
+	"jing": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "jing",
+		"url": "https://en.wiktionary.org/wiki/jing"
+	},
+	"momo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "momo",
+		"url": "https://en.wiktionary.org/wiki/momo"
+	},
+	"orcs": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "orc",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/orc"
+	},
+	"naga": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "naga",
+		"url": "https://en.wiktionary.org/wiki/naga"
+	},
+	"argh": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "argh",
+		"url": "https://en.wiktionary.org/wiki/argh"
+	},
+	"nani": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "nani",
+		"url": "https://en.wiktionary.org/wiki/nani"
+	},
+	"nene": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "nene",
+		"url": "https://en.wiktionary.org/wiki/nene"
+	},
+	"axed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "axe",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/axe"
+	},
+	"feta": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "feta",
+		"url": "https://en.wiktionary.org/wiki/feta"
+	},
+	"waka": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "waka",
+		"url": "https://en.wiktionary.org/wiki/waka"
+	},
+	"deva": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "deva",
+		"url": "https://en.wiktionary.org/wiki/deva"
+	},
+	"rada": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "rada",
+		"url": "https://en.wiktionary.org/wiki/rada"
+	},
+	"jeon": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "jeon",
+		"url": "https://en.wiktionary.org/wiki/jeon"
+	},
+	"nori": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "nori",
+		"url": "https://en.wiktionary.org/wiki/nori"
+	},
+	"jinn": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "jinn",
+		"url": "https://en.wiktionary.org/wiki/jinn"
+	},
+	"mook": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "mook",
+		"url": "https://en.wiktionary.org/wiki/mook"
+	},
+	"roti": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "roti",
+		"url": "https://en.wiktionary.org/wiki/roti"
+	},
+	"agha": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "agha",
+		"url": "https://en.wiktionary.org/wiki/agha"
+	},
+	"lich": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "lich",
+		"url": "https://en.wiktionary.org/wiki/lich"
+	},
+	"loli": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "loli",
+		"url": "https://en.wiktionary.org/wiki/loli"
+	},
+	"mura": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "mura",
+		"url": "https://en.wiktionary.org/wiki/mura"
+	},
+	"amla": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "amla",
+		"url": "https://en.wiktionary.org/wiki/amla"
+	},
+	"kuna": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kuna",
+		"url": "https://en.wiktionary.org/wiki/kuna"
+	},
+	"komi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "komi",
+		"url": "https://en.wiktionary.org/wiki/komi"
+	},
+	"arak": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "arak",
+		"url": "https://en.wiktionary.org/wiki/arak"
+	},
+	"yoni": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "yoni",
+		"url": "https://en.wiktionary.org/wiki/yoni"
+	},
+	"fiqh": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fiqh",
+		"url": "https://en.wiktionary.org/wiki/fiqh"
+	},
+	"riel": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "riel",
+		"url": "https://en.wiktionary.org/wiki/riel"
+	},
+	"alif": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "alif",
+		"url": "https://en.wiktionary.org/wiki/alif"
+	},
+	"gaur": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gaur",
+		"url": "https://en.wiktionary.org/wiki/gaur"
+	},
+	"glug": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "glug",
+		"url": "https://en.wiktionary.org/wiki/glug"
+	},
+	"poot": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "poot",
+		"url": "https://en.wiktionary.org/wiki/poot"
+	},
+	"phon": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "phon",
+		"url": "https://en.wiktionary.org/wiki/phon"
+	},
+	"updo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "updo",
+		"url": "https://en.wiktionary.org/wiki/updo"
+	},
+	"fard": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fard",
+		"url": "https://en.wiktionary.org/wiki/fard"
+	},
+	"grue": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "grue",
+		"url": "https://en.wiktionary.org/wiki/grue"
+	},
+	"biwa": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "biwa",
+		"url": "https://en.wiktionary.org/wiki/biwa"
+	},
+	"culm": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "culm",
+		"url": "https://en.wiktionary.org/wiki/culm"
+	},
+	"qadi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "qadi",
+		"url": "https://en.wiktionary.org/wiki/qadi"
+	},
+	"pung": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pung",
+		"url": "https://en.wiktionary.org/wiki/pung"
+	},
+	"bael": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bael",
+		"url": "https://en.wiktionary.org/wiki/bael"
+	},
+	"wudu": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "wudu",
+		"url": "https://en.wiktionary.org/wiki/wudu"
+	},
+	"masu": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "masu",
+		"url": "https://en.wiktionary.org/wiki/masu"
+	},
+	"gilo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gilo",
+		"url": "https://en.wiktionary.org/wiki/gilo"
+	},
+	"boza": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "boza",
+		"url": "https://en.wiktionary.org/wiki/boza"
+	},
+	"vair": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "vair",
+		"url": "https://en.wiktionary.org/wiki/vair"
+	},
+	"remix": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "remix",
+		"url": "https://en.wiktionary.org/wiki/remix"
+	},
+	"weber": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "weber",
+		"url": "https://en.wiktionary.org/wiki/weber"
+	},
+	"foley": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "foley",
+		"url": "https://en.wiktionary.org/wiki/foley"
+	},
+	"login": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "login",
+		"url": "https://en.wiktionary.org/wiki/login"
+	},
+	"haram": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "haram",
+		"url": "https://en.wiktionary.org/wiki/haram"
+	},
+	"merch": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "merch",
+		"url": "https://en.wiktionary.org/wiki/merch"
+	},
+	"takin": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "takin",
+		"url": "https://en.wiktionary.org/wiki/takin"
+	},
+	"celeb": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "celeb",
+		"url": "https://en.wiktionary.org/wiki/celeb"
+	},
+	"cuter": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "cute",
+		"tag": "JJR",
+		"url": "https://en.wiktionary.org/wiki/cute"
+	},
+	"hamza": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "hamza",
+		"url": "https://en.wiktionary.org/wiki/hamza"
+	},
+	"nears": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "near",
+		"tag": "VBZ",
+		"url": "https://en.wiktionary.org/wiki/near"
+	},
+	"carer": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "carer",
+		"url": "https://en.wiktionary.org/wiki/carer"
+	},
+	"proms": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "prom",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/prom"
+	},
+	"tapas": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tapas",
+		"url": "https://en.wiktionary.org/wiki/tapas"
+	},
+	"ronin": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ronin",
+		"url": "https://en.wiktionary.org/wiki/ronin"
+	},
+	"boson": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "boson",
+		"url": "https://en.wiktionary.org/wiki/boson"
+	},
+	"rishi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "rishi",
+		"url": "https://en.wiktionary.org/wiki/rishi"
+	},
+	"shill": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "shill",
+		"url": "https://en.wiktionary.org/wiki/shill"
+	},
+	"mused": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "muse",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/muse"
+	},
+	"pager": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pager",
+		"url": "https://en.wiktionary.org/wiki/pager"
+	},
+	"bodhi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bodhi",
+		"url": "https://en.wiktionary.org/wiki/bodhi"
+	},
+	"tanto": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tanto",
+		"url": "https://en.wiktionary.org/wiki/tanto"
+	},
+	"thins": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "thin",
+		"tag": "VBZ",
+		"url": "https://en.wiktionary.org/wiki/thin"
+	},
+	"bogan": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bogan",
+		"url": "https://en.wiktionary.org/wiki/bogan"
+	},
+	"spitz": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "spitz",
+		"url": "https://en.wiktionary.org/wiki/spitz"
+	},
+	"lamas": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "lama",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/lama"
+	},
+	"sambo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sambo",
+		"url": "https://en.wiktionary.org/wiki/sambo"
+	},
+	"kendo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kendo",
+		"url": "https://en.wiktionary.org/wiki/kendo"
+	},
+	"sexed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "sex",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/sex"
+	},
+	"faxed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "fax",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/fax"
+	},
+	"tuple": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tuple",
+		"url": "https://en.wiktionary.org/wiki/tuple"
+	},
+	"bindi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bindi",
+		"url": "https://en.wiktionary.org/wiki/bindi"
+	},
+	"lossy": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "lossy",
+		"url": "https://en.wiktionary.org/wiki/lossy"
+	},
+	"rebbe": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "rebbe",
+		"url": "https://en.wiktionary.org/wiki/rebbe"
+	},
+	"metis": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "metis",
+		"url": "https://en.wiktionary.org/wiki/metis"
+	},
+	"bardo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bardo",
+		"url": "https://en.wiktionary.org/wiki/bardo"
+	},
+	"manti": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "manti",
+		"url": "https://en.wiktionary.org/wiki/manti"
+	},
+	"satay": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "satay",
+		"url": "https://en.wiktionary.org/wiki/satay"
+	},
+	"tench": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tench",
+		"url": "https://en.wiktionary.org/wiki/tench"
+	},
+	"salat": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "salat",
+		"url": "https://en.wiktionary.org/wiki/salat"
+	},
+	"torii": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "torii",
+		"url": "https://en.wiktionary.org/wiki/torii"
+	},
+	"axing": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "axe",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/axe"
+	},
+	"duals": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "dual",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/dual"
+	},
+	"pisco": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pisco",
+		"url": "https://en.wiktionary.org/wiki/pisco"
+	},
+	"tengu": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tengu",
+		"url": "https://en.wiktionary.org/wiki/tengu"
+	},
+	"tabla": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tabla",
+		"url": "https://en.wiktionary.org/wiki/tabla"
+	},
+	"adobo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "adobo",
+		"url": "https://en.wiktionary.org/wiki/adobo"
+	},
+	"skink": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "skink",
+		"url": "https://en.wiktionary.org/wiki/skink"
+	},
+	"kefir": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kefir",
+		"url": "https://en.wiktionary.org/wiki/kefir"
+	},
+	"hijra": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "hijra",
+		"url": "https://en.wiktionary.org/wiki/hijra"
+	},
+	"topos": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "topos",
+		"url": "https://en.wiktionary.org/wiki/topos"
+	},
+	"ifrit": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ifrit",
+		"url": "https://en.wiktionary.org/wiki/ifrit"
+	},
+	"kugel": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kugel",
+		"url": "https://en.wiktionary.org/wiki/kugel"
+	},
+	"longe": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "longe",
+		"url": "https://en.wiktionary.org/wiki/longe"
+	},
+	"saiga": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "saiga",
+		"url": "https://en.wiktionary.org/wiki/saiga"
+	},
+	"agama": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "agama",
+		"url": "https://en.wiktionary.org/wiki/agama"
+	},
+	"laksa": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "laksa",
+		"url": "https://en.wiktionary.org/wiki/laksa"
+	},
+	"bilby": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bilby",
+		"url": "https://en.wiktionary.org/wiki/bilby"
+	},
+	"riper": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "ripe",
+		"tag": "JJR",
+		"url": "https://en.wiktionary.org/wiki/ripe"
+	},
+	"axion": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "axion",
+		"url": "https://en.wiktionary.org/wiki/axion"
+	},
+	"kalpa": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kalpa",
+		"url": "https://en.wiktionary.org/wiki/kalpa"
+	},
+	"qibla": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "qibla",
+		"url": "https://en.wiktionary.org/wiki/qibla"
+	},
+	"gilet": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gilet",
+		"url": "https://en.wiktionary.org/wiki/gilet"
+	},
+	"resit": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "resit",
+		"url": "https://en.wiktionary.org/wiki/resit"
+	},
+	"shojo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "shojo",
+		"url": "https://en.wiktionary.org/wiki/shojo"
+	},
+	"toman": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "toman",
+		"url": "https://en.wiktionary.org/wiki/toman"
+	},
+	"dhikr": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "dhikr",
+		"url": "https://en.wiktionary.org/wiki/dhikr"
+	},
+	"balut": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "balut",
+		"url": "https://en.wiktionary.org/wiki/balut"
+	},
+	"kunai": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kunai",
+		"url": "https://en.wiktionary.org/wiki/kunai"
+	},
+	"urate": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "urate",
+		"url": "https://en.wiktionary.org/wiki/urate"
+	},
+	"banya": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "banya",
+		"url": "https://en.wiktionary.org/wiki/banya"
+	},
+	"geoid": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "geoid",
+		"url": "https://en.wiktionary.org/wiki/geoid"
+	},
+	"kukri": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kukri",
+		"url": "https://en.wiktionary.org/wiki/kukri"
+	},
+	"yamen": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "yamen",
+		"url": "https://en.wiktionary.org/wiki/yamen"
+	},
+	"frass": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "frass",
+		"url": "https://en.wiktionary.org/wiki/frass"
+	},
+	"oleum": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "oleum",
+		"url": "https://en.wiktionary.org/wiki/oleum"
+	},
+	"kombu": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kombu",
+		"url": "https://en.wiktionary.org/wiki/kombu"
+	},
+	"preta": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "preta",
+		"url": "https://en.wiktionary.org/wiki/preta"
+	},
+	"kofta": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kofta",
+		"url": "https://en.wiktionary.org/wiki/kofta"
+	},
+	"onaga": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "onaga",
+		"url": "https://en.wiktionary.org/wiki/onaga"
+	},
+	"aitch": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "aitch",
+		"url": "https://en.wiktionary.org/wiki/aitch"
+	},
+	"balun": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "balun",
+		"url": "https://en.wiktionary.org/wiki/balun"
+	},
+	"quern": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "quern",
+		"url": "https://en.wiktionary.org/wiki/quern"
+	},
+	"galah": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "galah",
+		"url": "https://en.wiktionary.org/wiki/galah"
+	},
+	"halva": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "halva",
+		"url": "https://en.wiktionary.org/wiki/halva"
+	},
+	"iroko": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "iroko",
+		"url": "https://en.wiktionary.org/wiki/iroko"
+	},
+	"virga": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "virga",
+		"url": "https://en.wiktionary.org/wiki/virga"
+	},
+	"reran": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "rerun",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/rerun"
+	},
+	"repost": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "repost",
+		"url": "https://en.wiktionary.org/wiki/repost"
+	},
+	"merlin": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "merlin",
+		"url": "https://en.wiktionary.org/wiki/merlin"
+	},
+	"undead": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "undead",
+		"url": "https://en.wiktionary.org/wiki/undead"
+	},
+	"rewind": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "rewind",
+		"url": "https://en.wiktionary.org/wiki/rewind"
+	},
+	"thingy": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "thingy",
+		"url": "https://en.wiktionary.org/wiki/thingy"
+	},
+	"chakra": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "chakra",
+		"url": "https://en.wiktionary.org/wiki/chakra"
+	},
+	"quinoa": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "quinoa",
+		"url": "https://en.wiktionary.org/wiki/quinoa"
+	},
+	"tabled": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "table",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/table"
+	},
+	"combed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "comb",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/comb"
+	},
+	"resell": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "resell",
+		"url": "https://en.wiktionary.org/wiki/resell"
+	},
+	"ironed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "iron",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/iron"
+	},
+	"upping": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "up",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/up"
+	},
+	"kimchi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kimchi",
+		"url": "https://en.wiktionary.org/wiki/kimchi"
+	},
+	"neared": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "near",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/near"
+	},
+	"shanti": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "shanti",
+		"url": "https://en.wiktionary.org/wiki/shanti"
+	},
+	"gelato": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gelato",
+		"url": "https://en.wiktionary.org/wiki/gelato"
+	},
+	"sativa": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sativa",
+		"url": "https://en.wiktionary.org/wiki/sativa"
+	},
+	"resold": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "resell",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/resell"
+	},
+	"wheres": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "where",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/where"
+	},
+	"meaner": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "mean",
+		"tag": "JJR",
+		"url": "https://en.wiktionary.org/wiki/mean"
+	},
+	"darned": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "darn",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/darn"
+	},
+	"tantra": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tantra",
+		"url": "https://en.wiktionary.org/wiki/tantra"
+	},
+	"kabuki": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kabuki",
+		"url": "https://en.wiktionary.org/wiki/kabuki"
+	},
+	"linker": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "linker",
+		"url": "https://en.wiktionary.org/wiki/linker"
+	},
+	"hedged": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "hedge",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/hedge"
+	},
+	"favela": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "favela",
+		"url": "https://en.wiktionary.org/wiki/favela"
+	},
+	"garuda": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "garuda",
+		"url": "https://en.wiktionary.org/wiki/garuda"
+	},
+	"inkjet": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "inkjet",
+		"url": "https://en.wiktionary.org/wiki/inkjet"
+	},
+	"struct": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "struct",
+		"url": "https://en.wiktionary.org/wiki/struct"
+	},
+	"sangha": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sangha",
+		"url": "https://en.wiktionary.org/wiki/sangha"
+	},
+	"meanie": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "meanie",
+		"url": "https://en.wiktionary.org/wiki/meanie"
+	},
+	"phenyl": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "phenyl",
+		"url": "https://en.wiktionary.org/wiki/phenyl"
+	},
+	"buffed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "buff",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/buff"
+	},
+	"logins": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "login",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/login"
+	},
+	"aliyah": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "aliyah",
+		"url": "https://en.wiktionary.org/wiki/aliyah"
+	},
+	"wedgie": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "wedgie",
+		"url": "https://en.wiktionary.org/wiki/wedgie"
+	},
+	"amrita": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "amrita",
+		"url": "https://en.wiktionary.org/wiki/amrita"
+	},
+	"areola": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "areola",
+		"url": "https://en.wiktionary.org/wiki/areola"
+	},
+	"sexing": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "sex",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/sex"
+	},
+	"instar": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "instar",
+		"url": "https://en.wiktionary.org/wiki/instar"
+	},
+	"hangul": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "hangul",
+		"url": "https://en.wiktionary.org/wiki/hangul"
+	},
+	"labrum": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "labrum",
+		"url": "https://en.wiktionary.org/wiki/labrum"
+	},
+	"tahini": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tahini",
+		"url": "https://en.wiktionary.org/wiki/tahini"
+	},
+	"whinge": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "whinge",
+		"url": "https://en.wiktionary.org/wiki/whinge"
+	},
+	"gratin": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gratin",
+		"url": "https://en.wiktionary.org/wiki/gratin"
+	},
+	"indole": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "indole",
+		"url": "https://en.wiktionary.org/wiki/indole"
+	},
+	"welled": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "well",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/well"
+	},
+	"pagers": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "pager",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/pager"
+	},
+	"tatami": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tatami",
+		"url": "https://en.wiktionary.org/wiki/tatami"
+	},
+	"limbed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "limb",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/limb"
+	},
+	"malate": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "malate",
+		"url": "https://en.wiktionary.org/wiki/malate"
+	},
+	"tilled": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "till",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/till"
+	},
+	"ghazal": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ghazal",
+		"url": "https://en.wiktionary.org/wiki/ghazal"
+	},
+	"phonon": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "phonon",
+		"url": "https://en.wiktionary.org/wiki/phonon"
+	},
+	"tempeh": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tempeh",
+		"url": "https://en.wiktionary.org/wiki/tempeh"
+	},
+	"churro": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "churro",
+		"url": "https://en.wiktionary.org/wiki/churro"
+	},
+	"dyadic": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "dyadic",
+		"url": "https://en.wiktionary.org/wiki/dyadic"
+	},
+	"moksha": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "moksha",
+		"url": "https://en.wiktionary.org/wiki/moksha"
+	},
+	"blimps": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "blimp",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/blimp"
+	},
+	"logout": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "logout",
+		"url": "https://en.wiktionary.org/wiki/logout"
+	},
+	"faxing": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "fax",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/fax"
+	},
+	"finial": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "finial",
+		"url": "https://en.wiktionary.org/wiki/finial"
+	},
+	"judoka": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "judoka",
+		"url": "https://en.wiktionary.org/wiki/judoka"
+	},
+	"ejecta": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ejecta",
+		"url": "https://en.wiktionary.org/wiki/ejecta"
+	},
+	"satori": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "satori",
+		"url": "https://en.wiktionary.org/wiki/satori"
+	},
+	"ahimsa": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ahimsa",
+		"url": "https://en.wiktionary.org/wiki/ahimsa"
+	},
+	"wetted": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "wet",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/wet"
+	},
+	"fajita": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fajita",
+		"url": "https://en.wiktionary.org/wiki/fajita"
+	},
+	"ligase": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ligase",
+		"url": "https://en.wiktionary.org/wiki/ligase"
+	},
+	"congee": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "congee",
+		"url": "https://en.wiktionary.org/wiki/congee"
+	},
+	"kaftan": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kaftan",
+		"url": "https://en.wiktionary.org/wiki/kaftan"
+	},
+	"fennec": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fennec",
+		"url": "https://en.wiktionary.org/wiki/fennec"
+	},
+	"hetman": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "hetman",
+		"url": "https://en.wiktionary.org/wiki/hetman"
+	},
+	"vinaya": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "vinaya",
+		"url": "https://en.wiktionary.org/wiki/vinaya"
+	},
+	"tragus": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tragus",
+		"url": "https://en.wiktionary.org/wiki/tragus"
+	},
+	"borage": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "borage",
+		"url": "https://en.wiktionary.org/wiki/borage"
+	},
+	"aorist": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "aorist",
+		"url": "https://en.wiktionary.org/wiki/aorist"
+	},
+	"gravid": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gravid",
+		"url": "https://en.wiktionary.org/wiki/gravid"
+	},
+	"grayer": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "gray",
+		"tag": "JJR",
+		"url": "https://en.wiktionary.org/wiki/gray"
+	},
+	"kelpie": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kelpie",
+		"url": "https://en.wiktionary.org/wiki/kelpie"
+	},
+	"kurgan": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kurgan",
+		"url": "https://en.wiktionary.org/wiki/kurgan"
+	},
+	"misted": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "mist",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/mist"
+	},
+	"clitic": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "clitic",
+		"url": "https://en.wiktionary.org/wiki/clitic"
+	},
+	"yukata": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "yukata",
+		"url": "https://en.wiktionary.org/wiki/yukata"
+	},
+	"zeroth": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "zeroth",
+		"url": "https://en.wiktionary.org/wiki/zeroth"
+	},
+	"dukkha": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "dukkha",
+		"url": "https://en.wiktionary.org/wiki/dukkha"
+	},
+	"cenote": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "cenote",
+		"url": "https://en.wiktionary.org/wiki/cenote"
+	},
+	"pomace": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pomace",
+		"url": "https://en.wiktionary.org/wiki/pomace"
+	},
+	"dasein": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "dasein",
+		"url": "https://en.wiktionary.org/wiki/dasein"
+	},
+	"neroli": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "neroli",
+		"url": "https://en.wiktionary.org/wiki/neroli"
+	},
+	"outbox": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "outbox",
+		"url": "https://en.wiktionary.org/wiki/outbox"
+	},
+	"pintle": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pintle",
+		"url": "https://en.wiktionary.org/wiki/pintle"
+	},
+	"ripest": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "ripe",
+		"tag": "JJS",
+		"url": "https://en.wiktionary.org/wiki/ripe"
+	},
+	"glacis": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "glacis",
+		"url": "https://en.wiktionary.org/wiki/glacis"
+	},
+	"kakapo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kakapo",
+		"url": "https://en.wiktionary.org/wiki/kakapo"
+	},
+	"tenser": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "tense",
+		"tag": "JJR",
+		"url": "https://en.wiktionary.org/wiki/tense"
+	},
+	"fasces": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fasces",
+		"url": "https://en.wiktionary.org/wiki/fasces"
+	},
+	"spinor": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "spinor",
+		"url": "https://en.wiktionary.org/wiki/spinor"
+	},
+	"jataka": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "jataka",
+		"url": "https://en.wiktionary.org/wiki/jataka"
+	},
+	"clavis": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "clavis",
+		"url": "https://en.wiktionary.org/wiki/clavis"
+	},
+	"phyllo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "phyllo",
+		"url": "https://en.wiktionary.org/wiki/phyllo"
+	},
+	"syzygy": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "syzygy",
+		"url": "https://en.wiktionary.org/wiki/syzygy"
+	},
+	"pinene": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pinene",
+		"url": "https://en.wiktionary.org/wiki/pinene"
+	},
+	"romaji": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "romaji",
+		"url": "https://en.wiktionary.org/wiki/romaji"
+	},
+	"betted": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "bet",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/bet"
+	},
+	"jicama": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "jicama",
+		"url": "https://en.wiktionary.org/wiki/jicama"
+	},
+	"bezoar": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bezoar",
+		"url": "https://en.wiktionary.org/wiki/bezoar"
+	},
+	"boccia": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "boccia",
+		"url": "https://en.wiktionary.org/wiki/boccia"
+	},
+	"silkie": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "silkie",
+		"url": "https://en.wiktionary.org/wiki/silkie"
+	},
+	"gangue": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gangue",
+		"url": "https://en.wiktionary.org/wiki/gangue"
+	},
+	"prajna": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "prajna",
+		"url": "https://en.wiktionary.org/wiki/prajna"
+	},
+	"agaric": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "agaric",
+		"url": "https://en.wiktionary.org/wiki/agaric"
+	},
+	"ploidy": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ploidy",
+		"url": "https://en.wiktionary.org/wiki/ploidy"
+	},
+	"niello": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "niello",
+		"url": "https://en.wiktionary.org/wiki/niello"
+	},
+	"anatta": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "anatta",
+		"url": "https://en.wiktionary.org/wiki/anatta"
+	},
+	"anting": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "anting",
+		"url": "https://en.wiktionary.org/wiki/anting"
+	},
+	"arrear": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "arrear",
+		"url": "https://en.wiktionary.org/wiki/arrear"
+	},
+	"lavash": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "lavash",
+		"url": "https://en.wiktionary.org/wiki/lavash"
+	},
+	"rajahs": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "rajah",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/rajah"
+	},
+	"cetane": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "cetane",
+		"url": "https://en.wiktionary.org/wiki/cetane"
+	},
+	"toolkit": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "toolkit",
+		"url": "https://en.wiktionary.org/wiki/toolkit"
+	},
+	"babysit": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "babysit",
+		"url": "https://en.wiktionary.org/wiki/babysit"
+	},
+	"pooping": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "poop",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/poop"
+	},
+	"hedging": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "hedge",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/hedge"
+	},
+	"saddled": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "saddle",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/saddle"
+	},
+	"jacuzzi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "jacuzzi",
+		"url": "https://en.wiktionary.org/wiki/jacuzzi"
+	},
+	"courted": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "court",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/court"
+	},
+	"meanest": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "mean",
+		"tag": "JJS",
+		"url": "https://en.wiktionary.org/wiki/mean"
+	},
+	"stroked": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "stroke",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/stroke"
+	},
+	"gigabit": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gigabit",
+		"url": "https://en.wiktionary.org/wiki/gigabit"
+	},
+	"retiree": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "retiree",
+		"url": "https://en.wiktionary.org/wiki/retiree"
+	},
+	"majored": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "major",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/major"
+	},
+	"mandala": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "mandala",
+		"url": "https://en.wiktionary.org/wiki/mandala"
+	},
+	"namaste": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "namaste",
+		"url": "https://en.wiktionary.org/wiki/namaste"
+	},
+	"palmyra": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "palmyra",
+		"url": "https://en.wiktionary.org/wiki/palmyra"
+	},
+	"bulimia": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bulimia",
+		"url": "https://en.wiktionary.org/wiki/bulimia"
+	},
+	"creamed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "cream",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/cream"
+	},
+	"thinned": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "thin",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/thin"
+	},
+	"welling": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "well",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/well"
+	},
+	"encoder": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "encoder",
+		"url": "https://en.wiktionary.org/wiki/encoder"
+	},
+	"fattest": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "fat",
+		"tag": "JJS",
+		"url": "https://en.wiktionary.org/wiki/fat"
+	},
+	"fisting": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fisting",
+		"url": "https://en.wiktionary.org/wiki/fisting"
+	},
+	"nonzero": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "nonzero",
+		"url": "https://en.wiktionary.org/wiki/nonzero"
+	},
+	"bricked": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "brick",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/brick"
+	},
+	"buffing": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "buff",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/buff"
+	},
+	"gambier": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gambier",
+		"url": "https://en.wiktionary.org/wiki/gambier"
+	},
+	"ceviche": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ceviche",
+		"url": "https://en.wiktionary.org/wiki/ceviche"
+	},
+	"tranche": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tranche",
+		"url": "https://en.wiktionary.org/wiki/tranche"
+	},
+	"duopoly": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "duopoly",
+		"url": "https://en.wiktionary.org/wiki/duopoly"
+	},
+	"soonest": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "soon",
+		"tag": "RBS",
+		"url": "https://en.wiktionary.org/wiki/soon"
+	},
+	"reticle": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "reticle",
+		"url": "https://en.wiktionary.org/wiki/reticle"
+	},
+	"dialled": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "dial",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/dial"
+	},
+	"boombox": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "boombox",
+		"url": "https://en.wiktionary.org/wiki/boombox"
+	},
+	"righted": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "right",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/right"
+	},
+	"tilling": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "till",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/till"
+	},
+	"cannoli": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "cannoli",
+		"url": "https://en.wiktionary.org/wiki/cannoli"
+	},
+	"samsara": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "samsara",
+		"url": "https://en.wiktionary.org/wiki/samsara"
+	},
+	"stiffed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "stiff",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/stiff"
+	},
+	"sheikhs": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "sheikh",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/sheikh"
+	},
+	"montane": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "montane",
+		"url": "https://en.wiktionary.org/wiki/montane"
+	},
+	"bushido": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bushido",
+		"url": "https://en.wiktionary.org/wiki/bushido"
+	},
+	"tokamak": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tokamak",
+		"url": "https://en.wiktionary.org/wiki/tokamak"
+	},
+	"legging": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "legging",
+		"url": "https://en.wiktionary.org/wiki/legging"
+	},
+	"tachyon": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tachyon",
+		"url": "https://en.wiktionary.org/wiki/tachyon"
+	},
+	"calzone": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "calzone",
+		"url": "https://en.wiktionary.org/wiki/calzone"
+	},
+	"babysat": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "babysit",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/babysit"
+	},
+	"hegemon": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "hegemon",
+		"url": "https://en.wiktionary.org/wiki/hegemon"
+	},
+	"bandura": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bandura",
+		"url": "https://en.wiktionary.org/wiki/bandura"
+	},
+	"celadon": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "celadon",
+		"url": "https://en.wiktionary.org/wiki/celadon"
+	},
+	"earworm": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "earworm",
+		"url": "https://en.wiktionary.org/wiki/earworm"
+	},
+	"adoptee": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "adoptee",
+		"url": "https://en.wiktionary.org/wiki/adoptee"
+	},
+	"fuckwit": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fuckwit",
+		"url": "https://en.wiktionary.org/wiki/fuckwit"
+	},
+	"functor": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "functor",
+		"url": "https://en.wiktionary.org/wiki/functor"
+	},
+	"wendigo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "wendigo",
+		"url": "https://en.wiktionary.org/wiki/wendigo"
+	},
+	"jaggery": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "jaggery",
+		"url": "https://en.wiktionary.org/wiki/jaggery"
+	},
+	"misting": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "mist",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/mist"
+	},
+	"macaron": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "macaron",
+		"url": "https://en.wiktionary.org/wiki/macaron"
+	},
+	"plasmon": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "plasmon",
+		"url": "https://en.wiktionary.org/wiki/plasmon"
+	},
+	"negroni": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "negroni",
+		"url": "https://en.wiktionary.org/wiki/negroni"
+	},
+	"vetiver": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "vetiver",
+		"url": "https://en.wiktionary.org/wiki/vetiver"
+	},
+	"nematic": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "nematic",
+		"url": "https://en.wiktionary.org/wiki/nematic"
+	},
+	"rewound": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "rewind",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/rewind"
+	},
+	"formate": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "formate",
+		"url": "https://en.wiktionary.org/wiki/formate"
+	},
+	"gluteal": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gluteal",
+		"url": "https://en.wiktionary.org/wiki/gluteal"
+	},
+	"hardier": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "hardy",
+		"tag": "JJR",
+		"url": "https://en.wiktionary.org/wiki/hardy"
+	},
+	"pierogi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pierogi",
+		"url": "https://en.wiktionary.org/wiki/pierogi"
+	},
+	"sambuca": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sambuca",
+		"url": "https://en.wiktionary.org/wiki/sambuca"
+	},
+	"gamelan": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gamelan",
+		"url": "https://en.wiktionary.org/wiki/gamelan"
+	},
+	"rewinds": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "rewind",
+		"tag": "VBZ",
+		"url": "https://en.wiktionary.org/wiki/rewind"
+	},
+	"porcini": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "porcini",
+		"url": "https://en.wiktionary.org/wiki/porcini"
+	},
+	"xylitol": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "xylitol",
+		"url": "https://en.wiktionary.org/wiki/xylitol"
+	},
+	"galette": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "galette",
+		"url": "https://en.wiktionary.org/wiki/galette"
+	},
+	"paining": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "pain",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/pain"
+	},
+	"guarana": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "guarana",
+		"url": "https://en.wiktionary.org/wiki/guarana"
+	},
+	"exciton": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "exciton",
+		"url": "https://en.wiktionary.org/wiki/exciton"
+	},
+	"hookahs": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "hookah",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/hookah"
+	},
+	"keycard": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "keycard",
+		"url": "https://en.wiktionary.org/wiki/keycard"
+	},
+	"diptych": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "diptych",
+		"url": "https://en.wiktionary.org/wiki/diptych"
+	},
+	"pyrrole": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pyrrole",
+		"url": "https://en.wiktionary.org/wiki/pyrrole"
+	},
+	"shahada": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "shahada",
+		"url": "https://en.wiktionary.org/wiki/shahada"
+	},
+	"redback": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "redback",
+		"url": "https://en.wiktionary.org/wiki/redback"
+	},
+	"linkers": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "linker",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/linker"
+	},
+	"bowhead": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bowhead",
+		"url": "https://en.wiktionary.org/wiki/bowhead"
+	},
+	"earthed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "earth",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/earth"
+	},
+	"nuclide": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "nuclide",
+		"url": "https://en.wiktionary.org/wiki/nuclide"
+	},
+	"ossuary": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ossuary",
+		"url": "https://en.wiktionary.org/wiki/ossuary"
+	},
+	"cornett": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "cornett",
+		"url": "https://en.wiktionary.org/wiki/cornett"
+	},
+	"isotype": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "isotype",
+		"url": "https://en.wiktionary.org/wiki/isotype"
+	},
+	"fluffer": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fluffer",
+		"url": "https://en.wiktionary.org/wiki/fluffer"
+	},
+	"resells": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "resell",
+		"tag": "VBZ",
+		"url": "https://en.wiktionary.org/wiki/resell"
+	},
+	"scribed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "scribe",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/scribe"
+	},
+	"stollen": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "stollen",
+		"url": "https://en.wiktionary.org/wiki/stollen"
+	},
+	"sunbird": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sunbird",
+		"url": "https://en.wiktionary.org/wiki/sunbird"
+	},
+	"chinois": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "chinois",
+		"url": "https://en.wiktionary.org/wiki/chinois"
+	},
+	"pentode": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pentode",
+		"url": "https://en.wiktionary.org/wiki/pentode"
+	},
+	"formant": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "formant",
+		"url": "https://en.wiktionary.org/wiki/formant"
+	},
+	"chakram": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "chakram",
+		"url": "https://en.wiktionary.org/wiki/chakram"
+	},
+	"deicide": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "deicide",
+		"url": "https://en.wiktionary.org/wiki/deicide"
+	},
+	"annatto": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "annatto",
+		"url": "https://en.wiktionary.org/wiki/annatto"
+	},
+	"dadaism": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "dadaism",
+		"url": "https://en.wiktionary.org/wiki/dadaism"
+	},
+	"carbene": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "carbene",
+		"url": "https://en.wiktionary.org/wiki/carbene"
+	},
+	"gloried": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "glory",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/glory"
+	},
+	"kokanee": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kokanee",
+		"url": "https://en.wiktionary.org/wiki/kokanee"
+	},
+	"granita": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "granita",
+		"url": "https://en.wiktionary.org/wiki/granita"
+	},
+	"cornrow": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "cornrow",
+		"url": "https://en.wiktionary.org/wiki/cornrow"
+	},
+	"ecocide": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ecocide",
+		"url": "https://en.wiktionary.org/wiki/ecocide"
+	},
+	"kashrut": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kashrut",
+		"url": "https://en.wiktionary.org/wiki/kashrut"
+	},
+	"pentane": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pentane",
+		"url": "https://en.wiktionary.org/wiki/pentane"
+	},
+	"perilla": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "perilla",
+		"url": "https://en.wiktionary.org/wiki/perilla"
+	},
+	"gourami": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gourami",
+		"url": "https://en.wiktionary.org/wiki/gourami"
+	},
+	"fellate": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fellate",
+		"url": "https://en.wiktionary.org/wiki/fellate"
+	},
+	"mudflow": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "mudflow",
+		"url": "https://en.wiktionary.org/wiki/mudflow"
+	},
+	"sulfone": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sulfone",
+		"url": "https://en.wiktionary.org/wiki/sulfone"
+	},
+	"fauvism": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "fauvism",
+		"url": "https://en.wiktionary.org/wiki/fauvism"
+	},
+	"xeroxed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "xerox",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/xerox"
+	},
+	"epidote": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "epidote",
+		"url": "https://en.wiktionary.org/wiki/epidote"
+	},
+	"tsarism": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tsarism",
+		"url": "https://en.wiktionary.org/wiki/tsarism"
+	},
+	"soursop": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "soursop",
+		"url": "https://en.wiktionary.org/wiki/soursop"
+	},
+	"viziers": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "vizier",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/vizier"
+	},
+	"arbutin": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "arbutin",
+		"url": "https://en.wiktionary.org/wiki/arbutin"
+	},
+	"keywords": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "keyword",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/keyword"
+	},
+	"roadshow": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "roadshow",
+		"url": "https://en.wiktionary.org/wiki/roadshow"
+	},
+	"supercar": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "supercar",
+		"url": "https://en.wiktionary.org/wiki/supercar"
+	},
+	"pledging": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "pledge",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/pledge"
+	},
+	"teleport": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "teleport",
+		"url": "https://en.wiktionary.org/wiki/teleport"
+	},
+	"majoring": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "major",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/major"
+	},
+	"downplay": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "downplay",
+		"url": "https://en.wiktionary.org/wiki/downplay"
+	},
+	"biennale": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "biennale",
+		"url": "https://en.wiktionary.org/wiki/biennale"
+	},
+	"machined": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "machine",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/machine"
+	},
+	"walkways": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "walkway",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/walkway"
+	},
+	"dystopia": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "dystopia",
+		"url": "https://en.wiktionary.org/wiki/dystopia"
+	},
+	"oxymoron": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "oxymoron",
+		"url": "https://en.wiktionary.org/wiki/oxymoron"
+	},
+	"oligarch": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "oligarch",
+		"url": "https://en.wiktionary.org/wiki/oligarch"
+	},
+	"tailings": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "tailings",
+		"url": "https://en.wiktionary.org/wiki/tailings"
+	},
+	"backflip": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "backflip",
+		"url": "https://en.wiktionary.org/wiki/backflip"
+	},
+	"ticketed": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "ticket",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/ticket"
+	},
+	"veganism": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "veganism",
+		"url": "https://en.wiktionary.org/wiki/veganism"
+	},
+	"downsize": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "downsize",
+		"url": "https://en.wiktionary.org/wiki/downsize"
+	},
+	"lossless": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "lossless",
+		"url": "https://en.wiktionary.org/wiki/lossless"
+	},
+	"orbitals": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "orbital",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/orbital"
+	},
+	"bailouts": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "bailout",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/bailout"
+	},
+	"squaring": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "square",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/square"
+	},
+	"demonize": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "demonize",
+		"url": "https://en.wiktionary.org/wiki/demonize"
+	},
+	"newlywed": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "newlywed",
+		"url": "https://en.wiktionary.org/wiki/newlywed"
+	},
+	"flatmate": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "flatmate",
+		"url": "https://en.wiktionary.org/wiki/flatmate"
+	},
+	"winnable": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "winnable",
+		"url": "https://en.wiktionary.org/wiki/winnable"
+	},
+	"righting": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "right",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/right"
+	},
+	"cashless": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "cashless",
+		"url": "https://en.wiktionary.org/wiki/cashless"
+	},
+	"bodysuit": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bodysuit",
+		"url": "https://en.wiktionary.org/wiki/bodysuit"
+	},
+	"interwar": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "interwar",
+		"url": "https://en.wiktionary.org/wiki/interwar"
+	},
+	"pickling": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "pickle",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/pickle"
+	},
+	"pyruvate": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pyruvate",
+		"url": "https://en.wiktionary.org/wiki/pyruvate"
+	},
+	"speculum": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "speculum",
+		"url": "https://en.wiktionary.org/wiki/speculum"
+	},
+	"dialling": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "dial",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/dial"
+	},
+	"jailbait": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "jailbait",
+		"url": "https://en.wiktionary.org/wiki/jailbait"
+	},
+	"pangolin": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "pangolin",
+		"url": "https://en.wiktionary.org/wiki/pangolin"
+	},
+	"sawtooth": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sawtooth",
+		"url": "https://en.wiktionary.org/wiki/sawtooth"
+	},
+	"kickball": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kickball",
+		"url": "https://en.wiktionary.org/wiki/kickball"
+	},
+	"mudstone": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "mudstone",
+		"url": "https://en.wiktionary.org/wiki/mudstone"
+	},
+	"albinism": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "albinism",
+		"url": "https://en.wiktionary.org/wiki/albinism"
+	},
+	"katakana": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "katakana",
+		"url": "https://en.wiktionary.org/wiki/katakana"
+	},
+	"hiragana": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "hiragana",
+		"url": "https://en.wiktionary.org/wiki/hiragana"
+	},
+	"oncogene": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "oncogene",
+		"url": "https://en.wiktionary.org/wiki/oncogene"
+	},
+	"antitank": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "antitank",
+		"url": "https://en.wiktionary.org/wiki/antitank"
+	},
+	"checksum": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "checksum",
+		"url": "https://en.wiktionary.org/wiki/checksum"
+	},
+	"mudslide": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "mudslide",
+		"url": "https://en.wiktionary.org/wiki/mudslide"
+	},
+	"creaming": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "cream",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/cream"
+	},
+	"thermite": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "thermite",
+		"url": "https://en.wiktionary.org/wiki/thermite"
+	},
+	"halfling": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "halfling",
+		"url": "https://en.wiktionary.org/wiki/halfling"
+	},
+	"omnivore": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "omnivore",
+		"url": "https://en.wiktionary.org/wiki/omnivore"
+	},
+	"playdate": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "playdate",
+		"url": "https://en.wiktionary.org/wiki/playdate"
+	},
+	"polluter": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "polluter",
+		"url": "https://en.wiktionary.org/wiki/polluter"
+	},
+	"focusses": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "focus",
+		"tag": "VBZ",
+		"url": "https://en.wiktionary.org/wiki/focus"
+	},
+	"chitosan": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "chitosan",
+		"url": "https://en.wiktionary.org/wiki/chitosan"
+	},
+	"homotopy": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "homotopy",
+		"url": "https://en.wiktionary.org/wiki/homotopy"
+	},
+	"regolith": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "regolith",
+		"url": "https://en.wiktionary.org/wiki/regolith"
+	},
+	"renminbi": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "renminbi",
+		"url": "https://en.wiktionary.org/wiki/renminbi"
+	},
+	"encoders": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "encoder",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/encoder"
+	},
+	"butyrate": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "butyrate",
+		"url": "https://en.wiktionary.org/wiki/butyrate"
+	},
+	"saddling": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "saddle",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/saddle"
+	},
+	"superset": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "superset",
+		"url": "https://en.wiktionary.org/wiki/superset"
+	},
+	"catfight": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "catfight",
+		"url": "https://en.wiktionary.org/wiki/catfight"
+	},
+	"longline": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "longline",
+		"url": "https://en.wiktionary.org/wiki/longline"
+	},
+	"bedsheet": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bedsheet",
+		"url": "https://en.wiktionary.org/wiki/bedsheet"
+	},
+	"sorbitol": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sorbitol",
+		"url": "https://en.wiktionary.org/wiki/sorbitol"
+	},
+	"potlatch": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "potlatch",
+		"url": "https://en.wiktionary.org/wiki/potlatch"
+	},
+	"seafoods": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "seafood",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/seafood"
+	},
+	"earthing": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "earth",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/earth"
+	},
+	"landform": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "landform",
+		"url": "https://en.wiktionary.org/wiki/landform"
+	},
+	"bricking": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "brick",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/brick"
+	},
+	"denarius": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "denarius",
+		"url": "https://en.wiktionary.org/wiki/denarius"
+	},
+	"kielbasa": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "kielbasa",
+		"url": "https://en.wiktionary.org/wiki/kielbasa"
+	},
+	"advocaat": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "advocaat",
+		"url": "https://en.wiktionary.org/wiki/advocaat"
+	},
+	"megacity": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "megacity",
+		"url": "https://en.wiktionary.org/wiki/megacity"
+	},
+	"sexology": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "sexology",
+		"url": "https://en.wiktionary.org/wiki/sexology"
+	},
+	"gigawatt": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "gigawatt",
+		"url": "https://en.wiktionary.org/wiki/gigawatt"
+	},
+	"propolis": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "propolis",
+		"url": "https://en.wiktionary.org/wiki/propolis"
+	},
+	"castella": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "castella",
+		"url": "https://en.wiktionary.org/wiki/castella"
+	},
+	"misandry": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "misandry",
+		"url": "https://en.wiktionary.org/wiki/misandry"
+	},
+	"seamount": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "seamount",
+		"url": "https://en.wiktionary.org/wiki/seamount"
+	},
+	"erasable": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "erasable",
+		"url": "https://en.wiktionary.org/wiki/erasable"
+	},
+	"worthier": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "worthy",
+		"tag": "JJR",
+		"url": "https://en.wiktionary.org/wiki/worthy"
+	},
+	"morphism": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "morphism",
+		"url": "https://en.wiktionary.org/wiki/morphism"
+	},
+	"inputted": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "input",
+		"tag": "VBD",
+		"url": "https://en.wiktionary.org/wiki/input"
+	},
+	"squalene": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "squalene",
+		"url": "https://en.wiktionary.org/wiki/squalene"
+	},
+	"hardiest": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "hardy",
+		"tag": "JJS",
+		"url": "https://en.wiktionary.org/wiki/hardy"
+	},
+	"rockfall": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "rockfall",
+		"url": "https://en.wiktionary.org/wiki/rockfall"
+	},
+	"frenulum": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "frenulum",
+		"url": "https://en.wiktionary.org/wiki/frenulum"
+	},
+	"ergative": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ergative",
+		"url": "https://en.wiktionary.org/wiki/ergative"
+	},
+	"femicide": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "femicide",
+		"url": "https://en.wiktionary.org/wiki/femicide"
+	},
+	"scenting": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "scent",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/scent"
+	},
+	"yokozuna": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "yokozuna",
+		"url": "https://en.wiktionary.org/wiki/yokozuna"
+	},
+	"scribing": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "scribe",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/scribe"
+	},
+	"boondock": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "boondock",
+		"url": "https://en.wiktionary.org/wiki/boondock"
+	},
+	"stiffing": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "stiff",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/stiff"
+	},
+	"rakshasa": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "rakshasa",
+		"url": "https://en.wiktionary.org/wiki/rakshasa"
+	},
+	"phimosis": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "phimosis",
+		"url": "https://en.wiktionary.org/wiki/phimosis"
+	},
+	"nunchaku": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "nunchaku",
+		"url": "https://en.wiktionary.org/wiki/nunchaku"
+	},
+	"gigabits": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "gigabit",
+		"tag": "NNS",
+		"url": "https://en.wiktionary.org/wiki/gigabit"
+	},
+	"castrato": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "castrato",
+		"url": "https://en.wiktionary.org/wiki/castrato"
+	},
+	"antipode": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "antipode",
+		"url": "https://en.wiktionary.org/wiki/antipode"
+	},
+	"caudillo": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "caudillo",
+		"url": "https://en.wiktionary.org/wiki/caudillo"
+	},
+	"raclette": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "raclette",
+		"url": "https://en.wiktionary.org/wiki/raclette"
+	},
+	"tenderer": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "tender",
+		"tag": "JJR",
+		"url": "https://en.wiktionary.org/wiki/tender"
+	},
+	"labellum": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "labellum",
+		"url": "https://en.wiktionary.org/wiki/labellum"
+	},
+	"monokini": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "monokini",
+		"url": "https://en.wiktionary.org/wiki/monokini"
+	},
+	"trevally": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "trevally",
+		"url": "https://en.wiktionary.org/wiki/trevally"
+	},
+	"biphenyl": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "biphenyl",
+		"url": "https://en.wiktionary.org/wiki/biphenyl"
+	},
+	"halation": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "halation",
+		"url": "https://en.wiktionary.org/wiki/halation"
+	},
+	"melodica": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "melodica",
+		"url": "https://en.wiktionary.org/wiki/melodica"
+	},
+	"bouzouki": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "bouzouki",
+		"url": "https://en.wiktionary.org/wiki/bouzouki"
+	},
+	"polysemy": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "polysemy",
+		"url": "https://en.wiktionary.org/wiki/polysemy"
+	},
+	"aerostat": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "aerostat",
+		"url": "https://en.wiktionary.org/wiki/aerostat"
+	},
+	"longship": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "longship",
+		"url": "https://en.wiktionary.org/wiki/longship"
+	},
+	"polytope": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "polytope",
+		"url": "https://en.wiktionary.org/wiki/polytope"
+	},
+	"trilemma": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "trilemma",
+		"url": "https://en.wiktionary.org/wiki/trilemma"
+	},
+	"glorying": {
+		"method": "wiktionary_inflection",
+		"source": "short_dictionary",
+		"headword": "glory",
+		"tag": "VBG",
+		"url": "https://en.wiktionary.org/wiki/glory"
+	},
+	"ostracod": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "ostracod",
+		"url": "https://en.wiktionary.org/wiki/ostracod"
+	},
+	"philtrum": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "philtrum",
+		"url": "https://en.wiktionary.org/wiki/philtrum"
+	},
+	"rainwear": {
+		"method": "wiktionary_exact",
+		"source": "short_dictionary",
+		"headword": "rainwear",
+		"url": "https://en.wiktionary.org/wiki/rainwear"
 	}
 }

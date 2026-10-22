@@ -117,6 +117,8 @@ func _check_short_translations(gm: Node) -> int:
 	for word: String in ["a", "an", "and", "the", "cat", "dog", "ox", "zoo", "hi"]:
 		var gloss: String = gm.get_word_translation(word)
 		fails += _check(gloss != "", "short word '%s' is translated ('%s')" % [word, gloss])
+	for word: String in ["app", "bro", "geez", "cuter", "inputted", "keywords"]:
+		fails += _check(gm.get_word_translation(word) != "", "new short gloss '%s' resolves locally" % word)
 
 	# The head-3000 batch is translated in full, so translations are no longer
 	# limited to <=3 letters. The glossary is far bigger than these tables -- it

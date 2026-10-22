@@ -2,7 +2,8 @@ Wordgame dictionary sources and licenses
 
 Existing 99,466 Japanese translations are preserved unchanged from the project
 baseline. Vocabulary filtering removes 20,268 approved deletion candidates;
-the resulting dictionary contains 377,293 valid words and 101,957 translations.
+the valid vocabulary remains 377,293 words. Current translation counts are
+recorded in translation_coverage.json (source distribution).
 Pre-existing rights remain unchanged.
 
 EJDict / ejdict-hand, maintained by kujirahand:
@@ -11,6 +12,25 @@ Revision: 9663055d59a8cb1a35078a71db7a09ff39305828
 CC0 1.0 Universal. Full text: licenses/EJDict-CC0.txt
 Changes: exact lowercase English headwords selected; usage typography removed;
 up to three source senses retained; attested inflections added.
+
+English Wiktionary contributors, via Kaikki / wiktextract and
+DanielGregorini/koreader-dicts en-ja v1.2.0 (2026-09-11):
+https://en.wiktionary.org/
+https://kaikki.org/
+https://github.com/DanielGregorini/koreader-dicts/releases/tag/v1.2.0
+Creative Commons Attribution-ShareAlike 4.0 International.
+Original compilation notices: licenses/ShortDictionary-ATTRIBUTION,
+licenses/ShortDictionary-LICENSE, licenses/ShortDictionary-README.txt.
+Individual source pages and contributor histories:
+licenses/Wiktionary-attribution.txt. Full license: licenses/CC-BY-SA-4.0.html.
+Changes: exact lowercase English headwords selected, explicit Japanese
+equivalents and POS retained, max three meanings, attested inflections added.
+The source compilation also contains Japanese WordNet and Princeton WordNet
+3.0 material; its Japanese-definition senses are excluded from new translations.
+Source redistribution notices: licenses/JapaneseWordNet-LICENSE.txt and
+licenses/WordNet-LICENSE.txt. Japanese WordNet source:
+https://bond-lab.github.io/wnja/index.ja.html
+No endorsement by Wiktionary, Kaikki, the compilation authors or WordNet is implied.
 
 JMdict, James William BREEN and the Electronic Dictionary Research and
 Development Group (EDRDG):

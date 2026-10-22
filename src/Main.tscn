@@ -283,8 +283,8 @@ clip_text = false
 [node name="DictionaryCredits" type="Label" parent="Scroll/Center/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 10
-text = "Dictionary: EJDict (CC0), JMdict / EDRDG (CC BY-SA 4.0) | Frequency: wordfreq / Robyn Speer"
-tooltip_text = "https://github.com/kujirahand/EJDict\nhttps://www.edrdg.org/edrdg/licence.html\nhttps://github.com/rspeer/wordfreq"
+text = "Dictionary: EJDict (CC0), JMdict / EDRDG, Wiktionary (CC BY-SA 4.0) | Frequency: wordfreq"
+tooltip_text = "https://github.com/kujirahand/EJDict\nhttps://www.edrdg.org/edrdg/licence.html\nEnglish Wiktionary contributors via Kaikki / DanielGregorini/koreader-dicts\nhttps://en.wiktionary.org/\nhttps://github.com/rspeer/wordfreq (Robyn Speer)\nFull notices and individual contributor links: data/licenses/"
 horizontal_alignment = 1
 
 [node name="PreviewLabel" type="Label" parent="Scroll/Center/VBox"]

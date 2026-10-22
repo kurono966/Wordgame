@@ -26,6 +26,11 @@ def main():
     assert set(output['words']) | set(output['translations']) == accepted
     assert not set(output['words']) & set(output['translations'])
     assert all(output['translations'][w] == v for w, v in baseline['translations'].items())
+    # Preserve the entire immediately preceding release, including its 2,491
+    # already generated additions, rather than checking only the first baseline.
+    prior = build.load(ROOT / 'tools/filter_backups/word_dictionary.json.gz')
+    assert len(prior['translations']) == 101957
+    assert all(output['translations'].get(w) == v for w, v in prior['translations'].items())
     added = set(output['translations']) - set(baseline['translations'])
     assert added == set(provenance)
     assert report['added'] == len(added)
@@ -48,6 +53,21 @@ def main():
     for word in ('obama', 'william', 'lang', 'jun'):
         assert word not in added, word
     assert 'いっそうよい' not in output['translations'].get('bettor', '')
+    for word, expected in {'app': 'アプリ', 'bro': '兄弟', 'yup': 'うん',
+                           'geez': 'なんてこった', 'cuter': 'cuteの比較級',
+                           'login': 'ログイン', 'inputted': 'inputの過去形'}.items():
+        assert expected in output['translations'].get(word, ''), word
+        assert provenance[word]['method'].startswith('wiktionary_'), word
+    short = report['short_pass']
+    short_words = {w for w, p in provenance.items() if p['method'].startswith('wiktionary_')}
+    assert short['added'] == len(short_words)
+    assert all(len(w) <= 8 for w in short_words)
+    assert sum(r['added_short'] for r in short['length_bands'].values()) == len(short_words)
+    assert sum(r['after'] for r in short['length_bands'].values()) == len(output['translations'])
+    attribution = (ROOT / 'data/licenses/Wiktionary-attribution.txt').read_text(encoding='utf-8')
+    assert all(provenance[w]['url'] in attribution for w in short_words)
+    for word in ('vers', 'enclitic', 'shazam', 'manky', 'twink', 'willy'):
+        assert word not in short_words, word
     assert build.senses('《古》古語 / 『日常語』 / =reference') == ['日常語']
     if '--web-pack' in sys.argv:
         check_pack(output)

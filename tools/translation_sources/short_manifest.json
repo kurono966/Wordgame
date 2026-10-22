@@ -1,0 +1,9 @@
+{
+  "url": "https://github.com/DanielGregorini/koreader-dicts/releases/download/v1.2.0/en-ja.zip",
+  "archive_sha256": "a5d44c2d25611aff9c50debe5f3626f7de38a99b5cfe6b14932fcad74ce61121",
+  "subset_sha256": "13101b479d54e295377926ab39861b7a8934be1dab77508fca27925569cc6fed",
+  "entries": 80679,
+  "license": "CC-BY-SA-4.0",
+  "source": "English Wiktionary contributors via Kaikki/wiktextract and DanielGregorini/koreader-dicts v1.2.0",
+  "changes": "Lowercase alphabetic headwords selected; original entry HTML retained."
+}

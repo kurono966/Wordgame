@@ -37,9 +37,18 @@ def main():
     if RECORD.exists():
         record = json.loads(RECORD.read_text(encoding='utf-8'))
         assert sha(candidate_bytes) == record['candidate_sha256']
-        assert sha(original) == record['after_sha256'], 'dictionary changed since application'
+        # Subsequent translation-only additions may change the JSON checksum.
+        # Approval covers the vocabulary set; preserve every pre-filter gloss.
+        data = json.loads(original)
+        accepted = set(data['words']) | set(data['translations'])
+        assert not set(data['words']) & set(data['translations'])
+        assert sha('\n'.join(sorted(accepted)).encode('utf-8')) == record['accepted_set_sha256'], 'accepted vocabulary changed'
+        backup = gzip.decompress((BACKUP / 'word_dictionary.json.gz').read_bytes())
+        assert sha(backup) == record['before_sha256']
+        previous = json.loads(backup)['translations']
+        assert all(data['translations'].get(w) == value for w, value in previous.items()), 'existing translation changed'
         assert sha(legacy.read_bytes()) == record['legacy_after_sha256']
-        print('Already applied; verified dictionary and fallback hashes.')
+        print('Already applied; verified vocabulary, preserved translations and fallback hash.')
         return
     assert sha(original) == report['input_sha256'], 'audit is stale; do not apply'
     assert len(candidates) == report['counts']['candidate'] == 20268

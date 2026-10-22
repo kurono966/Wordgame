@@ -1,50 +1,134 @@
 {
 	"accepted": 377293,
 	"before": 99466,
-	"added": 2491,
-	"after": 101957,
+	"added": 3025,
+	"short_pass": {
+		"before": 101957,
+		"added": 534,
+		"length_bands": {
+			"1": {
+				"total": 26,
+				"before_short": 26,
+				"after": 26,
+				"added_short": 0,
+				"coverage_percent": 100.0
+			},
+			"2": {
+				"total": 567,
+				"before_short": 282,
+				"after": 285,
+				"added_short": 3,
+				"coverage_percent": 50.26
+			},
+			"3": {
+				"total": 4302,
+				"before_short": 1162,
+				"after": 1191,
+				"added_short": 29,
+				"coverage_percent": 27.68
+			},
+			"4": {
+				"total": 9305,
+				"before_short": 3352,
+				"after": 3406,
+				"added_short": 54,
+				"coverage_percent": 36.6
+			},
+			"6": {
+				"total": 32084,
+				"before_short": 10563,
+				"after": 10683,
+				"added_short": 120,
+				"coverage_percent": 33.3
+			},
+			"5": {
+				"total": 19014,
+				"before_short": 6621,
+				"after": 6709,
+				"added_short": 88,
+				"coverage_percent": 35.28
+			},
+			"7": {
+				"total": 43994,
+				"before_short": 14380,
+				"after": 14500,
+				"added_short": 120,
+				"coverage_percent": 32.96
+			},
+			"8": {
+				"total": 52306,
+				"before_short": 15805,
+				"after": 15925,
+				"added_short": 120,
+				"coverage_percent": 30.45
+			},
+			"9+": {
+				"total": 215695,
+				"before_short": 49766,
+				"after": 49766,
+				"added_short": 0,
+				"coverage_percent": 23.07
+			}
+		},
+		"priority": "length ascending, Zipf descending"
+	},
+	"after": 102491,
 	"sample": 0,
 	"ambiguous_inflections_skipped": 21,
 	"methods": {
 		"explicit_inflection": 89,
 		"exact": 1032,
 		"jmdict_exact_gloss": 492,
-		"attested_inflection": 878
+		"attested_inflection": 878,
+		"wiktionary_exact": 433,
+		"wiktionary_inflection": 101
 	},
 	"frequency_bands": {
 		"5+ (very common)": {
 			"total": 1059,
 			"before": 1051,
+			"before_short": 1054,
+			"added_short": 0,
 			"after": 1054,
 			"coverage_percent": 99.53
 		},
 		"4-5 (common)": {
 			"total": 5982,
 			"before": 5766,
-			"after": 5775,
-			"coverage_percent": 96.54
+			"before_short": 5775,
+			"added_short": 5,
+			"after": 5780,
+			"coverage_percent": 96.62
 		},
 		"3-4": {
 			"total": 20386,
 			"before": 17385,
-			"after": 17431,
-			"coverage_percent": 85.5
+			"before_short": 17431,
+			"added_short": 48,
+			"after": 17479,
+			"coverage_percent": 85.74
 		},
 		"2-3": {
 			"total": 44624,
 			"before": 26897,
-			"after": 27703,
-			"coverage_percent": 62.08
+			"before_short": 27703,
+			"added_short": 289,
+			"after": 27992,
+			"coverage_percent": 62.73
 		},
 		"0-2": {
 			"total": 64202,
 			"before": 23180,
-			"after": 24122,
-			"coverage_percent": 37.57
+			"before_short": 24122,
+			"added_short": 192,
+			"after": 24314,
+			"coverage_percent": 37.87
 		},
 		"0 (unlisted)": {
 			"total": 241040,
 			"before": 25187,
+			"before_short": 25872,
+			"added_short": 0,
 			"after": 25872,
 			"coverage_percent": 10.73
 		}
@@ -54,11 +138,18 @@
 		"baseline.json.gz": "4b105111e90c146c1b4bbeda1f1415cd9847c061456411182ff214b36c65fe11",
 		"CC-BY-SA-4.0.html": "47c0a954c88d793bdefe92fb007ae3c038fb3807f1a27083433d01aa7542c0d8",
 		"EDRDG-licence.html": "52f60ea9ca68170a2f0663d7dba381ebf1bd57c17a3347dfe21153865c156692",
+		"JapaneseWordNet-LICENSE.txt": "e5136420f2e6ec65c41295a942b99edc1f34b88cbf24b515696bf3411953ea70",
 		"JMdict-documentation.html": "4b0ce12807417d6a30daa8f65911aa25dcdea3fd64fb842deac43267b7826e5d",
 		"JMdict_e.gz": "91037607250dcc60b0f0723d229d77553d8be512a3d0ab152e4760bc1a418120",
 		"LICENSE": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
 		"README.md": "cc99382e98aa43edb1893a8cf381653491b14a912656073d58c424d97c882c62",
 		"revision.txt": "69261cb9f7c90cef92df6a0eb79c06b248c87a2546cd608ea439ddbe420b386e",
+		"short_config.json": "e654db6482269f4a6a12a847c7f1b2751f3abc10f367fb9c376421623804a155",
+		"short_dictionary.json.gz": "13101b479d54e295377926ab39861b7a8934be1dab77508fca27925569cc6fed",
+		"short_manifest.json": "a68a5e5184688a71a57449b386e992752a03e15a539ca059cda2b91fbf00df22",
+		"ShortDictionary-ATTRIBUTION": "be08582295b9d43e330fcf56b2393d94eb6b326b554578446acf578e4624ff60",
+		"ShortDictionary-LICENSE": "26778263244481a31a68ceacc02626ced83ac411dc84c8ca8eca3c00e93ac96f",
+		"ShortDictionary-README.txt": "3957a2aad145b680c879c90f9c8ec778d2bdd5e5a5b15d3b50766003f09523f6",
 		"src_a.txt": "1cd9bc081d6d87f1ed0757294eab1958a3a603a1348f64d50acf8752aec04015",
 		"src_b.txt": "4fbf0e979a5c2e7186081fa169d92a9439010d732c2be48e892615de50797598",
 		"src_c.txt": "62eb55c61ee2f7425ac8546924e25202bcfbff9e430263b1b0e3f4b4477836c4",

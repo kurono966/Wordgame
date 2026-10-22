@@ -65,6 +65,47 @@ review new hashes, coverage, provenance and sample translations afterwards.
 Refresh monthly for distributed dictionary services as required by the EDRDG
 statement. The game itself always uses its bundled snapshot offline.
 
+## Short-word supplementation (2026-10-22)
+
+`python tools/fetch_short_translations.py` pins the CC BY-SA 4.0 en-ja v1.2.0
+release from DanielGregorini/koreader-dicts (English Wiktionary via Kaikki /
+wiktextract, WordNet). The original lowercase entries are retained as compressed
+HTML in `translation_sources/short_dictionary.json.gz`. The archive and subset
+SHA-256 values are recorded in `short_manifest.json`; a changed upstream archive
+is rejected. The subset and all notices are included in the source repository,
+so normal regeneration needs no download. An expired certificate at Kaikki's
+Japanese Wiktionary endpoint prevented using that source; HTTPS verification
+was kept enabled. Experimental Japanese WordNet-only additions were rejected
+because noisy synonyms and uncommon irregular plurals produced misleading
+meanings. Those experimental additions are not shipped.
+
+`short_translations.py` runs after the existing pipeline. It preserves all
+101,957 preceding translations and fills only untranslated accepted words.
+Configuration: `translation_sources/short_config.json` (currently <=8 letters,
+wordfreq Zipf >=1.5, explicit review holds). Order is length ascending, English
+frequency descending, then spelling. Run `expand_translations.py --sample 500`
+for a dry run before the full build; the short pass samples the first 500
+eligible missing words independently of the legacy frequency sample.
+
+Only explicit Japanese equivalents alongside English definitions are selected.
+The compilation's WordNet senses with Japanese definitions and English-only
+definitions are excluded. Exact lowercase headwords and explicit POS are
+required. Marked old/rare/offensive/dialectal senses, proper-name POS, unresolved
+cross-references, unexplained abbreviation entries and noisy gloss syntax are
+skipped. Keep the source editor's equivalent order, up to three meanings.
+Dictionary-attested inflections require matching POS and an unambiguous lemma;
+uncommon irregular foreign noun plurals are deferred. This is conservative
+dictionary selection, not a claim that every source meaning has been audited.
+
+`translation_coverage.json` records this pass separately (`short_pass`,
+`before_short`, `added_short`) and retains baseline counts for reproducibility.
+The result report is `tools/SHORT_TRANSLATION_REPORT.md`. Detailed provenance
+identifies each source headword; `data/licenses/Wiktionary-attribution.txt`
+bundles per-word contributor/history links for offline distributions. The
+accepted set, approved exclusions, fallback dictionary and game logic do not
+change. The filter audit/application checks allow translation-only additions,
+while verifying the approved vocabulary hash and every previous translation.
+
 Licensing and attribution: data/DICTIONARY_LICENSES.txt and data/licenses/.
 Web export includes those documents and the translation JSON, and excludes
 build dependencies and test/source data. No new network runtime is introduced.

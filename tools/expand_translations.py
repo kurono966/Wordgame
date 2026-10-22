@@ -290,6 +290,13 @@ def main():
         provenance[word] = {'method': 'attested_inflection', 'lemma': lemma, 'tags': [t for _, t, _ in options],
                             'source': 'ejdict' if lemma in entries else 'jmdict' if lemma in jentries else 'existing'}
 
+    from short_translations import supplement
+    before_short = dict(previous, **additions)
+    short_additions, short_provenance = supplement(accepted, before_short, frequency,
+                                                  japanese_frequency, getAllInflections,
+                                                  limit=args.sample)
+    additions.update(short_additions)
+    provenance.update(short_provenance)
     merged = dict(previous, **additions)
     result = {'words': sorted(accepted - set(merged)), 'translations': dict(sorted(merged.items()))}
     assert set(result['words']) | set(merged) == accepted
@@ -298,13 +305,27 @@ def main():
     assert all(JP.search(v) and '\ufffd' not in v for v in additions.values())
     rows = {}
     for w in sorted(accepted):
-        row = rows.setdefault(band(frequency[w]), {'total': 0, 'before': 0, 'after': 0})
+        row = rows.setdefault(band(frequency[w]), {'total': 0, 'before': 0, 'before_short': 0, 'added_short': 0, 'after': 0})
         row['total'] += 1
         row['before'] += w in previous
+        row['before_short'] += w in before_short
+        row['added_short'] += w in short_additions
         row['after'] += w in merged
     for row in rows.values():
         row['coverage_percent'] = round(row['after'] / row['total'] * 100, 2)
+    length_rows = {}
+    for word in sorted(accepted):
+        key = str(len(word)) if len(word) <= 8 else '9+'
+        row = length_rows.setdefault(key, {'total': 0, 'before_short': 0, 'after': 0, 'added_short': 0})
+        row['total'] += 1
+        row['before_short'] += word in before_short
+        row['after'] += word in merged
+        row['added_short'] += word in short_additions
+    for row in length_rows.values():
+        row['coverage_percent'] = round(row['after'] / row['total'] * 100, 2)
     report = {'accepted': len(accepted), 'before': len(previous), 'added': len(additions),
+              'short_pass': {'before': len(before_short), 'added': len(short_additions),
+                             'length_bands': length_rows, 'priority': 'length ascending, Zipf descending'},
               'after': len(merged), 'sample': args.sample, 'ambiguous_inflections_skipped': ambiguous,
               'methods': dict(Counter(p['method'] for p in provenance.values())), 'frequency_bands': rows,
               'ejdict_revision': (SOURCE / 'revision.txt').read_text().strip(),
@@ -313,6 +334,17 @@ def main():
         save(args.output, result)
         save(ROOT / 'data/translation_provenance.json', provenance)
         save(ROOT / 'data/translation_coverage.json', report)
+        # Ship individual source/contributor links even though detailed build
+        # provenance is deliberately excluded from the Web export.
+        links = ['English Wiktionary contributors via Kaikki/wiktextract and',
+                 'DanielGregorini/koreader-dicts v1.2.0 (CC BY-SA 4.0).',
+                 'https://github.com/DanielGregorini/koreader-dicts/releases/tag/v1.2.0',
+                 'Changes: selected Japanese equivalents, POS labels, up to three',
+                 'meanings, dictionary-attested English inflections. No endorsement.',
+                 'Each linked page credits its contributors through its History tab.', '']
+        for word, meta in sorted(short_provenance.items()):
+            links.append(word + '\t' + meta['url'] + '\t' + meta['url'] + '?action=history')
+        (ROOT / 'data/licenses/Wiktionary-attribution.txt').write_text('\n'.join(links) + '\n', encoding='utf-8', newline='\n')
     print(json.dumps({k: v for k, v in report.items() if k != 'source_sha256'}, ensure_ascii=True))
 
 

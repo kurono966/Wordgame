@@ -1,0 +1,16 @@
+{
+  "max_length": 8,
+  "min_zipf": 1.5,
+  "hold_headwords": {
+    "jun": "Currency transliteration collides with a frequent personal name; defer context-dependent short item.",
+    "vers": "Source adjective equivalent is an unexplained counter; unsuitable display gloss.",
+    "enclitic": "Source Japanese equivalent appears to describe the opposite attachment direction.",
+    "shazam": "Source verb gloss is an exclamation rather than a verb meaning.",
+    "manky": "Source adjective equivalent is a Japanese verb with context-dependent meaning.",
+    "twink": "Source equivalent is culturally specific and does not convey the general sense.",
+    "willy": "Defer regional informal anatomical sense in favor of common vocabulary.",
+    "giddyup": "Source interjection appears to conflate an urging command with a surprised exclamation.",
+    "phreatic": "Source adjective equivalent is a noun naming an explosion rather than the general adjective.",
+    "moe": "Source adjective equivalent is a Japanese verb; defer mixed grammatical interpretation."
+  }
+}
