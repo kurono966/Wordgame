@@ -1,0 +1,51 @@
+Wordgame dictionary sources and licenses
+
+Existing accepted vocabulary and 99,466 Japanese translations are preserved
+unchanged from the project baseline. Their pre-existing rights remain unchanged.
+
+EJDict / ejdict-hand, maintained by kujirahand:
+https://github.com/kujirahand/EJDict
+Revision: 9663055d59a8cb1a35078a71db7a09ff39305828
+CC0 1.0 Universal. Full text: licenses/EJDict-CC0.txt
+Changes: exact lowercase English headwords selected; usage typography removed;
+up to three source senses retained; attested inflections added.
+
+JMdict, James William BREEN and the Electronic Dictionary Research and
+Development Group (EDRDG):
+https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project
+This package uses the JMdict dictionary file. This file is the property of
+the Electronic Dictionary Research and Development Group, and is used in
+conformance with the Group's licence.
+https://www.edrdg.org/edrdg/licence.html
+Creative Commons Attribution-ShareAlike 4.0 International:
+https://creativecommons.org/licenses/by-sa/4.0/
+Full texts/documentation: licenses/EDRDG-licence.html,
+licenses/JMdict-documentation.html, licenses/CC-BY-SA-4.0.html
+Changes: reverse lookup of complete English glosses, restricted by Japanese
+written forms, readings, POS, usage labels and frequency; up to three meanings;
+attested English inflections. These new derived translations and their
+provenance are available under CC BY-SA 4.0. No endorsement is implied.
+
+wordfreq 3.1.1, Copyright 2022 Robyn Speer:
+https://github.com/rspeer/wordfreq
+Used at build time for English priority, Japanese candidate ranking, and
+coverage statistics. Frequency data: CC BY-SA 4.0. Code: Apache 2.0.
+Frequency-derived reports and selection annotations: CC BY-SA 4.0.
+Full attribution/source notices: licenses/wordfreq-NOTICE.md
+Code notice: licenses/wordfreq-Apache-notice.txt
+Data sources include Google Books Ngrams, Leeds Internet Corpus, Wikipedia,
+ParaCrawl, OPUS OpenSubtitles 2018 / OpenSubtitles, and freely available
+SUBTLEX data by Marc Brysbaert and collaborators (see the full notice).
+
+LemmInflect 0.2.3, Copyright (C) 2019 Brad Jascob:
+https://github.com/bjascob/LemmInflect
+MIT license: licenses/LemmInflect-MIT.txt
+Used at build time for dictionary-attested English inflections and POS tags.
+Neural/OOV inflection prediction is not used.
+
+The added translation collection and annotations are distributed under
+CC BY-SA 4.0; CC0 source material remains available under CC0.
+These data licenses do not relicense the game code, fonts or existing data.
+For exact source hashes and entry IDs see translation_coverage.json and
+translation_provenance.json in the source distribution. All runtime Japanese
+translations and license documents are bundled; network access is unnecessary.

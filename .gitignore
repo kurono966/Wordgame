@@ -14,4 +14,8 @@ tools/optimized_deck.txt
 # Python bytecode
 __pycache__/
 *.pyc
+tools/_translation_deps/
+tests/translation_web_build/
+tests/translation_godot.log
+tests/translation_web_export.log
 

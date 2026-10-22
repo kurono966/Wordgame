@@ -282,6 +282,14 @@ godot --headless --path . --script res://tests/_special_cost_test.gd
 ```
 
 ## 技術詳細
+
+英日訳は同梱辞書からオフライン表示します。辞書はEJDict (CC0)、
+JMdict / EDRDG (CC BY-SA 4.0)を利用し、頻度の選定には
+wordfreq / Robyn Speer、活用形にはLemmInflect / Brad Jascobを使用しています。
+出典・ライセンスは `data/DICTIONARY_LICENSES.txt`、
+再生成方法は `tools/TRANSLATIONS.md`、頻度帯別集計は
+`data/translation_coverage.json` を参照してください。
+
 - Godot Engineで構築
 - GDScriptを使用
 - 辞書ベースの単語検証
