@@ -30,6 +30,8 @@ func _check_one(main: Node, def: Dictionary) -> int:
 
 	GameManager.reset_game()
 	GameManager.hand[0] = def.duplicate()
+	if str(def.get("special_id", "")) == "shield_burst":
+		GameManager.shield = 10
 	GameManager.operation_points = 20
 	main._refresh_ui()
 	await get_tree().process_frame
@@ -47,6 +49,8 @@ func _check_one(main: Node, def: Dictionary) -> int:
 	await get_tree().process_frame
 
 	# Pre-seed the draw pile so the refill matches the special card exactly.
+	if str(def.get("special_id", "")) == "shield_burst":
+		GameManager.shield = 10
 	_force_next_draw_like(def)
 
 	await main._on_card_special_used({"type": "hand", "hand_index": 0})

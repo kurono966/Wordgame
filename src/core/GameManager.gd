@@ -211,7 +211,7 @@ const CARD_DEFS: Array = [
 ]
 
 # ── SPECIAL CARD POOL: Available via rewards, NEVER in the initial deck ──
-# Balanced 28-card pool covering all letters A-Z across all 4 colors (7 cards each).
+# 29-card pool covering A-Z: 7 red, 8 blue, 7 green, 7 yellow.
 const SPECIAL_CARD_DEFS: Array = [
 	# ── RED (Damage / Offense) ──
 	{
@@ -265,6 +265,13 @@ const SPECIAL_CARD_DEFS: Array = [
 	},
 
 	# ── BLUE (Shield / Defense) ──
+	{
+		"letter": "B", "damage": 3, "color": "blue",
+		"special_id": "shield_burst",
+		"special_name": "SHIELD BURST",
+		"special_cost": 3,
+		"special_desc": "シールドをすべて消費し、消費量と同じダメージを敵に与える。"
+	},
 	{
 		"letter": "S", "damage": 1, "color": "blue",
 		"special_id": "guard",
@@ -1991,6 +1998,8 @@ func get_special_name(card: Variant) -> String:
 func get_special_desc(card: Variant) -> String:
 	if not has_special_ability(card):
 		return ""
+	if str(card.get("special_id", "")) == "shield_burst":
+		return "%s（現在：%dダメージ。敵のシールドで軽減されます。）" % [str(card.get("special_desc", "")), shield]
 	return str(card.get("special_desc", ""))
 
 # OP still missing before this card's special can be activated.
@@ -2020,6 +2029,8 @@ func _needs_empty_workbench_card(card: Variant) -> bool:
 func special_ability_blocker(card: Variant) -> String:
 	if not has_special_ability(card):
 		return ""
+	if str(card.get("special_id", "")) == "shield_burst" and shield <= 0:
+		return "シールドが必要です。シールドを獲得してから発動してください"
 	if _needs_empty_workbench_card(card) and not workbench_empty:
 		return "Clear the Workbench first — %s bins a card at random" % get_special_name(card)
 	return ""
@@ -2041,6 +2052,8 @@ func has_special_ability(card: Variant) -> bool:
 
 func use_special_ability(hand_index: int) -> Dictionary:
 	var op_before: int = operation_points
+	var defeated_before: int = enemies_defeated
+	var stage_before: int = stage
 	var result := {
 		"valid": false,
 		"special_id": "",
@@ -2095,6 +2108,19 @@ func use_special_ability(hand_index: int) -> Dictionary:
 	result["drawn"] = 1
 
 	match s_id:
+		"shield_burst":
+			# Capture and spend before damage: a lethal hit may start a new battle
+			# and apply its own relic shield, which must not be spent by this hit.
+			var spent_shield: int = shield
+			shield = 0
+			var hit: Dictionary = _apply_damage(spent_shield)
+			result["shield_spent"] = spent_shield
+			result["damage"] = spent_shield
+			result["enemy_shield_absorbed"] = int(hit.get("enemy_shield_absorbed", 0))
+			result["enemy_hp_damage"] = int(hit.get("enemy_hp_damage", 0))
+			if not hand_redraw_pending:
+				_refill_hand()
+			result["message"] = "SHIELD BURST! シールド%dを全消費し、%dダメージ（敵シールドが%d吸収）。" % [spent_shield, spent_shield, result["enemy_shield_absorbed"]]
 		"royal_summon":
 			# Q goes to graveyard, add a 'U' (1 dmg, red) card to hand in its place.
 			# ephemeral: it was conjured, not drawn, so it is destroyed on use
@@ -2266,6 +2292,8 @@ func use_special_ability(hand_index: int) -> Dictionary:
 			result["message"] = "Special activated! %s was sent to graveyard." % special_card.get("letter", "?")
 
 	result["valid"] = true
+	result["enemies_defeated_delta"] = enemies_defeated - defeated_before
+	result["stage_before"] = stage_before
 	return result
 
 # ─── Slot helpers ────────────────────────────────────────────────────────────

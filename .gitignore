@@ -28,6 +28,8 @@ tests/title_visual_error.log
 tests/title_*.log
 tests/wildcard_picker_test.log
 tests/ui_*.log
+tests/shield_burst_test.log
+tests/word_rejection_test.log
 tests/ui_*.png
 tests/ui_*.png.import
 tests/title_preview.png.import

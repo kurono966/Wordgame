@@ -42,7 +42,7 @@ func _ready() -> void:
 	check(main.meaning_label.text == GameManager.get_word_translation("cat"), "Meaning preview matches chosen CAT")
 	main._open_wildcard_picker(main.workbench_cards[1], -1, 1)
 	main._choose_wildcard_letter("Z")
-	check(main._workbench_pattern() == "CZT" and main.preview_label.text.contains("NOT A WORD"), "Invalid choice is not silently replaced by a valid word")
+	check(main._workbench_pattern() == "CZT" and main.preview_label.text.contains("未収録"), "Invalid choice is not silently replaced by a valid word")
 	await main._on_submit_pressed()
 	check(GameManager.turn == 0 and main._workbench_pattern() == "CZT", "Invalid choice rejected without turn or automatic substitution")
 	main._open_wildcard_picker(main.workbench_cards[1], -1, 1)

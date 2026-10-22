@@ -327,7 +327,7 @@ func _process(_delta: float) -> void:
 # ──────────────────────────────────────────────────────────────────────────────
 func _style_global_ui() -> void:
 	# Keep display letters bold, but use a readable font for instructions.
-	$Scroll/Center/VBox/SlotsSectionLabel.text = "共有札  ·  中段のカードをクリック／ドラッグで使用"
+	$Scroll/Center/VBox/SlotsSectionLabel.text = "共有札  ·  中段のみ使用 / 単語の中でも左 → 右（1 → 2 → 3）の順"
 	$Scroll/Center/VBox/HandSectionLabel.text = "手札  ·  クリック／ドラッグで追加  /  ★は長押しで能力"
 	$Scroll/Center/VBox/WorkbenchSectionLabel.text = "単語を作る  ·  カードを並べる / 置いたカードをクリックで戻す"
 	submit_button.text = "単語を提出"
@@ -1831,6 +1831,8 @@ func _on_card_clicked(card_data: Dictionary) -> void:
 # The card's damage value is its cost; it is spent only when the activation
 # actually succeeds (see GameManager.use_special_ability).
 func _on_card_special_used(card_data: Dictionary) -> void:
+	if _turn_resolving or GameManager.is_game_over() or _wildcard_dialog.visible:
+		return
 	# Special abilities only work for cards in hand
 	if card_data.get("type", "") != "hand":
 		message_label.text = "Special ability only works on cards in hand."
@@ -1879,6 +1881,7 @@ func _on_card_special_used(card_data: Dictionary) -> void:
 		_show_step_message("★ SPECIAL failed: %s." % str(result.get("reason", "unknown")), Color(1.0, 0.8, 0.3, 1.0))
 		return
 
+	_turn_resolving = true
 	if not discarded_panels.is_empty():
 		await _animate_cards_discard(discarded_panels)
 
@@ -1905,6 +1908,20 @@ func _on_card_special_used(card_data: Dictionary) -> void:
 	_show_step_message("★ SPECIAL: spent %d OP! %s  [%d OP left]" % [
 		result["cost"], result.get("message", ""), GameManager.get_operation_points()
 	], Color(1.0, 0.85, 0.3, 1.0))
+	_turn_resolving = false
+	if int(result.get("enemies_defeated_delta", 0)) > 0:
+		# Damage abilities can end a fight without submitting a word. Use the
+		# same reward/shop route, and clear references to the old shared board.
+		workbench_cards.clear()
+		_refresh_ui()
+		if GameManager.get_turn() < GameManager.MAX_TURNS and not GameManager.is_game_over():
+			if GameManager.is_shop_stage(int(result["stage_before"])):
+				_open_shop_dialog()
+			else:
+				show_reward_choice()
+		else:
+			GameManager.flush_pending_hand_redraw()
+			_refresh_ui()
 
 # ── Submit preview: what you will take when you press SUBMIT WORD ───────────
 # Shows the incoming damage BEFORE submitting, so a risky word can be spotted
@@ -1926,10 +1943,20 @@ func _refresh_submit_preview() -> void:
 		_set_meaning_text("", MEANING_COLOR_NONE)
 		_set_definition_text("", MEANING_COLOR_NONE)
 		return
+	var placement_error: String = _workbench_error(pattern)
+	if not placement_error.is_empty():
+		preview_label.text = placement_error
+		preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_INVALID)
+		if GameManager.dictionary.has(pattern.to_lower()):
+			_refresh_word_meaning(pattern)
+		else:
+			_set_meaning_text("", MEANING_COLOR_NONE)
+			_set_definition_text("", MEANING_COLOR_NONE)
+		return
 
 	var valid_assignments: Array = GameManager.find_valid_assignments(pattern)
 	if valid_assignments.is_empty():
-		preview_label.text = "X  '%s' IS NOT A WORD  —  SUBMIT will be rejected." % pattern.to_upper()
+		preview_label.text = "「%s」は有効な単語ですが、現在のカードでは作れません。" % pattern.to_upper()
 		preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_INVALID)
 		_set_meaning_text("", MEANING_COLOR_NONE)
 		_set_definition_text("", MEANING_COLOR_NONE)
@@ -2162,6 +2189,22 @@ func _workbench_pattern() -> String:
 		else:
 			pattern += physical
 	return pattern
+
+func _workbench_error(pattern: String) -> String:
+	# Dictionary membership and card feasibility are different questions.
+	# In particular, TRAP can be a valid word but not playable using R from
+	# reel 2 followed by A from reel 1. Never label that as an unknown word.
+	if not GameManager.dictionary.has(pattern.to_lower()):
+		return "「%s」は辞書に未収録です。" % pattern.to_upper()
+	var previous_slot: int = -1
+	for card in workbench_cards:
+		if str(card.get("type", "")) != "slot":
+			continue
+		var slot: int = int(card.get("index", -1))
+		if slot <= previous_slot:
+			return "「%s」は有効です。共有札は左 → 右の順です（%d → %dは使えません）。" % [pattern.to_upper(), previous_slot + 1, slot + 1]
+		previous_slot = slot
+	return ""
 
 func _setup_wildcard_picker() -> void:
 	_wildcard_backdrop = ColorRect.new()
@@ -3293,11 +3336,16 @@ func _on_submit_pressed() -> void:
 	if pattern.is_empty():
 		message_label.text = "? の文字を選んでください。"
 		return
+	var placement_error: String = _workbench_error(pattern)
+	if not placement_error.is_empty():
+		message_label.text = placement_error
+		message_label.add_theme_color_override("font_color", PREVIEW_COLOR_INVALID)
+		return
 
 	# Find valid assignments for this pattern (handles wildcards)
 	var valid_assignments: Array = GameManager.find_valid_assignments(pattern)
 	if valid_assignments.is_empty():
-		message_label.text = "X '%s' IS NOT VALID" % pattern.to_upper()
+		message_label.text = "「%s」は有効な単語ですが、現在のカードでは作れません。" % pattern.to_upper()
 		message_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4, 1.0))
 		return
 
