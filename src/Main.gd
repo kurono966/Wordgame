@@ -4,7 +4,7 @@ extends Control
 
 @onready var slot_container        : HBoxContainer  = $Scroll/Center/VBox/SlotContainer
 @onready var background            : TextureRect    = $Background
-@onready var hand_container        : HBoxContainer  = $Scroll/Center/VBox/HandContainer
+@onready var hand_container        : HBoxContainer  = $Scroll/Center/VBox/HandScroll/HandContainer
 @onready var deck_grave_label      : Label          = $Scroll/Center/VBox/DeckGraveLabel
 @onready var workbench_panel       : PanelContainer = $Scroll/Center/VBox/WorkbenchPanel
 @onready var workbench_container   : HBoxContainer  = $Scroll/Center/VBox/WorkbenchPanel/WorkbenchContainer
@@ -18,6 +18,14 @@ var _turn_timer: SceneTreeTimer = null
 var _turn_timer_left: float = 0.0
 const TURN_SECONDS: float = 30.0
 var _ui_fit_queued: bool = false
+var _turn_resolving: bool = false
+var _title_confirmation: ConfirmationDialog
+var _title_buttons: Array[Button] = []
+var _wildcard_dialog: Window
+var _wildcard_backdrop: ColorRect
+var _wildcard_pending: Dictionary = {}
+var _wildcard_insert_index: int = -1
+var _wildcard_edit_index: int = -1
 
 # Play a short sound when the timer runs low.
 var _low_time_played: bool = false
@@ -242,6 +250,12 @@ func get_card_color_constants(color_name: String) -> Dictionary:
 
 # ──────────────────────────────────────────────────────────────────────────────
 func _ready() -> void:
+	var readable_theme := Theme.new()
+	readable_theme.default_font = preload("res://fonts/MochiyPopOne-Regular.ttf")
+	readable_theme.default_font_size = 14
+	theme = readable_theme
+	_setup_title_navigation()
+	_setup_wildcard_picker()
 	submit_button.pressed.connect(_on_submit_pressed)
 	clear_button.pressed.connect(_on_clear_pressed)
 	formula_button.pressed.connect(_on_formula_pressed)
@@ -301,6 +315,8 @@ func _fit_ui_to_viewport() -> void:
 
 
 func _process(_delta: float) -> void:
+	for button in _title_buttons:
+		button.disabled = _turn_resolving
 	# A drag that ends without a drop (released off the zone, or cancelled) never
 	# reaches _drop_data, so the insertion caret would be left behind. Clear it as
 	# soon as the viewport reports that nothing is being dragged any more.
@@ -310,6 +326,23 @@ func _process(_delta: float) -> void:
 
 # ──────────────────────────────────────────────────────────────────────────────
 func _style_global_ui() -> void:
+	# Keep display letters bold, but use a readable font for instructions.
+	$Scroll/Center/VBox/SlotsSectionLabel.text = "共有札  ·  中段のカードをクリック／ドラッグで使用"
+	$Scroll/Center/VBox/HandSectionLabel.text = "手札  ·  クリック／ドラッグで追加  /  ★は長押しで能力"
+	$Scroll/Center/VBox/WorkbenchSectionLabel.text = "単語を作る  ·  カードを並べる / 置いたカードをクリックで戻す"
+	submit_button.text = "単語を提出"
+	clear_button.text = "選び直す"
+	formula_button.text = "効果の説明"
+	piles_button.text = "山札・墓地"
+	retry_button.text = "もう一度遊ぶ"
+	submit_button.tooltip_text = "作成した単語で攻撃します。提出前にダメージ予測を確認できます。"
+	clear_button.tooltip_text = "並べたカードをすべて戻します。ターンやOPは消費しません。"
+	formula_button.tooltip_text = "色の効果・夜のダメージ・直前の計算を確認します。"
+	piles_button.tooltip_text = "山札・手札・墓地のカードを確認します（Dキー）。"
+	for label in [preview_label, meaning_label, definition_label]:
+		label.add_theme_font_size_override("font_size", 13)
+	for label in [$Scroll/Center/VBox/SlotsSectionLabel, $Scroll/Center/VBox/HandSectionLabel, $Scroll/Center/VBox/WorkbenchSectionLabel]:
+		label.add_theme_font_size_override("font_size", 12)
 	# Procedural background: no image asset is required.
 	var gradient := Gradient.new()
 	gradient.colors = PackedColorArray([
@@ -344,6 +377,8 @@ func _style_global_ui() -> void:
 	_style_button(formula_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
 	_style_button(piles_close_button, Color("283852"), Color("6685b0"), Color("e8f0ff"))
 	_style_button(retry_button, Color("3b2c67"), Color("a88cff"), Color("f0eaff"))
+	for button in _title_buttons:
+		_style_button(button, Color("273650"), Color("7695c3"), Color("e6efff"))
 	if fullscreen_button:
 		_style_button(fullscreen_button, Color("273650"), Color("7695c3"), Color("e6efff"))
 
@@ -368,6 +403,12 @@ func _style_global_ui() -> void:
 	definition_label.add_theme_color_override("font_outline_color", Color("07101f"))
 	definition_label.add_theme_constant_override("outline_size", 3)
 	definition_label.add_theme_color_override("font_color", MEANING_COLOR_DEF)
+	for label in [preview_label, meaning_label, definition_label, message_label]:
+		label.add_theme_constant_override("outline_size", 0)
+	var credits: Label = $Scroll/Center/VBox/DictionaryCredits
+	credits.add_theme_font_size_override("font_size", 9)
+	credits.add_theme_color_override("font_color", Color("98a9c1"))
+	$Scroll/Center/VBox.move_child(credits, $Scroll/Center/VBox.get_child_count() - 1)
 
 func _style_button(button: Button, base_color: Color, border_color: Color, text_color: Color) -> void:
 	var normal := _make_button_style(base_color, border_color)
@@ -382,6 +423,12 @@ func _style_button(button: Button, base_color: Color, border_color: Color, text_
 	button.add_theme_stylebox_override("hover", hover)
 	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_stylebox_override("disabled", disabled)
+	var focus := StyleBoxFlat.new()
+	focus.bg_color = Color.TRANSPARENT
+	focus.border_color = Color("ffe3a2")
+	focus.set_border_width_all(2)
+	focus.set_corner_radius_all(9)
+	button.add_theme_stylebox_override("focus", focus)
 	button.add_theme_color_override("font_color", text_color)
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", text_color.darkened(0.08))
@@ -439,6 +486,8 @@ func _close_formula_dialog() -> void:
 	formula_button.grab_focus()
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if is_instance_valid(_wildcard_dialog) and _wildcard_dialog.visible:
+		return
 	if event.is_pressed() and not event.is_echo() and event.keycode == KEY_F11:
 		_toggle_fullscreen()
 		get_viewport().set_input_as_handled()
@@ -480,9 +529,9 @@ func _update_fullscreen_button() -> void:
 		return
 	var mode := DisplayServer.window_get_mode()
 	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
-		fullscreen_button.text = "🗗 WINDOW"
+		fullscreen_button.text = "ウィンドウ表示"
 	else:
-		fullscreen_button.text = "⛶ FULLSCREEN"
+		fullscreen_button.text = "全画面表示"
 
 func _restore_windowed_size() -> void:
 	DisplayServer.window_set_size(WINDOWED_SIZE)
@@ -1320,6 +1369,7 @@ func _create_card_view(w: float, h: float, letter_size: int, sub_size: int, clip
 	panel.add_child(vbox)
 
 	var lbl_letter := Label.new()
+	lbl_letter.add_theme_font_override("font", preload("res://fonts/DelaGothicOne-Regular.ttf"))
 	lbl_letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lbl_letter.clip_text = clip_text
@@ -1427,11 +1477,19 @@ func _build_slot_reels() -> void:
 
 # ── Build hand cards ─────────────────────────────────────────────────────────
 func _build_hand_cards() -> void:
-	hand_card_views.clear()
-	for _i in range(GameManager.HAND_SIZE):
+	_sync_hand_card_views(GameManager.get_hand().size())
+
+func _sync_hand_card_views(count: int) -> void:
+	# The real hand may exceed seven through relics and opening draws, or shrink
+	# through HAND DOWN. Every live index needs an interactive view.
+	while hand_card_views.size() < count:
 		var card_view: Dictionary = _create_card_view(96, 76, 32, 12)
 		hand_container.add_child(card_view["panel"])
 		hand_card_views.append(card_view)
+	while hand_card_views.size() > count:
+		var removed: Dictionary = hand_card_views.pop_back()
+		hand_container.remove_child(removed["panel"])
+		removed["panel"].queue_free()
 
 func _is_card_in_workbench(card_data: Dictionary) -> bool:
 	for c in workbench_cards:
@@ -1445,6 +1503,7 @@ func _is_card_in_workbench(card_data: Dictionary) -> bool:
 # ── Refresh Hand and Deck/Graveyard ──────────────────────────────────────────
 func _refresh_hand_and_deck() -> void:
 	var current_hand: Array = GameManager.get_hand()
+	_sync_hand_card_views(current_hand.size())
 	var next_visual_keys: Array = []
 	var drawn_panels: Array = []
 	for i in range(hand_card_views.size()):
@@ -1521,10 +1580,9 @@ func _refresh_hand_and_deck() -> void:
 			_detach_drag_source(panel)
 
 	var grave: Array = GameManager.get_graveyard()
-	deck_grave_label.text = "DRAW PILE: %d cards  |  GRAVEYARD: %d cards  |  Use CARD PILES to inspect" % [
-		GameManager.get_deck_count(),
-		grave.size()
-	]
+	var held_count: int = current_hand.filter(func(card: Variant) -> bool: return card != null).size()
+	deck_grave_label.text = "手札 %d枚 / 補充上限 %d枚  |  山札 %d枚  |  墓地 %d枚" % [held_count, GameManager.get_hand_limit(), GameManager.get_deck_count(), grave.size()]
+	deck_grave_label.tooltip_text = "レリックによる手札上限：+%d枚 / 戦闘開始時の追加：+%d枚\n手札が多い場合は横スクロールで全カードを選べます。" % [GameManager.relic_hand_bonus, GameManager.relic_opening_bonus]
 	_hand_visual_keys = next_visual_keys
 	if _animate_next_hand_refresh:
 		_animate_next_hand_refresh = false
@@ -1569,30 +1627,30 @@ func _setup_slot_card(cv: Dictionary, card: Dictionary, role: String, slot_idx: 
 	# it is ever played. Wildcards ("?") never carry a skill.
 	var enemy_skill: Dictionary = GameManager.get_enemy_skill_for_letter(l_text)
 	var has_skill: bool = not enemy_skill.is_empty()
-	var skill_mark: String = ("  ⚠ %s" % str(enemy_skill.get("name", ""))) if has_skill else ""
+	var skill_mark: String = "  ⚠" if has_skill else ""
 	if has_skill:
-		panel.tooltip_text = "⚠ This letter wakes the enemy's %s.\n%s" % [
+		panel.tooltip_text = "⚠ 敵スキル：%s\nこのカードが下段にある夜に発動します。\n%s" % [
 			str(enemy_skill.get("name", "")), str(enemy_skill.get("desc", ""))]
 	else:
 		panel.tooltip_text = ""
 
 	if role == "active":
 		if _is_card_in_workbench(card_data):
-			cv["sub"].text = "IN USE"
+			cv["sub"].text = "使用中"
 			cv["letter"].add_theme_color_override("font_color", Color(0.5, 0.45, 0.25, 0.6))
 			cv["sub"].add_theme_color_override("font_color", Color(0.5, 0.45, 0.25, 0.6))
 			sb.bg_color = color_consts["bg"].lerp(Color(0, 0, 0, 0.4), 0.4)
 			sb.border_color = color_consts["border"].lerp(Color(0, 0, 0, 0.4), 0.4)
 			_detach_drag_source(panel)
 		else:
-			cv["sub"].text = "★ ACTIVE (%ddmg)%s" % [pts, skill_mark]
+			cv["sub"].text = "中段 · 攻撃 %d%s" % [pts, skill_mark]
 			cv["letter"].add_theme_color_override("font_color", Color.WHITE)
 			cv["sub"].add_theme_color_override("font_color", ENEMY_SKILL_COLOR if has_skill else Color.WHITE)
 			if has_skill:
 				sb.border_color = ENEMY_SKILL_COLOR
 			_attach_drag_source(panel, card_data)
 	elif role == "next":
-		cv["sub"].text = "→ NEXT (%ddmg)%s" % [pts, skill_mark]
+		cv["sub"].text = "下段 · 夜 %d%s" % [pts, skill_mark]
 		cv["letter"].add_theme_color_override("font_color", Color(0.8, 0.8, 0.8, 1.0))
 		cv["sub"].add_theme_color_override("font_color", ENEMY_SKILL_COLOR if has_skill else Color(0.8, 0.8, 0.8, 1.0))
 		sb.bg_color = color_consts["bg"].lerp(Color(0, 0, 0, 0.3), 0.3)
@@ -1855,17 +1913,19 @@ func _on_card_special_used(card_data: Dictionary) -> void:
 # that rotation (GameManager.predict_submit_outcome handles the ordering).
 func _refresh_submit_preview() -> void:
 	if workbench_cards.is_empty():
-		preview_label.text = "Place cards on the Workbench to preview the damage you will take on SUBMIT."
+		preview_label.text = "カードを並べると、攻撃・夜の被害・日本語の意味を確認できます。"
 		preview_label.add_theme_color_override("font_color", PREVIEW_COLOR_IDLE)
 		_set_meaning_text("", MEANING_COLOR_NONE)
 		_set_definition_text("", MEANING_COLOR_NONE)
 		return
 
 	# Resolve the same assignment SUBMIT would use, so the preview matches it
-	var pattern_chars: Array = []
-	for c in workbench_cards:
-		pattern_chars.append(str(c.get("card_letter", c.get("letter", "?"))))
-	var pattern: String = "".join(pattern_chars)
+	var pattern: String = _workbench_pattern()
+	if pattern.is_empty():
+		preview_label.text = "? の文字を選んでください。"
+		_set_meaning_text("", MEANING_COLOR_NONE)
+		_set_definition_text("", MEANING_COLOR_NONE)
+		return
 
 	var valid_assignments: Array = GameManager.find_valid_assignments(pattern)
 	if valid_assignments.is_empty():
@@ -2087,8 +2147,141 @@ func _build_preview_text(plan: Dictionary, word: String) -> String:
 
 
 # ── Workbench Management ────────────────────────────────────────────────────
+func _has_chosen_wildcard_letter(card: Dictionary) -> bool:
+	var value: String = str(card.get("chosen_letter", card.get("char", "")))
+	return value.length() == 1 and GameManager.ALPHA.contains(value)
+
+func _workbench_pattern() -> String:
+	var pattern := ""
+	for card in workbench_cards:
+		var physical: String = str(card.get("card_letter", card.get("letter", "?")))
+		if physical == "?":
+			if not _has_chosen_wildcard_letter(card):
+				return ""
+			pattern += str(card.get("chosen_letter", card.get("char", "")))
+		else:
+			pattern += physical
+	return pattern
+
+func _setup_wildcard_picker() -> void:
+	_wildcard_backdrop = ColorRect.new()
+	_wildcard_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_wildcard_backdrop.color = Color(0.01, 0.03, 0.08, 0.65)
+	_wildcard_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_wildcard_backdrop)
+	_wildcard_backdrop.hide()
+	_wildcard_dialog = Window.new()
+	_wildcard_dialog.name = "WildcardPicker"
+	_wildcard_dialog.title = "? の文字を選ぶ"
+	_wildcard_dialog.transient = true
+	_wildcard_dialog.exclusive = true
+	_wildcard_dialog.size = Vector2i(490, 350)
+	_wildcard_dialog.min_size = Vector2i(390, 320)
+	var border := StyleBoxFlat.new()
+	border.bg_color = Color("14253a")
+	border.border_color = Color("284b63")
+	border.set_border_width_all(2)
+	border.border_width_top = 30
+	border.expand_margin_top = 30
+	border.expand_margin_left = 2
+	border.expand_margin_right = 2
+	border.expand_margin_bottom = 2
+	border.set_corner_radius_all(12)
+	_wildcard_dialog.add_theme_stylebox_override("embedded_border", border)
+	add_child(_wildcard_dialog)
+	_wildcard_dialog.hide()
+	_wildcard_dialog.close_requested.connect(_cancel_wildcard_choice)
+	_wildcard_dialog.window_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventKey and event.pressed and not event.echo:
+			if event.keycode == KEY_ESCAPE:
+				_wildcard_dialog.set_input_as_handled()
+				_cancel_wildcard_choice()
+			elif event.keycode >= KEY_A and event.keycode <= KEY_Z:
+				_wildcard_dialog.set_input_as_handled()
+				_choose_wildcard_letter(String.chr(event.keycode)))
+	var fill := Panel.new()
+	fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var fill_style := StyleBoxFlat.new()
+	fill_style.bg_color = Color("14253a")
+	fill.add_theme_stylebox_override("panel", fill_style)
+	_wildcard_dialog.add_child(fill)
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for edge in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + edge, 16)
+	_wildcard_dialog.add_child(margin)
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 12)
+	margin.add_child(body)
+	var hint := Label.new()
+	hint.text = "A〜Zから選択（キー入力も可能）\n色・攻撃値は元の ? カードのままです。"
+	hint.add_theme_font_size_override("font_size", 15)
+	body.add_child(hint)
+	var grid := GridContainer.new()
+	grid.columns = 7
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(grid)
+	for letter in GameManager.ALPHA:
+		var button := Button.new()
+		button.text = letter
+		button.custom_minimum_size = Vector2(46, 42)
+		button.add_theme_font_size_override("font_size", 20)
+		_style_button(button, Color("24364d"), Color("54708e"), Color("eaf2ff"))
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_choose_wildcard_letter.bind(letter))
+		grid.add_child(button)
+	var cancel := Button.new()
+	cancel.text = "キャンセル（Esc）"
+	cancel.custom_minimum_size.y = 36
+	_style_button(cancel, Color("24364d"), Color("54708e"), Color("eaf2ff"))
+	cancel.pressed.connect(_cancel_wildcard_choice)
+	body.add_child(cancel)
+
+func _open_wildcard_picker(card: Dictionary, insert_index: int = -1, edit_index: int = -1) -> void:
+	if _turn_resolving or _wildcard_dialog.visible:
+		return
+	_wildcard_pending = card.duplicate()
+	_wildcard_insert_index = insert_index
+	_wildcard_edit_index = edit_index
+	_wildcard_backdrop.show()
+	_wildcard_dialog.popup_centered()
+
+func _cancel_wildcard_choice() -> void:
+	_wildcard_dialog.hide()
+	_wildcard_backdrop.hide()
+	_wildcard_pending.clear()
+	_wildcard_insert_index = -1
+	_wildcard_edit_index = -1
+
+func _choose_wildcard_letter(value: String) -> void:
+	var letter := value.to_upper()
+	if _turn_resolving or _wildcard_pending.is_empty() or letter.length() != 1 or not GameManager.ALPHA.contains(letter):
+		return
+	var card: Dictionary = _wildcard_pending.duplicate()
+	var insert_index := _wildcard_insert_index
+	var edit_index := _wildcard_edit_index
+	_cancel_wildcard_choice()
+	card["chosen_letter"] = letter
+	card["char"] = letter
+	card["is_wildcard"] = true
+	if edit_index >= 0:
+		if edit_index >= workbench_cards.size() or _source_key(workbench_cards[edit_index]) != _source_key(card):
+			return
+		workbench_cards[edit_index] = card
+		_refresh_workbench_ui()
+		_refresh_submit_preview()
+	else:
+		add_card_to_workbench(card, insert_index)
+
 func add_card_to_workbench(card_data: Dictionary, index: int = -1) -> void:
+	if _turn_resolving or _wildcard_dialog.visible:
+		return
 	if _is_card_in_workbench(card_data):
+		return
+	if str(card_data.get("card_letter", card_data.get("letter", ""))) == "?" and not _has_chosen_wildcard_letter(card_data):
+		_open_wildcard_picker(card_data, index)
 		return
 
 	# index -1 appends (the click path); a drag supplies the gap it aimed at.
@@ -2164,7 +2357,7 @@ func _refresh_workbench_ui() -> void:
 
 	if workbench_cards.is_empty():
 		var hint := Label.new()
-		hint.text = "Drag cards here or click available cards to construct a word..."
+		hint.text = "手札や共有札をクリック、またはここへドラッグして単語を作りましょう"
 		hint.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
 		hint.add_theme_font_size_override("font_size", 14)
 		workbench_container.add_child(hint)
@@ -2200,6 +2393,14 @@ func _refresh_workbench_ui() -> void:
 		cv["sub"].add_theme_color_override("font_color", Color(0.92, 0.95, 1.0, 0.85))
 
 		var captured_idx: int = i
+		if str(c_data.get("card_letter", c_data.get("letter", ""))) == "?":
+			var edit := Button.new()
+			edit.text = "文字変更"
+			edit.add_theme_font_size_override("font_size", 10)
+			edit.pressed.connect(func() -> void:
+				if not _turn_resolving:
+					_open_wildcard_picker(workbench_cards[captured_idx], -1, captured_idx))
+			panel.get_child(0).add_child(edit)
 		panel.gui_input.connect(func(event: InputEvent):
 			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 				remove_card_from_workbench_at(captured_idx)
@@ -3080,17 +3281,18 @@ func _pick_best_assignment(placed: Array, assignments: Array) -> Array:
 	return best
 
 func _on_submit_pressed() -> void:
+	if _turn_resolving or _wildcard_dialog.visible:
+		return
 	if workbench_cards.is_empty():
 		message_label.text = "Workbench is empty! Place cards to form a word."
 		message_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.4, 1.0))
 		return
 
 	# Build pattern from current workbench cards
-	var pattern_chars: Array = []
-	for c in workbench_cards:
-		var card_letter = c.get("card_letter", c.get("letter", "?"))
-		pattern_chars.append(card_letter)
-	var pattern: String = "".join(pattern_chars)
+	var pattern: String = _workbench_pattern()
+	if pattern.is_empty():
+		message_label.text = "? の文字を選んでください。"
+		return
 
 	# Find valid assignments for this pattern (handles wildcards)
 	var valid_assignments: Array = GameManager.find_valid_assignments(pattern)
@@ -3120,6 +3322,7 @@ func _on_submit_pressed() -> void:
 		_refresh_submit_preview()
 		return
 
+	_turn_resolving = true
 	submit_button.disabled = true
 	clear_button.disabled = true
 
@@ -3145,7 +3348,8 @@ func _on_submit_pressed() -> void:
 		_refresh_formula_panel()
 		submit_button.disabled = false
 		clear_button.disabled = false
-		_finalize(result, penalty_result)
+		await _finalize(result, penalty_result)
+		_turn_resolving = false
 
 	if result.get("enemies_defeated_delta", 0) > 0:
 		# Stage cleared: the hand AND all three shared reels were re-dealt.
@@ -3869,6 +4073,29 @@ func _show_game_over() -> void:
 	message_label.add_theme_color_override("font_color", title_color)
 	message_label.custom_minimum_size = Vector2(400, 240)
 
+
+func _setup_title_navigation() -> void:
+	_title_confirmation = ConfirmationDialog.new()
+	_title_confirmation.title = "タイトルへ戻る"
+	_title_confirmation.dialog_text = "現在のプレイを終了してタイトルへ戻りますか？"
+	_title_confirmation.ok_button_text = "タイトルへ戻る"
+	_title_confirmation.cancel_button_text = "プレイを続ける"
+	add_child(_title_confirmation)
+	_title_confirmation.confirmed.connect(func() -> void:
+		if not _turn_resolving:
+			GameManager.reset_game()
+			get_tree().change_scene_to_file("res://src/Title.tscn"))
+	for parent in [$Scroll/Center/VBox/ControlRow, $Scroll/Center/VBox/GameOverButtonRow]:
+		var button := Button.new()
+		button.name = "TitleButton"
+		button.text = "タイトル"
+		button.custom_minimum_size = Vector2(86, 34)
+		button.tooltip_text = "タイトル画面へ戻る"
+		button.pressed.connect(func() -> void:
+			if not _turn_resolving:
+				_title_confirmation.popup_centered())
+		parent.add_child(button)
+		_title_buttons.append(button)
 
 func _on_retry_pressed() -> void:
 	GameManager.reset_game()

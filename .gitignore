@@ -19,4 +19,17 @@ tools/_filter_sample/
 tests/translation_web_build/
 tests/translation_godot.log
 tests/translation_web_export.log
+tests/title_import.log
+tests/title_tutorial_test.log
+tests/title_preview.png
+tests/tutorial_preview.png
+tests/title_visual.log
+tests/title_visual_error.log
+tests/title_*.log
+tests/wildcard_picker_test.log
+tests/ui_*.log
+tests/ui_*.png
+tests/ui_*.png.import
+tests/title_preview.png.import
+tests/tutorial_preview.png.import
 
